@@ -114,5 +114,12 @@
   "gettingStartedStep3Title": "Ferdig",
   "gettingStartedStep3Desc": "Widgeten vil vises på siden din. Den respekterer posisjonen, fargene og oppførselen du konfigurerte i dashbordet.",
   "gettingStartedStep4Title": "Prøv docs-widgeten",
-  "gettingStartedStep4Desc": "Dokument-widgeten fungerer på samme måte – last inn skriptet og ring {openCall} for å åpne det programmatisk. Prøv det live:"
+  "gettingStartedStep4Desc": "Dokument-widgeten fungerer på samme måte – last inn skriptet og ring {openCall} for å åpne det programmatisk. Prøv det live:",
+  "docsConfigError": "Konfigurasjonsfeil for Docs Assistant",
+  "uncertaintyLogEmpty": "Ingen usikre svar ennå.",
+  "uncertaintyLogSubtitle": "Meldinger der assistenten indikerte usikkerhet:",
+  "uncertaintyLogTitle": "Assistent-usikkerhetslogg",
+  "widgetConfigError": "Widget-konfigurasjonsfeil",
+  "widgetConfigMissingParams": "Mangler nødvendige parametere. Sørg for at widget-skriptet ditt inkluderer:",
+  "widgetConfigOurDocumentation": "vår dokumentasjon"
 }

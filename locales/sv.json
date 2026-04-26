@@ -114,5 +114,12 @@
   "gettingStartedStep3Title": "Gjort",
   "gettingStartedStep3Desc": "Widgeten kommer att visas på din sida. Den respekterar positionen, färgerna och beteendet du konfigurerade i instrumentpanelen.",
   "gettingStartedStep4Title": "Prova docs-widgeten",
-  "gettingStartedStep4Desc": "Dokumentwidgeten fungerar på samma sätt – ladda skriptet och anrop {openCall} för att öppna det programmatiskt. Prova live:"
+  "gettingStartedStep4Desc": "Dokumentwidgeten fungerar på samma sätt – ladda skriptet och anrop {openCall} för att öppna det programmatiskt. Prova live:",
+  "docsConfigError": "Docs Assistant Konfigurationsfel",
+  "uncertaintyLogEmpty": "Inga osäkra svar ännu.",
+  "uncertaintyLogSubtitle": "Meddelanden där assistenten angav osäkerhet:",
+  "uncertaintyLogTitle": "Assistent osäkerhetslogg",
+  "widgetConfigError": "Widgetkonfigurationsfel",
+  "widgetConfigMissingParams": "Nödvändiga parametrar saknas. Se till att ditt widgetskript innehåller:",
+  "widgetConfigOurDocumentation": "vår dokumentation"
 }

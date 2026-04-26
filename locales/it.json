@@ -114,5 +114,12 @@
   "gettingStartedStep3Title": "Fatto",
   "gettingStartedStep3Desc": "Il widget apparirà sulla tua pagina. Rispetta la posizione, i colori e il comportamento che hai configurato nella dashboard.",
   "gettingStartedStep4Title": "Prova il widget dei documenti",
-  "gettingStartedStep4Desc": "Il widget dei documenti funziona allo stesso modo: carica lo script e chiama {openCall} per aprirlo a livello di codice. Provalo dal vivo:"
+  "gettingStartedStep4Desc": "Il widget dei documenti funziona allo stesso modo: carica lo script e chiama {openCall} per aprirlo a livello di codice. Provalo dal vivo:",
+  "docsConfigError": "Errore di configurazione dell'Assistente Documenti",
+  "uncertaintyLogEmpty": "Nessuna risposta incerta ancora.",
+  "uncertaintyLogSubtitle": "Messaggi in cui l'assistente indicava incertezza:",
+  "uncertaintyLogTitle": "Registro delle incertezze dell'assistente",
+  "widgetConfigError": "Errore di configurazione del widget",
+  "widgetConfigMissingParams": "Parametri obbligatori mancanti. Assicurati che lo script del tuo widget includa:",
+  "widgetConfigOurDocumentation": "la nostra documentazione"
 }

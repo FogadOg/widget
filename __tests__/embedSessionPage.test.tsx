@@ -24,7 +24,12 @@ describe('Embed session page', () => {
     }));
 
     jest.doMock(i18nPath, () => ({
-      getLocaleDirection: (/* locale */) => 'ltr'
+      getLocaleDirection: (/* locale */) => 'ltr',
+      getTranslations: () => ({
+        widgetConfigError: 'Widget Configuration Error',
+        widgetConfigMissingParams: 'Missing required parameters. Please ensure your widget script includes:',
+        widgetConfigOurDocumentation: 'our documentation',
+      }),
     }));
 
     const page = require('../app/embed/session/page').default;
@@ -55,7 +60,12 @@ describe('Embed session page', () => {
     }));
 
     jest.doMock(i18nPath, () => ({
-      getLocaleDirection: (/* locale */) => 'ltr'
+      getLocaleDirection: (/* locale */) => 'ltr',
+      getTranslations: () => ({
+        widgetConfigError: 'Widget Configuration Error',
+        widgetConfigMissingParams: 'Missing required parameters. Please ensure your widget script includes:',
+        widgetConfigOurDocumentation: 'our documentation',
+      }),
     }));
 
     const page = require('../app/embed/session/page').default;

@@ -114,5 +114,12 @@
   "gettingStartedStep3Title": "Done",
   "gettingStartedStep3Desc": "The widget will appear on your page. It respects the position, colors, and behavior you configured in the dashboard.",
   "gettingStartedStep4Title": "Try the docs widget",
-  "gettingStartedStep4Desc": "The docs widget works the same way — load the script and call {openCall} to open it programmatically. Try it live:"
+  "gettingStartedStep4Desc": "The docs widget works the same way — load the script and call {openCall} to open it programmatically. Try it live:",
+  "widgetConfigError": "Widget Configuration Error",
+  "widgetConfigMissingParams": "Missing required parameters. Please ensure your widget script includes:",
+  "widgetConfigOurDocumentation": "our documentation",
+  "docsConfigError": "Docs Assistant Configuration Error",
+  "uncertaintyLogTitle": "Assistant Uncertainty Log",
+  "uncertaintyLogSubtitle": "Messages where the assistant indicated uncertainty:",
+  "uncertaintyLogEmpty": "No uncertain responses yet."
 }

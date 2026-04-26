@@ -114,5 +114,12 @@
   "gettingStartedStep3Title": "Hecho",
   "gettingStartedStep3Desc": "El widget aparecerá en su página. Respeta la posición, los colores y el comportamiento que configuraste en el tablero.",
   "gettingStartedStep4Title": "Pruebe el widget de documentos",
-  "gettingStartedStep4Desc": "El widget de documentos funciona de la misma manera: carga el script y llama a {openCall} para abrirlo mediante programación. Pruébalo en vivo:"
+  "gettingStartedStep4Desc": "El widget de documentos funciona de la misma manera: carga el script y llama a {openCall} para abrirlo mediante programación. Pruébalo en vivo:",
+  "docsConfigError": "Error de configuración del Asistente de Documentos",
+  "uncertaintyLogEmpty": "Aún no hay respuestas inciertas.",
+  "uncertaintyLogSubtitle": "Mensajes donde el asistente indicó incertidumbre:",
+  "uncertaintyLogTitle": "Registro de incertidumbre del asistente",
+  "widgetConfigError": "Error de configuración del widget",
+  "widgetConfigMissingParams": "Faltan parámetros requeridos. Asegúrese de que el script de su widget incluya:",
+  "widgetConfigOurDocumentation": "nuestra documentación"
 }

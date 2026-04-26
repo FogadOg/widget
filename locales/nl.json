@@ -114,5 +114,12 @@
   "gettingStartedStep3Title": "Klaar",
   "gettingStartedStep3Desc": "De widget verschijnt op uw pagina. Het respecteert de positie, kleuren en gedrag die u in het dashboard hebt geconfigureerd.",
   "gettingStartedStep4Title": "Probeer de documentenwidget",
-  "gettingStartedStep4Desc": "De documentenwidget werkt op dezelfde manier: laad het script en roep {openCall} aan om het programmatisch te openen. Probeer het live:"
+  "gettingStartedStep4Desc": "De documentenwidget werkt op dezelfde manier: laad het script en roep {openCall} aan om het programmatisch te openen. Probeer het live:",
+  "docsConfigError": "Configuratiefout in Documentenassistent",
+  "uncertaintyLogEmpty": "Nog geen onzekere reacties.",
+  "uncertaintyLogSubtitle": "Berichten waarbij de assistent onzekerheid aangaf:",
+  "uncertaintyLogTitle": "Assistent onzekerheidslogboek",
+  "widgetConfigError": "Widgetconfiguratiefout",
+  "widgetConfigMissingParams": "Er ontbreken vereiste parameters. Zorg ervoor dat uw widgetscript het volgende bevat:",
+  "widgetConfigOurDocumentation": "onze documentatie"
 }

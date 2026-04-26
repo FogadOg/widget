@@ -114,5 +114,12 @@
   "gettingStartedStep3Title": "Zrobione",
   "gettingStartedStep3Desc": "Widżet pojawi się na Twojej stronie. Respektuje pozycję, kolory i zachowanie skonfigurowane na pulpicie nawigacyjnym.",
   "gettingStartedStep4Title": "Wypróbuj widżet dokumentów",
-  "gettingStartedStep4Desc": "Widżet dokumentów działa w ten sam sposób — załaduj skrypt i wywołaj {openCall}, aby otworzyć go programowo. Wypróbuj na żywo:"
+  "gettingStartedStep4Desc": "Widżet dokumentów działa w ten sam sposób — załaduj skrypt i wywołaj {openCall}, aby otworzyć go programowo. Wypróbuj na żywo:",
+  "docsConfigError": "Błąd konfiguracji Asystenta Dokumentów",
+  "uncertaintyLogEmpty": "Nie ma jeszcze niepewnych odpowiedzi.",
+  "uncertaintyLogSubtitle": "Wiadomości, w których asystent wskazywał niepewność:",
+  "uncertaintyLogTitle": "Dziennik niepewności Asystenta",
+  "widgetConfigError": "Błąd konfiguracji widgetu",
+  "widgetConfigMissingParams": "Brak wymaganych parametrów. Upewnij się, że skrypt widgetu zawiera:",
+  "widgetConfigOurDocumentation": "naszą dokumentację"
 }

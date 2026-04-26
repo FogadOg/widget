@@ -114,5 +114,12 @@
   "gettingStartedStep3Title": "Fait",
   "gettingStartedStep3Desc": "Le widget apparaîtra sur votre page. Il respecte la position, les couleurs et le comportement que vous avez configurés dans le tableau de bord.",
   "gettingStartedStep4Title": "Essayez le widget Documents",
-  "gettingStartedStep4Desc": "Le widget Docs fonctionne de la même manière : chargez le script et appelez {openCall} pour l'ouvrir par programme. Essayez-le en direct :"
+  "gettingStartedStep4Desc": "Le widget Docs fonctionne de la même manière : chargez le script et appelez {openCall} pour l'ouvrir par programme. Essayez-le en direct :",
+  "docsConfigError": "Erreur de configuration de l'Assistant Documents",
+  "uncertaintyLogEmpty": "Pas encore de réponses incertaines.",
+  "uncertaintyLogSubtitle": "Messages où l'assistant a indiqué une incertitude :",
+  "uncertaintyLogTitle": "Journal d'incertitude de l'assistant",
+  "widgetConfigError": "Erreur de configuration du widget",
+  "widgetConfigMissingParams": "Paramètres requis manquants. Veuillez vous assurer que votre script de widget inclut :",
+  "widgetConfigOurDocumentation": "notre documentation"
 }

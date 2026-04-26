@@ -9,6 +9,11 @@ jest.mock('../app/embed/docs/DocsClient', () => {
 
 jest.mock('../lib/i18n', () => ({
   getLocaleDirection: jest.fn(() => 'ltr'),
+  getTranslations: jest.fn(() => ({
+    docsConfigError: 'Docs Assistant Configuration Error',
+    widgetConfigMissingParams: 'Missing required parameters. Please ensure your widget script includes:',
+    widgetConfigOurDocumentation: 'our documentation',
+  })),
 }));
 
 import DocsPage from '../app/embed/docs/page';

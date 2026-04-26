@@ -2350,6 +2350,7 @@ type UnsureMessagesModalProps = {
 };
 
 function UnsureMessagesModal({ messages, onClose, primaryColor, backgroundColor, textColor, borderRadius }: UnsureMessagesModalProps) {
+  const { translations: t } = useWidgetTranslation();
   return (
     <div
       className="rounded-lg shadow-lg max-h-[80vh] overflow-hidden"
@@ -2360,7 +2361,7 @@ function UnsureMessagesModal({ messages, onClose, primaryColor, backgroundColor,
         style={{ borderColor: primaryColor }}
       >
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">Assistant Uncertainty Log</h3>
+          <h3 className="text-lg font-semibold">{t.uncertaintyLogTitle as string}</h3>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 text-xl leading-none"
@@ -2369,13 +2370,13 @@ function UnsureMessagesModal({ messages, onClose, primaryColor, backgroundColor,
           </button>
         </div>
         <p className="text-sm text-gray-600 mt-1">
-          Messages where the assistant indicated uncertainty:
+          {t.uncertaintyLogSubtitle as string}
         </p>
       </div>
 
       <div className="p-4 max-h-96 overflow-y-auto">
         {messages.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">No uncertain responses yet.</p>
+          <p className="text-gray-500 text-center py-4">{t.uncertaintyLogEmpty as string}</p>
         ) : (
           <div className="space-y-4">
             {messages.map((msg, index) => (

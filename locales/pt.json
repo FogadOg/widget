@@ -114,5 +114,12 @@
   "gettingStartedStep3Title": "Feito",
   "gettingStartedStep3Desc": "O widget aparecerá em sua página. Respeita a posição, as cores e o comportamento que você configurou no painel.",
   "gettingStartedStep4Title": "Experimente o widget de documentos",
-  "gettingStartedStep4Desc": "O widget de documentos funciona da mesma maneira – carregue o script e chame {openCall} para abri-lo programaticamente. Experimente ao vivo:"
+  "gettingStartedStep4Desc": "O widget de documentos funciona da mesma maneira – carregue o script e chame {openCall} para abri-lo programaticamente. Experimente ao vivo:",
+  "docsConfigError": "Erro de configuração do Assistente de Documentos",
+  "uncertaintyLogEmpty": "Ainda não há respostas incertas.",
+  "uncertaintyLogSubtitle": "Mensagens onde o assistente indicou incerteza:",
+  "uncertaintyLogTitle": "Registro de incerteza do assistente",
+  "widgetConfigError": "Erro de configuração do widget",
+  "widgetConfigMissingParams": "Parâmetros obrigatórios ausentes. Certifique-se de que seu script de widget inclua:",
+  "widgetConfigOurDocumentation": "nossa documentação"
 }

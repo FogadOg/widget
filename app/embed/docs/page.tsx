@@ -1,5 +1,5 @@
 import DocsClient from "./DocsClient";
-import { getLocaleDirection } from '../../../lib/i18n';
+import { getLocaleDirection, getTranslations } from '../../../lib/i18n';
 
 type Props = {
   searchParams: Promise<{
@@ -20,13 +20,15 @@ export default async function DocsPage({ searchParams }: Props) {
   // Parse suggestions if provided (comma-separated)
   const parsedSuggestions = suggestions ? suggestions.split(',').map(s => s.trim()).filter(s => s.length > 0) : undefined;
 
+  const t = getTranslations(locale);
+
   // Validate required parameters
   if (!clientId || !assistantId || !configId) {
     const dir = getLocaleDirection(locale);
     return (
       <html lang={locale} dir={dir}>
         <head>
-          <title>Docs Assistant Configuration Error</title>
+          <title>{t.docsConfigError as string}</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </head>
         <body style={{
@@ -49,10 +51,10 @@ export default async function DocsPage({ searchParams }: Props) {
               fontSize: "18px",
               fontWeight: "600"
             }}>
-              Docs Assistant Configuration Error
+              {t.docsConfigError as string}
             </h3>
             <p style={{ color: "#6b7280", fontSize: "14px", lineHeight: "1.6" }}>
-              Missing required parameters. Please ensure your widget script includes:
+              {t.widgetConfigMissingParams as string}
             </p>
             <ul style={{ color: "#6b7280", fontSize: "14px", lineHeight: "1.8" }}>
               <li><code style={{
@@ -84,7 +86,7 @@ export default async function DocsPage({ searchParams }: Props) {
               Need help? Visit <a
                 href="https://companin.tech/docs"
                 style={{ color: "#2563eb", textDecoration: "none" }}
-              >our documentation</a>
+              >{t.widgetConfigOurDocumentation as string}</a>
             </p>
           </div>
         </body>

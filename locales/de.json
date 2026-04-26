@@ -114,5 +114,12 @@
   "gettingStartedStep3Title": "Erledigt",
   "gettingStartedStep3Desc": "Das Widget wird auf Ihrer Seite angezeigt. Es respektiert die Position, Farben und das Verhalten, die Sie im Dashboard konfiguriert haben.",
   "gettingStartedStep4Title": "Probieren Sie das Dokumenten-Widget aus",
-  "gettingStartedStep4Desc": "Das Dokumenten-Widget funktioniert auf die gleiche Weise – laden Sie das Skript und rufen Sie {openCall} auf, um es programmgesteuert zu öffnen. Probieren Sie es live aus:"
+  "gettingStartedStep4Desc": "Das Dokumenten-Widget funktioniert auf die gleiche Weise – laden Sie das Skript und rufen Sie {openCall} auf, um es programmgesteuert zu öffnen. Probieren Sie es live aus:",
+  "docsConfigError": "Konfigurationsfehler beim Docs Assistant",
+  "uncertaintyLogEmpty": "Noch keine unsicheren Antworten.",
+  "uncertaintyLogSubtitle": "Nachrichten, bei denen der Assistent Unsicherheit anzeigte:",
+  "uncertaintyLogTitle": "Assistenten-Unsicherheitsprotokoll",
+  "widgetConfigError": "Widget-Konfigurationsfehler",
+  "widgetConfigMissingParams": "Erforderliche Parameter fehlen. Bitte stellen Sie sicher, dass Ihr Widget-Skript Folgendes enthält:",
+  "widgetConfigOurDocumentation": "unsere Dokumentation"
 }

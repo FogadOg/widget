@@ -274,6 +274,9 @@ describe('EmbedClient Component', () => {
         failedToCreateSession: 'Failed to create session',
         sessionOrAuthError: 'Session or auth error',
         failedToSendMessage: 'Failed to send message',
+        uncertaintyLogTitle: 'Assistant Uncertainty Log',
+        uncertaintyLogSubtitle: 'Messages where the assistant indicated uncertainty:',
+        uncertaintyLogEmpty: 'No uncertain responses yet.',
       },
       locale: 'en',
     });
