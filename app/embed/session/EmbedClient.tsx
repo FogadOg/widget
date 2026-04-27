@@ -229,6 +229,32 @@ export default function EmbedClient({
   const [isTyping, setIsTyping] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
 
+  // emit widget_load telemetry when widget mounts, but only once per
+  // browser session; reloading the page should not produce duplicate load events.
+  // We use a storage key unique to the client+assistant combo.
+  useEffect(() => {
+    const loadKey = `companin-telemetry-load-${initialClientId}-${initialAssistantId}`;
+    // if we've already sent the load event, do nothing
+    let alreadySent = false;
+    try {
+      alreadySent = !!localStorage.getItem(loadKey);
+    } catch (err) {
+      logError(err as Error, { context: 'widgetLoadTelemetry' });
+    }
+    if (alreadySent) {
+      return;
+    }
+
+    trackEvent('widget_load', initialAssistantId, {}, initialClientId).catch(() => {});
+
+    try {
+      localStorage.setItem(loadKey, '1');
+    } catch (error) {
+      // record failure but don't crash the widget
+      logError(error as Error, { context: 'widgetLoadTelemetry' });
+    }
+  }, [initialAssistantId, initialClientId]);
+
   // emit initial open/close telemetry when widget mounts, but only once per
   // browser session; reloading the page should not produce duplicate open/close
   // events. We use a storage key unique to the client+assistant combo.
