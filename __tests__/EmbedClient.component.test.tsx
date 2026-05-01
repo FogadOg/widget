@@ -5222,8 +5222,10 @@ describe('EmbedClient Component', () => {
 
     test('handles localStorage errors gracefully with logError', async () => {
       const { logError } = require('../lib/errorHandling');
-      (window.localStorage.setItem as jest.Mock).mockImplementationOnce(() => {
-        throw new Error('Storage quota exceeded');
+      (window.localStorage.setItem as jest.Mock).mockImplementation((key: string) => {
+        if (key === 'lastread-key' || key === 'unread-key') {
+          throw new Error('Storage quota exceeded');
+        }
       });
 
       render(<EmbedClient {...defaultProps} startOpen={false} />);
