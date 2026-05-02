@@ -12,7 +12,8 @@ import type {
 } from '../../../types/widget';
 import { ButtonLike } from '../../../hooks/useClickedButtons';
 import { logPerf } from '../../../lib/logger';
-import { trackEvent, embedOriginHeader } from '../../../lib/api';
+import { trackEvent, embedOriginHeader, createSupportTicket } from '../../../lib/api';
+import { HandoffModal } from '../HandoffModal';
 import FeedbackDialog from '../../../components/FeedbackDialog';
 import {
   createSessionError,
@@ -359,6 +360,8 @@ export default function EmbedClient({
   const [messageFeedbackSubmitted, setMessageFeedbackSubmitted] = useState<Set<string>>(new Set());
   const [unsureMessages, setUnsureMessages] = useState<Array<{userMessage: string, assistantMessage: string, timestamp: number}>>([]);
   const [showUnsureModal, setShowUnsureModal] = useState(false);
+  const [showHandoffModal, setShowHandoffModal] = useState(false);
+  const [lastUserMessage, setLastUserMessage] = useState('');
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
   const postedShowUnreadBadge = useRef<boolean | undefined>(undefined);
@@ -1921,6 +1924,12 @@ export default function EmbedClient({
         }]);
       }
 
+      // Check if assistant requested a human handoff
+      if (messageData?.assistant_message?.metadata?.handoff === true) {
+        setLastUserMessage(message);
+        setShowHandoffModal(true);
+      }
+
       // Replace the optimistic temp message with the confirmed server messages
       // directly from the response — no extra round-trip, no visible flash.
       const serverUser = messageData?.user_message;
@@ -2363,6 +2372,28 @@ export default function EmbedClient({
         hideCloseButton={isPersistent}
         isPersistent={isPersistent}
       />
+      {showHandoffModal && (
+        <HandoffModal
+          lastUserMessage={lastUserMessage}
+          onSubmit={async (name, email, handoffMessage) => {
+            await createSupportTicket(authToken ?? '', {
+              name,
+              email,
+              message: handoffMessage,
+              session_id: sessionId ?? undefined,
+            });
+            setShowHandoffModal(false);
+            const confirmationMessage: Message = {
+              id: `temp-handoff-${Date.now()}`,
+              text: 'Your message has been sent. Our team will be in touch.',
+              from: 'assistant',
+              timestamp: Date.now(),
+            };
+            setMessages(prev => [...prev, confirmationMessage]);
+          }}
+          onDismiss={() => setShowHandoffModal(false)}
+        />
+      )}
     </div>
   );
 }
