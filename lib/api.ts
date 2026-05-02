@@ -57,6 +57,7 @@ export const API = {
   },
   widgetConfigVariants: (configId: string) => `${getApiBaseUrl()}/widget-config/${configId}/variants/`,
   widgetConfigVariant: (configId: string, variantId: string) => `${getApiBaseUrl()}/widget-config/${configId}/variants/${variantId}/`,
+  supportTickets: () => `${getApiV1BaseUrl()}/support-tickets/`,
 } as const;
 
 /**
@@ -142,3 +143,29 @@ export const embedOriginHeader = (explicitOrigin?: string): Record<string, strin
   }
   return {};
 };
+
+/**
+ * Create a support ticket via the Ninja API
+ */
+export async function createSupportTicket(
+  token: string,
+  payload: {
+    name: string;
+    email: string;
+    message: string;
+    conversation_id?: string;
+    session_id?: string;
+  },
+): Promise<{ id: string; created_at: string }> {
+  const response = await fetch(API.supportTickets(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(`Failed to create ticket: ${response.status}`);
+  const body = await response.json();
+  return body.data as { id: string; created_at: string };
+}
