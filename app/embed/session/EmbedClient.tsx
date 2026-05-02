@@ -362,6 +362,8 @@ export default function EmbedClient({
   const [showUnsureModal, setShowUnsureModal] = useState(false);
   const [showHandoffModal, setShowHandoffModal] = useState(false);
   const [lastUserMessage, setLastUserMessage] = useState('');
+  const [hasEscalated, setHasEscalated] = useState(false);
+  const handoffConversationIdRef = useRef<string | null>(null);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
   const postedShowUnreadBadge = useRef<boolean | undefined>(undefined);
@@ -1925,8 +1927,10 @@ export default function EmbedClient({
       }
 
       // Check if assistant requested a human handoff
-      if (messageData?.assistant_message?.metadata?.handoff === true) {
+      if (messageData?.assistant_message?.metadata?.handoff === true && !hasEscalated) {
         setLastUserMessage(message);
+        setHasEscalated(true);
+        handoffConversationIdRef.current = messageData.conversation_id ?? null;
         setShowHandoffModal(true);
       }
 
@@ -2380,6 +2384,7 @@ export default function EmbedClient({
               name,
               email,
               message: handoffMessage,
+              conversation_id: handoffConversationIdRef.current ?? undefined,
               session_id: sessionId ?? undefined,
             });
             setShowHandoffModal(false);
