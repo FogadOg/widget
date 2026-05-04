@@ -41,6 +41,7 @@ type Props = {
   messageFeedbackSubmitted?: Set<string>;
   onSubmitMessageFeedback?: (messageId: string, feedbackType?: string) => void;
   unsureModal?: React.ReactNode;
+  handoffModal?: React.ReactNode;
   unsureMessages?: UnsureMessage[];
   onShowUnsureModal?: () => void;
   unreadCount?: number;
@@ -73,6 +74,7 @@ export default function EmbedShell({
   messageFeedbackSubmitted,
   onSubmitMessageFeedback,
   unsureModal,
+  handoffModal,
   unsureMessages = [],
   onShowUnsureModal,
   unreadCount = 0,
@@ -467,6 +469,15 @@ export default function EmbedShell({
                 </div>
               )}
 
+              {/* Handoff Modal Overlay for Embedded View */}
+              {handoffModal && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                  <div className="max-w-md w-full">
+                    {handoffModal}
+                  </div>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="p-3 border-t">
                 <div className="flex space-x-2">
                   <input
@@ -719,6 +730,15 @@ export default function EmbedShell({
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
                     <div className="max-w-md w-full">
                       {unsureModal}
+                    </div>
+                  </div>
+                )}
+
+                {/* Handoff Modal Overlay */}
+                {handoffModal && (
+                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="max-w-md w-full">
+                      {handoffModal}
                     </div>
                   </div>
                 )}

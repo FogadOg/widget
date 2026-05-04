@@ -29,22 +29,11 @@ export function HandoffModal({ lastUserMessage, onSubmit, onDismiss }: HandoffMo
   return (
     <div
       style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0,0,0,0.4)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 50,
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: '#fff',
-          borderRadius: 12,
-          padding: 24,
-          width: '100%',
-          maxWidth: 340,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 24,
+        width: '100%',
+        maxWidth: 340,
           boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
           position: 'relative',
         }}
@@ -155,7 +144,6 @@ export function HandoffModal({ lastUserMessage, onSubmit, onDismiss }: HandoffMo
             {submitting ? 'Sending...' : 'Send Request'}
           </button>
         </form>
-      </div>
     </div>
   );
 }

@@ -2375,30 +2375,30 @@ export default function EmbedClient({
         onShowUnsureModal={() => setShowUnsureModal(true)}
         hideCloseButton={isPersistent}
         isPersistent={isPersistent}
+        handoffModal={showHandoffModal ? (
+          <HandoffModal
+            lastUserMessage={lastUserMessage}
+            onSubmit={async (name, email, handoffMessage) => {
+              await createSupportTicket(authToken ?? '', {
+                name,
+                email,
+                message: handoffMessage,
+                conversation_id: handoffConversationIdRef.current ?? undefined,
+                session_id: sessionId ?? undefined,
+              });
+              setShowHandoffModal(false);
+              const confirmationMessage: Message = {
+                id: `temp-handoff-${Date.now()}`,
+                text: 'A support ticket has been created. We will contact you shortly.',
+                from: 'assistant',
+                timestamp: Date.now(),
+              };
+              setMessages(prev => [...prev, confirmationMessage]);
+            }}
+            onDismiss={() => setShowHandoffModal(false)}
+          />
+        ) : undefined}
       />
-      {showHandoffModal && (
-        <HandoffModal
-          lastUserMessage={lastUserMessage}
-          onSubmit={async (name, email, handoffMessage) => {
-            await createSupportTicket(authToken ?? '', {
-              name,
-              email,
-              message: handoffMessage,
-              conversation_id: handoffConversationIdRef.current ?? undefined,
-              session_id: sessionId ?? undefined,
-            });
-            setShowHandoffModal(false);
-            const confirmationMessage: Message = {
-              id: `temp-handoff-${Date.now()}`,
-              text: 'Your message has been sent. Our team will be in touch.',
-              from: 'assistant',
-              timestamp: Date.now(),
-            };
-            setMessages(prev => [...prev, confirmationMessage]);
-          }}
-          onDismiss={() => setShowHandoffModal(false)}
-        />
-      )}
     </div>
   );
 }
