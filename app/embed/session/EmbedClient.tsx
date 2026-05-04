@@ -1194,6 +1194,7 @@ export default function EmbedClient({
                   assistant_id: assistant,
                   visitor_id: visitorId,
                   locale: activeLocale,
+                  widget_config_id: activeConfig?.id ?? undefined,
                   metadata: Object.keys(abMeta).length > 0 ? abMeta : undefined,
                 }),
               signal: controller.signal,
@@ -2083,6 +2084,33 @@ export default function EmbedClient({
       // local-only: render the user's button click plus the local assistant
       // response and skip the backend submit.
       if (hasLocalResponse) {
+        const sid = sessionIdRef.current;
+        const tok = authTokenRef.current;
+        const responseText = maybeText || '';
+        if (sid && tok && responseText) {
+          const persistFlow = async () => {
+            try {
+              const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${tok}`,
+                ...embedOriginHeader(initialParentOrigin),
+              };
+              await fetch(API.sessionMessages(sid), {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ content: labelText, locale: activeLocale, skip_ai_response: true }),
+              });
+              await fetch(API.sessionMessages(sid), {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ content: responseText, locale: activeLocale, sender: 'assistant', skip_ai_response: true }),
+              });
+            } catch {
+              // ignore — history persistence is best-effort
+            }
+          };
+          void persistFlow();
+        }
         return;
       }
 
@@ -2128,6 +2156,37 @@ export default function EmbedClient({
         }]);
         setIsTyping(false);
       }, 1000);
+
+      // Persist the button click and flow response to the backend so they
+      // appear in conversation history (fire-and-forget, never block the UI).
+      const sid = sessionIdRef.current;
+      const tok = authTokenRef.current;
+      const responseText = maybeText || labelText || '';
+      if (sid && tok && responseText) {
+        const persistFlow = async () => {
+          try {
+            const headers = {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${tok}`,
+              ...embedOriginHeader(initialParentOrigin),
+            };
+            await fetch(API.sessionMessages(sid), {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ content: labelText, locale: activeLocale, skip_ai_response: true }),
+            });
+            await fetch(API.sessionMessages(sid), {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ content: responseText, locale: activeLocale, sender: 'assistant', skip_ai_response: true }),
+            });
+          } catch {
+            // ignore — history persistence is best-effort
+          }
+        };
+        void persistFlow();
+      }
+
       // notify parent about the user message
       try {
         if (window.parent !== window) {
