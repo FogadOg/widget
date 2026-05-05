@@ -121,5 +121,13 @@
   "uncertaintyLogTitle": "Assistenten-Unsicherheitsprotokoll",
   "widgetConfigError": "Widget-Konfigurationsfehler",
   "widgetConfigMissingParams": "Erforderliche Parameter fehlen. Bitte stellen Sie sicher, dass Ihr Widget-Skript Folgendes enthält:",
-  "widgetConfigOurDocumentation": "unsere Dokumentation"
+  "widgetConfigOurDocumentation": "unsere Dokumentation",
+  "handoffTitle": "Mit unserem Team sprechen",
+  "handoffNameLabel": "Name",
+  "handoffEmailLabel": "E-Mail",
+  "handoffMessageLabel": "Nachricht",
+  "handoffSubmitButton": "Anfrage senden",
+  "handoffSubmittingButton": "Wird gesendet...",
+  "handoffError": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+  "handoffConfirmation": "Ihre Nachricht wurde gesendet. Unser Team meldet sich bei Ihnen."
 }

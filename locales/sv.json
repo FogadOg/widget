@@ -121,5 +121,13 @@
   "uncertaintyLogTitle": "Assistent osäkerhetslogg",
   "widgetConfigError": "Widgetkonfigurationsfel",
   "widgetConfigMissingParams": "Nödvändiga parametrar saknas. Se till att ditt widgetskript innehåller:",
-  "widgetConfigOurDocumentation": "vår dokumentation"
+  "widgetConfigOurDocumentation": "vår dokumentation",
+  "handoffTitle": "Prata med vårt team",
+  "handoffNameLabel": "Namn",
+  "handoffEmailLabel": "E-post",
+  "handoffMessageLabel": "Meddelande",
+  "handoffSubmitButton": "Skicka förfrågan",
+  "handoffSubmittingButton": "Skickar...",
+  "handoffError": "Något gick fel. Försök igen.",
+  "handoffConfirmation": "Ditt meddelande har skickats. Vårt team hör av sig."
 }

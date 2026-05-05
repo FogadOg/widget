@@ -121,5 +121,13 @@
   "uncertaintyLogTitle": "Registro delle incertezze dell'assistente",
   "widgetConfigError": "Errore di configurazione del widget",
   "widgetConfigMissingParams": "Parametri obbligatori mancanti. Assicurati che lo script del tuo widget includa:",
-  "widgetConfigOurDocumentation": "la nostra documentazione"
+  "widgetConfigOurDocumentation": "la nostra documentazione",
+  "handoffTitle": "Parla con il nostro team",
+  "handoffNameLabel": "Nome",
+  "handoffEmailLabel": "E-mail",
+  "handoffMessageLabel": "Messaggio",
+  "handoffSubmitButton": "Invia richiesta",
+  "handoffSubmittingButton": "Invio in corso...",
+  "handoffError": "Qualcosa è andato storto. Riprova.",
+  "handoffConfirmation": "Il tuo messaggio è stato inviato. Il nostro team ti contatterà."
 }

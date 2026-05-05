@@ -121,5 +121,13 @@
   "uncertaintyLogTitle": "Assistent-usikkerhetslogg",
   "widgetConfigError": "Widget-konfigurasjonsfeil",
   "widgetConfigMissingParams": "Mangler nødvendige parametere. Sørg for at widget-skriptet ditt inkluderer:",
-  "widgetConfigOurDocumentation": "vår dokumentasjon"
+  "widgetConfigOurDocumentation": "vår dokumentasjon",
+  "handoffTitle": "Snakk med teamet vårt",
+  "handoffNameLabel": "Navn",
+  "handoffEmailLabel": "E-post",
+  "handoffMessageLabel": "Melding",
+  "handoffSubmitButton": "Send forespørsel",
+  "handoffSubmittingButton": "Sender...",
+  "handoffError": "Noe gikk galt. Vennligst prøv igjen.",
+  "handoffConfirmation": "Meldingen din er sendt. Teamet vårt tar kontakt."
 }

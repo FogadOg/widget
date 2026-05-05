@@ -121,5 +121,13 @@
   "docsConfigError": "Docs Assistant Configuration Error",
   "uncertaintyLogTitle": "Assistant Uncertainty Log",
   "uncertaintyLogSubtitle": "Messages where the assistant indicated uncertainty:",
-  "uncertaintyLogEmpty": "No uncertain responses yet."
+  "uncertaintyLogEmpty": "No uncertain responses yet.",
+  "handoffTitle": "Talk to our team",
+  "handoffNameLabel": "Name",
+  "handoffEmailLabel": "Email",
+  "handoffMessageLabel": "Message",
+  "handoffSubmitButton": "Send Request",
+  "handoffSubmittingButton": "Sending...",
+  "handoffError": "Something went wrong. Please try again.",
+  "handoffConfirmation": "Your message has been sent. Our team will be in touch."
 }

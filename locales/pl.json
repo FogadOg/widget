@@ -121,5 +121,13 @@
   "uncertaintyLogTitle": "Dziennik niepewności Asystenta",
   "widgetConfigError": "Błąd konfiguracji widgetu",
   "widgetConfigMissingParams": "Brak wymaganych parametrów. Upewnij się, że skrypt widgetu zawiera:",
-  "widgetConfigOurDocumentation": "naszą dokumentację"
+  "widgetConfigOurDocumentation": "naszą dokumentację",
+  "handoffTitle": "Porozmawiaj z naszym zespołem",
+  "handoffNameLabel": "Imię i nazwisko",
+  "handoffEmailLabel": "E-mail",
+  "handoffMessageLabel": "Wiadomość",
+  "handoffSubmitButton": "Wyślij prośbę",
+  "handoffSubmittingButton": "Wysyłanie...",
+  "handoffError": "Coś poszło nie tak. Proszę spróbuj ponownie.",
+  "handoffConfirmation": "Twoja wiadomość została wysłana. Nasz zespół skontaktuje się z Tobą."
 }

@@ -2437,6 +2437,15 @@ export default function EmbedClient({
         handoffModal={showHandoffModal ? (
           <HandoffModal
             lastUserMessage={lastUserMessage}
+            translations={{
+              handoffTitle: String(t.handoffTitle),
+              handoffNameLabel: String(t.handoffNameLabel),
+              handoffEmailLabel: String(t.handoffEmailLabel),
+              handoffMessageLabel: String(t.handoffMessageLabel),
+              handoffSubmitButton: String(t.handoffSubmitButton),
+              handoffSubmittingButton: String(t.handoffSubmittingButton),
+              handoffError: String(t.handoffError),
+            }}
             onSubmit={async (name, email, handoffMessage) => {
               await createSupportTicket(authToken ?? '', {
                 name,
@@ -2449,7 +2458,7 @@ export default function EmbedClient({
               setHasEscalated(false);
               const confirmationMessage: Message = {
                 id: `temp-handoff-${Date.now()}`,
-                text: 'A support ticket has been created. We will contact you shortly.',
+                text: String(t.handoffConfirmation),
                 from: 'assistant',
                 timestamp: Date.now(),
               };

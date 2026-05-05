@@ -1,12 +1,23 @@
 import { useState } from 'react';
 
+interface HandoffTranslations {
+  handoffTitle: string;
+  handoffNameLabel: string;
+  handoffEmailLabel: string;
+  handoffMessageLabel: string;
+  handoffSubmitButton: string;
+  handoffSubmittingButton: string;
+  handoffError: string;
+}
+
 interface HandoffModalProps {
   lastUserMessage: string;
+  translations: HandoffTranslations;
   onSubmit: (name: string, email: string, message: string) => Promise<void>;
   onDismiss: () => void;
 }
 
-export function HandoffModal({ lastUserMessage, onSubmit, onDismiss }: HandoffModalProps) {
+export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDismiss }: HandoffModalProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState(lastUserMessage);
@@ -20,7 +31,7 @@ export function HandoffModal({ lastUserMessage, onSubmit, onDismiss }: HandoffMo
     try {
       await onSubmit(name, email, message);
     } catch {
-      setError('Something went wrong. Please try again.');
+      setError(tr.handoffError);
     } finally {
       setSubmitting(false);
     }
@@ -57,13 +68,13 @@ export function HandoffModal({ lastUserMessage, onSubmit, onDismiss }: HandoffMo
         </button>
 
         <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600 }}>
-          Talk to our team
+          {tr.handoffTitle}
         </h2>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
             <label style={{ display: 'block', fontSize: 13, marginBottom: 4, color: '#374151' }}>
-              Name
+              {tr.handoffNameLabel}
             </label>
             <input
               type="text"
@@ -83,7 +94,7 @@ export function HandoffModal({ lastUserMessage, onSubmit, onDismiss }: HandoffMo
 
           <div>
             <label style={{ display: 'block', fontSize: 13, marginBottom: 4, color: '#374151' }}>
-              Email
+              {tr.handoffEmailLabel}
             </label>
             <input
               type="email"
@@ -103,7 +114,7 @@ export function HandoffModal({ lastUserMessage, onSubmit, onDismiss }: HandoffMo
 
           <div>
             <label style={{ display: 'block', fontSize: 13, marginBottom: 4, color: '#374151' }}>
-              Message
+              {tr.handoffMessageLabel}
             </label>
             <textarea
               required
@@ -141,7 +152,7 @@ export function HandoffModal({ lastUserMessage, onSubmit, onDismiss }: HandoffMo
               opacity: submitting ? 0.7 : 1,
             }}
           >
-            {submitting ? 'Sending...' : 'Send Request'}
+            {submitting ? tr.handoffSubmittingButton : tr.handoffSubmitButton}
           </button>
         </form>
     </div>

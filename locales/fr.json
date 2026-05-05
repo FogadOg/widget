@@ -121,5 +121,13 @@
   "uncertaintyLogTitle": "Journal d'incertitude de l'assistant",
   "widgetConfigError": "Erreur de configuration du widget",
   "widgetConfigMissingParams": "Paramètres requis manquants. Veuillez vous assurer que votre script de widget inclut :",
-  "widgetConfigOurDocumentation": "notre documentation"
+  "widgetConfigOurDocumentation": "notre documentation",
+  "handoffTitle": "Parler à notre équipe",
+  "handoffNameLabel": "Nom",
+  "handoffEmailLabel": "E-mail",
+  "handoffMessageLabel": "Message",
+  "handoffSubmitButton": "Envoyer la demande",
+  "handoffSubmittingButton": "Envoi en cours...",
+  "handoffError": "Une erreur s'est produite. Veuillez réessayer.",
+  "handoffConfirmation": "Votre message a été envoyé. Notre équipe vous contactera."
 }

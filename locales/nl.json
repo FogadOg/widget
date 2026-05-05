@@ -121,5 +121,13 @@
   "uncertaintyLogTitle": "Assistent onzekerheidslogboek",
   "widgetConfigError": "Widgetconfiguratiefout",
   "widgetConfigMissingParams": "Er ontbreken vereiste parameters. Zorg ervoor dat uw widgetscript het volgende bevat:",
-  "widgetConfigOurDocumentation": "onze documentatie"
+  "widgetConfigOurDocumentation": "onze documentatie",
+  "handoffTitle": "Praat met ons team",
+  "handoffNameLabel": "Naam",
+  "handoffEmailLabel": "E-mail",
+  "handoffMessageLabel": "Bericht",
+  "handoffSubmitButton": "Verzoek verzenden",
+  "handoffSubmittingButton": "Verzenden...",
+  "handoffError": "Er ging iets mis. Probeer het opnieuw.",
+  "handoffConfirmation": "Uw bericht is verzonden. Ons team neemt contact met u op."
 }
