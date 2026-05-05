@@ -73,10 +73,11 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 13, marginBottom: 4, color: '#374151' }}>
+            <label htmlFor="handoff-name" style={{ display: 'block', fontSize: 13, marginBottom: 4, color: '#374151' }}>
               {tr.handoffNameLabel}
             </label>
             <input
+              id="handoff-name"
               type="text"
               required
               value={name}
@@ -93,10 +94,11 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 13, marginBottom: 4, color: '#374151' }}>
+            <label htmlFor="handoff-email" style={{ display: 'block', fontSize: 13, marginBottom: 4, color: '#374151' }}>
               {tr.handoffEmailLabel}
             </label>
             <input
+              id="handoff-email"
               type="email"
               required
               value={email}
@@ -113,10 +115,11 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 13, marginBottom: 4, color: '#374151' }}>
+            <label htmlFor="handoff-message" style={{ display: 'block', fontSize: 13, marginBottom: 4, color: '#374151' }}>
               {tr.handoffMessageLabel}
             </label>
             <textarea
+              id="handoff-message"
               required
               value={message}
               onChange={(e) => setMessage(e.target.value)}

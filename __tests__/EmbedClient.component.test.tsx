@@ -4753,10 +4753,15 @@ describe('EmbedClient Component', () => {
       });
 
       expect(screen.getByText('No Buttons')).toBeInTheDocument();
-      expect(mockFetch).not.toHaveBeenCalledWith(
-        expect.stringContaining('/messages'),
-        expect.objectContaining({ method: 'POST' })
+      // Persist calls with skip_ai_response are allowed; what must NOT happen is
+      // an LLM submit (a POST to /messages without skip_ai_response).
+      const llmPost = mockFetch.mock.calls.find(
+        ([url, opts]: [string, RequestInit]) =>
+          url.includes('/messages') &&
+          opts?.method === 'POST' &&
+          !JSON.parse((opts.body as string) || '{}').skip_ai_response
       );
+      expect(llmPost).toBeUndefined();
       expect(trackEvent).toHaveBeenCalledWith('button_clicked', expect.anything(), expect.any(Object), expect.anything());
     });
 
