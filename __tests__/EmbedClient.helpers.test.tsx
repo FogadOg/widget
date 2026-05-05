@@ -139,4 +139,34 @@ describe('EmbedClient helpers', () => {
     EmbedClient.applyCustomAssetsFromQuery('?foo=bar');
     expect(document.head.querySelectorAll('style')).toHaveLength(0);
   });
+
+  test('getNormalizedEdgeOffset returns 20 when config is null or undefined', () => {
+    expect(EmbedClient.getNormalizedEdgeOffset(null)).toBe(20);
+    expect(EmbedClient.getNormalizedEdgeOffset(undefined)).toBe(20);
+    expect(EmbedClient.getNormalizedEdgeOffset()).toBe(20);
+  });
+
+  test('getNormalizedEdgeOffset returns numeric edgeOffset from config', () => {
+    expect(EmbedClient.getNormalizedEdgeOffset({ edgeOffset: 32 })).toBe(32);
+    expect(EmbedClient.getNormalizedEdgeOffset({ edge_offset: 16 })).toBe(16);
+    expect(EmbedClient.getNormalizedEdgeOffset({ edgeOffset: 0 })).toBe(0);
+  });
+
+  test('getNormalizedEdgeOffset parses string edgeOffset', () => {
+    expect(EmbedClient.getNormalizedEdgeOffset({ edgeOffset: '24' })).toBe(24);
+    expect(EmbedClient.getNormalizedEdgeOffset({ edgeOffset: '12.5' })).toBe(12.5);
+  });
+
+  test('getNormalizedEdgeOffset falls back to 20 for non-finite or non-parseable values', () => {
+    expect(EmbedClient.getNormalizedEdgeOffset({ edgeOffset: 'abc' })).toBe(20);
+    expect(EmbedClient.getNormalizedEdgeOffset({ edgeOffset: NaN })).toBe(20);
+    expect(EmbedClient.getNormalizedEdgeOffset({ edgeOffset: Infinity })).toBe(20);
+    expect(EmbedClient.getNormalizedEdgeOffset({})).toBe(20);
+  });
+
+  test('resolveParentTargetOrigin uses document.referrer when referrer param is not a string', () => {
+    Object.defineProperty(document, 'referrer', { value: 'https://host.example.com/page', configurable: true });
+    expect(EmbedClient.resolveParentTargetOrigin(undefined, undefined)).toBe('https://host.example.com');
+    Object.defineProperty(document, 'referrer', { value: '', configurable: true });
+  });
 });

@@ -184,6 +184,7 @@ jest.mock('../components/EmbedShell', () => {
         {/* Render feedbackDialog and unsureModal nodes passed from EmbedClient */}
         {props.feedbackDialog}
         {props.unsureModal}
+        {props.handoffModal}
         {props.flowResponses && props.flowResponses.length > 0 && (
           <div data-testid="flow-responses">
             {props.flowResponses.map((fr: any, i: number) => (
@@ -277,6 +278,14 @@ describe('EmbedClient Component', () => {
         uncertaintyLogTitle: 'Assistant Uncertainty Log',
         uncertaintyLogSubtitle: 'Messages where the assistant indicated uncertainty:',
         uncertaintyLogEmpty: 'No uncertain responses yet.',
+        handoffTitle: 'Talk to our team',
+        handoffNameLabel: 'Name',
+        handoffEmailLabel: 'Email',
+        handoffMessageLabel: 'Message',
+        handoffSubmitButton: 'Send Request',
+        handoffSubmittingButton: 'Sending...',
+        handoffError: 'Something went wrong. Please try again.',
+        handoffConfirmation: 'Your message has been sent. Our team will be in touch.',
       },
       locale: 'en',
     });
@@ -5713,6 +5722,75 @@ describe('EmbedClient Component', () => {
       render(<EmbedClient {...defaultProps} />);
       await waitFor(() => {
         expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
+      }, { timeout: 3000 });
+    });
+  });
+
+  describe('Handoff Modal', () => {
+    test('renders handoff modal when chat response contains handoff:true flag', async () => {
+      mockFetch.mockImplementation((url: string, options?: any) => {
+        if (url.includes('/messages') && options?.method === 'POST') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              status: 'success',
+              data: {
+                session_id: 'sess-handoff',
+                conversation_id: 'conv-handoff',
+                user_message: { id: 'um-1', content: 'help', sender: 'user', created_at: new Date().toISOString() },
+                assistant_message: {
+                  id: 'am-1',
+                  content: 'Let me connect you.',
+                  sender: 'assistant',
+                  created_at: new Date().toISOString(),
+                  metadata: { handoff: true },
+                },
+              },
+            }),
+          });
+        }
+        if (url.includes('/messages')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: 'success', data: { messages: [] } }),
+          });
+        }
+        if (url.includes('/assistants/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: 'success', data: { name: 'Test' } }),
+          });
+        }
+        if (url.includes('/widget-config/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: 'success', data: {} }),
+          });
+        }
+        if (url.includes('/sessions')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: 'success', data: { session_id: 'sess-handoff', expires_at: '2099-01-01T00:00:00Z' } }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: {} }) });
+      });
+
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 200));
+      });
+
+      fireEvent.change(screen.getByTestId('input'), { target: { value: 'talk to a human' } });
+      fireEvent.click(screen.getByTestId('submit-btn'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Talk to our team')).toBeInTheDocument();
       }, { timeout: 3000 });
     });
   });
