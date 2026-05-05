@@ -2446,6 +2446,7 @@ export default function EmbedClient({
                 session_id: sessionId ?? undefined,
               });
               setShowHandoffModal(false);
+              setHasEscalated(false);
               const confirmationMessage: Message = {
                 id: `temp-handoff-${Date.now()}`,
                 text: 'A support ticket has been created. We will contact you shortly.',
@@ -2454,7 +2455,7 @@ export default function EmbedClient({
               };
               setMessages(prev => [...prev, confirmationMessage]);
             }}
-            onDismiss={() => setShowHandoffModal(false)}
+            onDismiss={() => { setShowHandoffModal(false); setHasEscalated(false); }}
           />
         ) : undefined}
       />
