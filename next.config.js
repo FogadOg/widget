@@ -86,6 +86,9 @@ const nextConfig = {
           // Default to same-origin for most responses, but specific asset
           // routes (widget bootstrap and static assets) are relaxed below.
           { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
+          // The widget origin should not be indexed — these URLs only exist
+          // to be embedded in customer sites, not surfaced in search results.
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
         ],
       },
       // ── Embed routes: tighten frame-ancestors CSP, relax X-Frame-Options ─
