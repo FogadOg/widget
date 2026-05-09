@@ -767,7 +767,7 @@
                 // Widget requested minimize -> show minimized button state
                 // Don't hide container; let the iframe handle its own UI state
                 emitEvent('close', data, { rawType: type });
-                _gaTrack('widget_minimized', { assistant_id: assistantId });
+                _gaTrack('widget_close', { assistant_id: assistantId });
                 break;
 
               case "WIDGET_SHOW":
@@ -781,7 +781,7 @@
                 // Widget requested restore/expand -> treat as open
                 // Container stays visible; iframe handles its own expanded state
                 emitEvent('open', data, { rawType: type });
-                _gaTrack('widget_restored', { assistant_id: assistantId });
+                _gaTrack('widget_open', { assistant_id: assistantId });
                 break;
 
               case "WIDGET_ERROR":

@@ -128,6 +128,40 @@
     const containerId = `${DOCS_WIDGET_SCRIPT_ID}-container-${instanceId}`;
 
     // Create container with error handling (initially hidden)
+    // GA module
+    let _gaGtag = null;
+    let _gaMeasurementId = null;
+
+    function initGA(measurementId) {
+      if (!measurementId) return;
+      _gaMeasurementId = measurementId;
+      if (typeof window.gtag === 'function') {
+        _gaGtag = window.gtag;
+      } else {
+        const existingScript = document.querySelector('script[src*="googletagmanager.com/gtag/js"]');
+        if (!existingScript) {
+          const script = document.createElement('script');
+          script.async = true;
+          script.src = 'https://www.googletagmanager.com/gtag/js?id=' + measurementId;
+          document.head.appendChild(script);
+        }
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function() { window.dataLayer.push(arguments); };
+        window.gtag('js', new Date());
+        window.gtag('config', measurementId);
+        _gaGtag = window.gtag;
+      }
+    }
+
+    function _gaTrack(eventName, params) {
+      if (!_gaGtag || !_gaMeasurementId) return;
+      try {
+        _gaGtag('event', eventName, Object.assign({}, params, { send_to: _gaMeasurementId }));
+      } catch (e) {
+        console.error('[Companin GA]', e);
+      }
+    }
+
     const container = document.createElement("div");
     container.id = containerId;
     const COMPACT_BUTTON_MAX_SIZE = 64;
@@ -591,11 +625,13 @@
               case "WIDGET_HIDE":
                 container.style.display = "none";
                 emitEvent("close", data || { source: "widget" }, { rawType: type });
+                _gaTrack('widget_close', { assistant_id: assistantId });
                 break;
 
               case "WIDGET_SHOW":
                 container.style.display = "block";
                 emitEvent("open", data || { source: "widget" }, { rawType: type });
+                _gaTrack('widget_open', { assistant_id: assistantId });
                 break;
 
               case "WIDGET_RESPONSE":
@@ -606,9 +642,16 @@
                 emitEvent("authFailure", data, { rawType: type });
                 break;
 
+              case 'WIDGET_GA_INIT':
+                if (data && data.gaMeasurementId) {
+                  initGA(data.gaMeasurementId);
+                }
+                break;
+
               case "WIDGET_ERROR":
                 logError("Docs widget reported an error", data);
                 emitEvent("error", data, { rawType: type });
+                _gaTrack('widget_error', { assistant_id: assistantId, error_type: data && data.errorType });
                 break;
 
               default:
