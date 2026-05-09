@@ -134,6 +134,11 @@
 
     function initGA(measurementId) {
       if (!measurementId) return;
+      // Validate format before using in script src to prevent injection
+      if (!/^G-[A-Z0-9]{1,20}$/.test(measurementId)) {
+        console.warn('[Companin GA] Invalid measurement ID format, skipping GA init');
+        return;
+      }
       _gaMeasurementId = measurementId;
       if (typeof window.gtag === 'function') {
         _gaGtag = window.gtag;
@@ -636,6 +641,7 @@
 
               case "WIDGET_RESPONSE":
                 emitEvent("response", data, { rawType: type, debounceMs: 120 });
+                _gaTrack('widget_response_received', { assistant_id: assistantId });
                 break;
 
               case "WIDGET_AUTH_FAILURE":
@@ -656,6 +662,17 @@
 
               default:
                 break;
+            }
+
+            // Track message sent events
+            try {
+              const t = (type || '').toString().toLowerCase();
+              if (t.includes('message') || t.includes('msg')) {
+                const _gaMessageText = (data && (data.content || data.message || data.text)) || '';
+                _gaTrack('widget_message_sent', { assistant_id: assistantId, message_length: _gaMessageText.length });
+              }
+            } catch (e) {
+              logError('GA message tracking failed', { error: e && e.message });
             }
           } catch (err) {
             logError("Error handling message from docs widget", {

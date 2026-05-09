@@ -261,6 +261,11 @@
 
     function initGA(measurementId) {
       if (!measurementId) return;
+      // Validate format before using in script src to prevent injection
+      if (!/^G-[A-Z0-9]{1,20}$/.test(measurementId)) {
+        console.warn('[Companin GA] Invalid measurement ID format, skipping GA init');
+        return;
+      }
       _gaMeasurementId = measurementId;
       if (typeof window.gtag === 'function') {
         _gaGtag = window.gtag;
