@@ -104,6 +104,8 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: origins.length > 0 ? `ALLOW-FROM ${origins[0]}` : 'SAMEORIGIN' },
           // Embed iframes are cross-origin resources — relax CORP
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          // Allow cross-origin prefetch/fetch of embed pages (e.g. from localhost:3000 in dev)
+          { key: 'Access-Control-Allow-Origin', value: origins.length > 0 ? origins[0] : '*' },
         ],
       },
       // ── Widget bootstrap and static assets: allow cross-origin loading ──

@@ -330,6 +330,7 @@
         iframe.setAttribute("title", COMPANY_NAME + ' Chat Widget');
 
         // Handle iframe load errors
+        // Use a longer timeout in dev mode since Next.js cold compilation can exceed 15s
         let iframeLoaded = false;
         const loadTimeout = setTimeout(() => {
           if (!iframeLoaded) {
@@ -339,7 +340,7 @@
               "Failed to load widget. Please refresh the page."
             );
           }
-        }, 15000); // 15 second timeout
+        }, isDev ? 60000 : 15000); // 60s in dev (Next.js cold start), 15s in prod
 
       iframe.onload = () => {
         iframeLoaded = true;
