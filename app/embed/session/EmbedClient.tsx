@@ -246,7 +246,7 @@ export default function EmbedClient({
       return;
     }
 
-    trackEvent('widget_load', initialAssistantId, {}, initialClientId).catch(() => {});
+    trackEvent('widget_load', initialAssistantId, { widget_config_id: initialConfigId }, initialClientId).catch(() => {});
 
     try {
       localStorage.setItem(loadKey, '1');
