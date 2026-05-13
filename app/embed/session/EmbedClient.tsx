@@ -232,9 +232,9 @@ export default function EmbedClient({
 
   // emit widget_load telemetry when widget mounts, but only once per
   // browser session; reloading the page should not produce duplicate load events.
-  // We use a storage key unique to the client+assistant combo.
+  // We use a storage key unique to the client+assistant+config combo.
   useEffect(() => {
-    const loadKey = `companin-telemetry-load-${initialClientId}-${initialAssistantId}`;
+    const loadKey = `companin-telemetry-load-${initialClientId}-${initialAssistantId}-${initialConfigId}`;
     // if we've already sent the load event, do nothing
     let alreadySent = false;
     try {
