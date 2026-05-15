@@ -102,7 +102,7 @@ const ALLOWED_ATTR: string[] = [
   'height',
 ];
 
-const PURIFY_CONFIG: DOMPurify.Config = {
+const PURIFY_CONFIG = {
   ALLOWED_TAGS,
   ALLOWED_ATTR,
   // Forbid data: URIs except in img src (handled by FORCE_BODY)
