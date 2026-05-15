@@ -74,9 +74,15 @@ export default function MessageBubble({ message, widgetConfig, assistantName, sh
       const RM = rmMod && (rmMod.default || rmMod);
       const gfm = gfmMod && (gfmMod.default || gfmMod);
       if (mounted && RM) {
-        setReactMarkdown(() => RM as any);
-        setRemarkGfm(() => gfm);
-        return () => { mounted = false; };
+        const id = window.setTimeout(() => {
+          if (!mounted) return;
+          setReactMarkdown(() => RM as any);
+          setRemarkGfm(() => gfm);
+        }, 0);
+        return () => {
+          window.clearTimeout(id);
+          mounted = false;
+        };
       }
     } catch {
       // ignore and fall through to dynamic import
@@ -89,8 +95,12 @@ export default function MessageBubble({ message, widgetConfig, assistantName, sh
       if (mounted) {
         // React state setters treat functions as updaters, so wrap imported
         // function values to store them as state instead of invoking them.
-        setReactMarkdown(() => RM as any);
-        setRemarkGfm(() => gfm);
+        const id = window.setTimeout(() => {
+          if (!mounted) return;
+          setReactMarkdown(() => RM as any);
+          setRemarkGfm(() => gfm);
+        }, 0);
+        return () => window.clearTimeout(id);
       }
     });
     return () => { mounted = false; };

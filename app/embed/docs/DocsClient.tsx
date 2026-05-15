@@ -172,7 +172,20 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [messageFeedbackSubmitted, setMessageFeedbackSubmitted] = useState<Set<string>>(new Set());
   const [widgetConfig, setWidgetConfig] = useState<any>(null);
-  const [parentOrigin, setParentOrigin] = useState<string>('*');
+  const [parentOrigin] = useState<string>(() => {
+    if (typeof window === 'undefined') return '*';
+    try {
+      if (document.referrer) {
+        return new URL(document.referrer).origin;
+      }
+      if (window.location.ancestorOrigins && window.location.ancestorOrigins.length > 0) {
+        return window.location.ancestorOrigins[0];
+      }
+    } catch {
+      // Ignore parent-origin detection failures and keep wildcard fallback.
+    }
+    return '*';
+  });
 
   const resolveParentOrigin = useCallback((): string | undefined => {
     if (typeof window === 'undefined') return undefined;
@@ -328,7 +341,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
   }, [createSession]);
 
   // Load session messages
-  const loadSessionMessages = useCallback(async (sessionId: string, token: string, isNewSession = false) => {
+  async function loadSessionMessages(sessionId: string, token: string, isNewSession = false) {
     if (!sessionId) {
       console.error('Skipping loadSessionMessages: missing sessionId');
       return;
@@ -368,7 +381,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
     } catch (err) {
       console.error('Error loading messages:', err);
     }
-  }, []);
+  }
 
   // Fetch widget config
   const fetchWidgetConfig = useCallback(async (configId: string, token: string): Promise<{ variant_id?: string; variant_name?: string } | undefined> => {
@@ -534,13 +547,31 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
     addUserMessage(suggestion);
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+
+    // Send resize message to parent
+    if (typeof window !== 'undefined' && window.parent) {
+      if (newOpen) {
+        // Full screen when dialog opens
+        window.parent.postMessage({
+          type: 'WIDGET_RESIZE',
+          data: { width: '100vw', height: '100vh' }
+        }, parentOrigin);
+      } else {
+        // Back to original size and position when dialog closes
+        window.parent.postMessage({
+          type: 'WIDGET_RESIZE',
+          data: { width: 0, height: 0, hide: true }
+        }, parentOrigin);
+      }
+    }
+  };
+
   // Initialize session on mount
   useEffect(() => {
     if (clientId && assistantId) {
       const detectedParentOrigin = resolveParentOrigin();
-      if (detectedParentOrigin) {
-        setParentOrigin(detectedParentOrigin);
-      }
 
       getAuthToken(clientId, detectedParentOrigin).then(async (token) => {
         if (token) {
@@ -583,14 +614,6 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
     return () => clearInterval(interval);
   }, [sessionId]);
 
-  // Detect parent origin
-  useEffect(() => {
-    const detected = resolveParentOrigin();
-    if (detected) {
-      setParentOrigin(detected);
-    }
-  }, [resolveParentOrigin]);
-
   // Apply hide_on_mobile from widget config for docs widget
   useEffect(() => {
     if (!widgetConfig) return;
@@ -624,28 +647,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
-
-    // Send resize message to parent
-    if (typeof window !== 'undefined' && window.parent) {
-      if (newOpen) {
-        // Full screen when dialog opens
-        window.parent.postMessage({
-          type: 'WIDGET_RESIZE',
-          data: { width: '100vw', height: '100vh' }
-        }, parentOrigin);
-      } else {
-        // Back to original size and position when dialog closes
-        window.parent.postMessage({
-          type: 'WIDGET_RESIZE',
-          data: { width: 0, height: 0, hide: true }
-        }, parentOrigin);
-      }
-    }
-  };
+  }, [handleOpenChange]);
 
   return (
     <div className="w-full h-full">

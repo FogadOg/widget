@@ -296,17 +296,25 @@ export default function EmbedClient({
   useEffect(() => {
     if (!sessionId) return;
     const key = helpers.flowResponsesStorageKey(sessionId);
+    let timeoutId: number | null = null;
     try {
       const stored = localStorage.getItem(key);
       if (stored) {
         const parsed = JSON.parse(stored) as FlowResponse[];
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setFlowResponses(parsed);
+          timeoutId = window.setTimeout(() => {
+            setFlowResponses(parsed);
+          }, 0);
         }
       }
     } catch {
       // ignore – corrupt / unavailable storage
     }
+    return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
   }, [sessionId]);
 
   // Persist flow responses to localStorage whenever they change so they survive reloads.
@@ -435,10 +443,9 @@ export default function EmbedClient({
 
   // Instance registry: create an instance id and register this widget
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const instanceIdRef = useRef<string>(makeInstanceId(initialClientId, initialAssistantId));
+  const [instanceId] = useState<string>(() => makeInstanceId(initialClientId, initialAssistantId));
 
   useEffect(() => {
-    const instanceId = instanceIdRef.current;
     const ref = {
       instanceId,
       clientId: initialClientId,
@@ -470,7 +477,6 @@ export default function EmbedClient({
 
   // Sync collapsed/expanded state with registry
   useEffect(() => {
-    const instanceId = instanceIdRef.current;
     try {
       if (!isCollapsed) {
         registryOpen(instanceId, { minimizeOthers: undefined });
@@ -486,7 +492,9 @@ export default function EmbedClient({
   // so the widget renders a visible error instead of staying invisible.
   useEffect(() => {
     if (authError && !widgetConfig) {
-      setFatalError(authError);
+      const id = window.setTimeout(() => {
+        setFatalError(authError);
+      }, 0);
         try {
           if (window.parent !== window) {
             if (parentSensitiveOrigin) {
@@ -496,6 +504,7 @@ export default function EmbedClient({
         } catch {
           // ignore
         }
+      return () => window.clearTimeout(id);
     }
   }, [authError, widgetConfig, initialParentOrigin, parentSensitiveOrigin]);
 
@@ -672,7 +681,7 @@ export default function EmbedClient({
   }, []);
 
   // Load session messages helper (moved above effects that reference it)
-  const loadSessionMessages = useCallback(async (sessionId: string, token: string, isInitial: boolean = false, _retry: boolean = false) => {
+  async function loadSessionMessages(sessionId: string, token: string, isInitial: boolean = false, _retry: boolean = false) {
     if (!sessionId) {
       logError('Skipping loadSessionMessages: missing sessionId', { action: 'loadSessionMessages', isInitial });
       return;
@@ -845,7 +854,7 @@ export default function EmbedClient({
     } finally {
       setIsTyping(false);
     }
-  }, [initialParentOrigin, parentSensitiveOrigin]);
+  }
 
   // Client-mediated flush: when the page comes online or SW asks to flush,
   // read the IndexedDB queue and POST messages using sessionId+authToken.
@@ -890,7 +899,6 @@ export default function EmbedClient({
     } catch (err) {
       // ignore
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLocale, initialParentOrigin, loadSessionMessages, sessionStorageKey]);
 
   useEffect(() => {
@@ -968,7 +976,6 @@ export default function EmbedClient({
 
     window.addEventListener('companin:retry-queued', onRetry as EventListener);
     return () => window.removeEventListener('companin:retry-queued', onRetry as EventListener);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLocale, initialParentOrigin, loadSessionMessages, sessionStorageKey]);
 
 
@@ -1026,11 +1033,15 @@ export default function EmbedClient({
     // Only check user agent for mobile device detection (not screen width)
     const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile|Mobi/i.test(ua);
 
+    let timeoutId: number | null = null;
+
     // Determine collapsed state and visibility based on device and settings
     if (isMobileDevice && widgetConfig.hide_on_mobile) {
       // On mobile devices with hide_on_mobile=true: hide the widget completely
-      setShouldRender(false);
-      setIsCollapsed(true);
+      timeoutId = window.setTimeout(() => {
+        setShouldRender(false);
+        setIsCollapsed(true);
+      }, 0);
       try {
         if (window.parent !== window) {
           if (parentSensitiveOrigin) {
@@ -1041,9 +1052,11 @@ export default function EmbedClient({
         // ignore
       }
     } else {
-      setShouldRender(true);
-      // Use the prop value if available, otherwise use config
-      setIsCollapsed(!initialStartOpen && !widgetConfig.start_open);
+      timeoutId = window.setTimeout(() => {
+        setShouldRender(true);
+        // Use the prop value if available, otherwise use config
+        setIsCollapsed(!initialStartOpen && !widgetConfig.start_open);
+      }, 0);
       try {
         if (window.parent !== window) {
           if (parentSensitiveOrigin) {
@@ -1054,23 +1067,38 @@ export default function EmbedClient({
         // ignore
       }
     }
+
+    return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
   }, [widgetConfig, initialStartOpen, initialParentOrigin, parentTargetOrigin]);
 
   // Load unread count and last read message from localStorage on mount
   useEffect(() => {
+    const timeoutIds: number[] = [];
     try {
       const storedUnread = localStorage.getItem(unreadStorageKey);
       const storedLastRead = localStorage.getItem(lastReadStorageKey);
 
       if (storedUnread) {
-        setUnreadCount(parseInt(storedUnread, 10) || 0);
+        timeoutIds.push(window.setTimeout(() => {
+          setUnreadCount(parseInt(storedUnread, 10) || 0);
+        }, 0));
       }
       if (storedLastRead) {
-        setLastReadMessageId(storedLastRead);
+        timeoutIds.push(window.setTimeout(() => {
+          setLastReadMessageId(storedLastRead);
+        }, 0));
       }
     } catch (error) {
       logError(error as Error, { context: 'loadUnreadCount' });
     }
+
+    return () => {
+      timeoutIds.forEach((id) => window.clearTimeout(id));
+    };
   }, [lastReadStorageKey, unreadStorageKey]);
 
   // Track unread messages when new assistant messages arrive and widget is collapsed
@@ -1101,7 +1129,9 @@ export default function EmbedClient({
           );
 
           const newUnreadCount = unreadMessages.length;
-          setUnreadCount(newUnreadCount);
+          const id = window.setTimeout(() => {
+            setUnreadCount(newUnreadCount);
+          }, 0);
 
           // Persist to localStorage
           try {
@@ -1109,6 +1139,10 @@ export default function EmbedClient({
           } catch (error) {
             logError(error as Error, { context: 'saveUnreadCount' });
           }
+
+          return () => {
+            window.clearTimeout(id);
+          };
         }
       }
     }
@@ -1158,7 +1192,7 @@ export default function EmbedClient({
   }, [widgetConfig, isCollapsed, initialParentOrigin, parentTargetOrigin]);
   // `loadSessionMessages` helper is defined earlier in the file.
 
-  const createSession = async (assistant: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null, skipMessageLoad = false) => {
+  async function createSession(assistant: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null, skipMessageLoad = false) {
     try {
       const visitorId = helpers.getVisitorId(initialClientId);
 
@@ -1300,9 +1334,9 @@ export default function EmbedClient({
         }
       }
     }
-  };
+  }
 
-  const validateAndRestoreSession = async (sessionId: string, assistantId: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null) => {
+  async function validateAndRestoreSession(sessionId: string, assistantId: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null) {
     try {
       let response = await fetch(API.sessionMessages(sessionId ?? undefined), {
         method: 'GET',
@@ -1512,9 +1546,9 @@ export default function EmbedClient({
       localStorage.removeItem(sessionStorageKey);
       await createSession(assistantId, token, configSnapshot);
     }
-  };
+  }
 
-  const fetchAssistantDetails = async (assistantId: string, token: string) => {
+  async function fetchAssistantDetails(assistantId: string, token: string) {
     const start = Date.now();
     try {
       const response = await fetch(API.assistant(assistantId), {
@@ -1546,9 +1580,9 @@ export default function EmbedClient({
       const duration = Date.now() - start;
       logPerf('fetchAssistantDetails', duration, { assistantId });
     }
-  };
+  }
 
-  const fetchWidgetConfig = async (configId: string, token: string) => {
+  async function fetchWidgetConfig(configId: string, token: string) {
     const start = Date.now();
     try {
       // Pass visitor_id so the backend can deterministically assign an A/B variant.
@@ -1595,7 +1629,7 @@ export default function EmbedClient({
       const duration = Date.now() - start;
       logPerf('fetchWidgetConfig', duration, { configId });
     }
-  };
+  }
 
   const checkFeedbackStatus = async (sessionId: string, token: string) => {
     try {
@@ -2381,7 +2415,7 @@ export default function EmbedClient({
   }
 
   return (
-    <div ref={containerRef} data-widget-instance={instanceIdRef.current} style={{ position: 'relative' }}>
+    <div ref={containerRef} data-widget-instance={instanceId} style={{ position: 'relative' }}>
       {/* A/B variant debug badge removed to avoid rendering variant text in the host page */}
       <EmbedShell
         isEmbedded={isEmbedded}

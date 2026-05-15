@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 let withBundleAnalyzer = (cfg) => cfg;
 if (process.env.ANALYZE === 'true') {
   try {

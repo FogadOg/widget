@@ -18,7 +18,7 @@ import DynamicIcon from "@/components/DynamicIcon";
 
 const ChevronDownIcon = (props: any) => <DynamicIcon name="ChevronDownIcon" {...props} />;
 import type { ComponentProps, ReactNode } from "react";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import en from "../../../locales/en.json";
 
 export type WebPreviewContextValue = {
@@ -136,15 +136,10 @@ export const WebPreviewUrl = ({
   ...props
 }: WebPreviewUrlProps) => {
   const { url, setUrl } = useWebPreview();
-  const [inputValue, setInputValue] = useState(url);
-
-  // Sync input value with context URL when it changes externally
-  useEffect(() => {
-    setInputValue(url);
-  }, [url]);
+  const [draftValue, setDraftValue] = useState<string | null>(null);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(event.target.value);
+    setDraftValue(event.target.value);
     onChange?.(event);
   };
 
@@ -152,9 +147,12 @@ export const WebPreviewUrl = ({
     if (event.key === "Enter") {
       const target = event.target as HTMLInputElement;
       setUrl(target.value);
+      setDraftValue(null);
     }
     onKeyDown?.(event);
   };
+
+  const displayValue = value ?? draftValue ?? url;
 
   return (
     <Input
@@ -162,7 +160,7 @@ export const WebPreviewUrl = ({
       onChange={onChange ?? handleChange}
       onKeyDown={handleKeyDown}
       placeholder={en.enterUrlPlaceholder}
-      value={value ?? inputValue}
+      value={displayValue}
       {...props}
     />
   );

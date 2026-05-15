@@ -19,6 +19,9 @@ import { API } from 'lib/api';
 import { t as translate } from 'lib/i18n';
 import type { Message, PageContext } from 'types/widget';
 
+const nowMs = () => Date.now();
+const nowPerf = () => (typeof performance !== 'undefined' ? performance.now() : nowMs());
+
 type MessageInputProps = {
   sessionId: string | null;
   authToken: string;
@@ -48,7 +51,7 @@ export default function MessageInput({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    const start = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const start = nowPerf();
     e.preventDefault();
     const message = input.trim();
 
@@ -85,7 +88,7 @@ export default function MessageInput({
       id: `temp-${generateId(9)}`,
       text: sanitizedMessage,
       from: 'user',
-      timestamp: Date.now()
+      timestamp: nowMs()
     };
     onMessageSent(userMessage);
 
@@ -186,7 +189,7 @@ export default function MessageInput({
     } finally {
       setIsSubmitting(false);
       onTypingEnd();
-      const duration = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - start;
+      const duration = nowPerf() - start;
       logPerf('messageSendTotal', duration);
     }
   };
@@ -223,14 +226,15 @@ export default function MessageInput({
             id: msg.id,
             text: msg.content,
             from: msg.sender as 'user' | 'assistant',
-            timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
+            timestamp: msg.created_at ? new Date(msg.created_at).getTime() : nowMs(),
             sources: msg.sources || [],
           }));
 
         // The parent component will handle updating the messages
         // For now, we'll emit the latest messages
+        const recentThreshold = nowMs() - 10000;
         loadedMessages.forEach(msg => {
-          if (msg.from === 'assistant' && msg.timestamp && msg.timestamp > Date.now() - 10000) { // Recent messages
+          if (msg.from === 'assistant' && msg.timestamp && msg.timestamp > recentThreshold) { // Recent messages
             onMessageSent(msg);
           }
         });
