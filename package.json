@@ -20,7 +20,7 @@
     "build": "QUIET_LOCALE=1 npm run build:embed && npm run check-locales && next build && npm run build:sri && npm run test:coverage",
     "heroku-postbuild": "QUIET_LOCALE=1 npm run build:embed && next build",
     "check-locales": "QUIET_LOCALE=1 python3 scripts/check_locale_issues.py && QUIET_LOCALE=1 python3 scripts/ci_warn_if_empty.py",
-    "size-limit": "size-limit",
+    "size-limit": "node --max-old-space-size=4096 ./node_modules/size-limit/bin.js",
     "ci:size-limit": "npm run build && npm run size-limit",
     "analyze": "ANALYZE=true next build --webpack",
     "analyze:open": "npx serve .next/analyze --listen 8000",
