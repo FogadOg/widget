@@ -347,8 +347,14 @@
         clearTimeout(loadTimeout);
         try {
           // If the host page provided an inline ChatWidgetConfig, forward it into the iframe
-          if (window.ChatWidgetConfig && iframe.contentWindow) {
-            iframe.contentWindow.postMessage(
+          let iframeWindow = null;
+          try {
+            iframeWindow = iframe.contentWindow;
+          } catch (err) {
+            logError('Failed to access iframe contentWindow', { error: err && err.message });
+          }
+          if (window.ChatWidgetConfig && iframeWindow) {
+            iframeWindow.postMessage(
               { type: 'WIDGET_INIT_CONFIG', data: window.ChatWidgetConfig },
               targetOrigin
             );
@@ -651,7 +657,15 @@
 
         function handleMessage(event) {
           try {
-            if (event.source !== iframe.contentWindow) return;
+            let iframeWindow = null;
+            try {
+              iframeWindow = iframe.contentWindow;
+            } catch (err) {
+              logError('Error handling message from widget', { error: err && err.message, eventType: event && event.data && event.data.type });
+              return;
+            }
+
+            if (!iframeWindow || event.source !== iframeWindow) return;
 
             // Verify origin - always validate, even in dev mode.
             // Allow explicit host-target origin to support custom widget domains.
@@ -740,14 +754,14 @@
                   } else {
                     // Launcher button on small screens: use plain px offset so safe-area doesn't push it away from corner
                     if (data.position.includes('bottom')) {
-                      container.style.bottom = isSmallScreen && isLauncherButton ? `${offset}px` : `max(${offset}px, env(safe-area-inset-bottom, 0px))`;
+                      container.style.bottom = `${offset}px`;
                     } else {
-                      container.style.top = isSmallScreen && isLauncherButton ? `${offset}px` : `max(${offset}px, env(safe-area-inset-top, 0px))`;
+                      container.style.top = `${offset}px`;
                     }
                     if (data.position.includes('left')) {
-                      container.style.left = isSmallScreen && isLauncherButton ? `${offset}px` : `max(${offset}px, env(safe-area-inset-left, 0px))`;
+                      container.style.left = `${offset}px`;
                     } else if (data.position.includes('right')) {
-                      container.style.right = isSmallScreen && isLauncherButton ? `${offset}px` : `max(${offset}px, env(safe-area-inset-right, 0px))`;
+                      container.style.right = `${offset}px`;
                     }
                     // Clamp only via max-width/max-height, keeping edge anchor as reference
                     if (viewportWidth && desiredWidth !== null) {

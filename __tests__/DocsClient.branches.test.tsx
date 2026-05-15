@@ -1,10 +1,13 @@
 import React from 'react'
+const getAuthTokenMock = jest.fn().mockResolvedValue('tok')
+let mockAuthTokenValue: string | null = 'tok'
+let mockAuthErrorValue: string | null = null
 // Mock auth hook so DocsClient fetches widget config during tests
 jest.mock('../hooks/useWidgetAuth', () => ({
   useWidgetAuth: () => ({
-    getAuthToken: jest.fn().mockResolvedValue('tok'),
-    authToken: 'tok',
-    authError: null,
+    getAuthToken: getAuthTokenMock,
+    authToken: mockAuthTokenValue,
+    authError: mockAuthErrorValue,
   }),
 }))
 import { render, act, waitFor } from '@testing-library/react'
@@ -22,7 +25,7 @@ jest.mock('use-stick-to-bottom', () => {
     useStickToBottomContext: () => ({ isAtBottom: true, scrollToBottom: jest.fn() }),
   }
 })
-import DocsClient from '../app/embed/docs/DocsClient'
+import DocsClient, { getLocalizedText } from '../app/embed/docs/DocsClient'
 
 // Provide a deterministic nanoid to keep keys stable
 jest.mock('nanoid', () => ({ nanoid: () => 'nid' }))
@@ -31,8 +34,14 @@ describe('DocsClient targeted branches', () => {
   const origReferrer = document.referrer
   const origUA = navigator.userAgent
   const origFetch = global.fetch
+  let parentPostMessageSpy: jest.SpyInstance
+  let mockParent: { postMessage: jest.Mock }
 
   beforeEach(() => {
+    getAuthTokenMock.mockReset()
+    getAuthTokenMock.mockResolvedValue('tok')
+    mockAuthTokenValue = 'tok'
+    mockAuthErrorValue = null
     // set parent origin via document.referrer
     Object.defineProperty(document, 'referrer', { value: 'https://parent.example/page', configurable: true })
     // mobile user agent to trigger hide_on_mobile branch
@@ -40,8 +49,12 @@ describe('DocsClient targeted branches', () => {
     Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3) AppleWebKit', configurable: true })
 
     // mock parent.postMessage
-    // @ts-ignore
-    window.parent = { postMessage: jest.fn() }
+    parentPostMessageSpy = jest.fn() as unknown as jest.SpyInstance
+    mockParent = { postMessage: parentPostMessageSpy as unknown as jest.Mock }
+    Object.defineProperty(window, 'parent', {
+      configurable: true,
+      value: mockParent,
+    })
 
     global.fetch = jest.fn((input: RequestInfo, init?: RequestInit) => {
       const url = String(input)
@@ -68,8 +81,7 @@ describe('DocsClient targeted branches', () => {
     // @ts-ignore
     Object.defineProperty(navigator, 'userAgent', { value: origUA, configurable: true })
     global.fetch = origFetch
-    // @ts-ignore
-    window.parent = window
+    Object.defineProperty(window, 'parent', { configurable: true, value: window })
     jest.restoreAllMocks()
   })
 
@@ -80,7 +92,7 @@ describe('DocsClient targeted branches', () => {
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
 
     // widgetConfig effect should call parent.postMessage for hide/show
-    await waitFor(() => expect((window.parent as any).postMessage).toHaveBeenCalled())
+    await waitFor(() => expect(parentPostMessageSpy).toHaveBeenCalled())
 
     // simulate message from parent to open dialog
     act(() => {
@@ -88,14 +100,145 @@ describe('DocsClient targeted branches', () => {
     })
 
     // after open, parent should receive WIDGET_RESIZE with 100vw/100vh
-    await waitFor(() => expect((window.parent as any).postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'WIDGET_RESIZE' }), expect.any(String)))
+    await waitFor(() => expect(parentPostMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'WIDGET_RESIZE' }), expect.any(String)))
 
     // simulate close
     act(() => {
       window.dispatchEvent(new MessageEvent('message', { data: { type: 'CLOSE_DOCS_DIALOG' } }))
     })
 
-    await waitFor(() => expect((window.parent as any).postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'WIDGET_RESIZE' }), expect.any(String)))
+    await waitFor(() => expect(parentPostMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'WIDGET_RESIZE' }), expect.any(String)))
+  })
+
+  it('exercises getLocalizedText fallbacks', () => {
+    expect(getLocalizedText(undefined, 'fr')).toBe('')
+    expect(getLocalizedText({ fr: 'Bonjour', en: 'Hello' }, 'fr')).toBe('Bonjour')
+    expect(getLocalizedText({ en: 'Hello' }, 'fr')).toBe('Hello')
+    expect(getLocalizedText({ es: 'Hola', de: 'Hallo' }, 'fr')).toBe('Hola')
+  })
+
+  it('uses the referrer fallback when widget origin is resolved during bootstrap', async () => {
+    render(<DocsClient clientId="c" assistantId="a" configId="cfg" locale="en" startOpen={false} />)
+
+    await waitFor(() => expect(getAuthTokenMock).toHaveBeenCalled())
+    expect(getAuthTokenMock.mock.calls[0][1]).toBe('https://parent.example')
+  })
+
+  it('skips bootstrap work when auth token cannot be acquired', async () => {
+    getAuthTokenMock.mockResolvedValueOnce(null)
+    mockAuthTokenValue = null
+    mockAuthErrorValue = null
+
+    render(<DocsClient clientId="c" assistantId="a" configId="cfg" locale="en" startOpen={false} />)
+
+    await waitFor(() => expect(getAuthTokenMock).toHaveBeenCalled())
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  it('skips bootstrap when clientId or assistantId is missing', async () => {
+    render(<DocsClient clientId="" assistantId="" configId="cfg" locale="en" startOpen={false} />)
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(getAuthTokenMock).not.toHaveBeenCalled()
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  it('falls back to creating a new session when validation fails', async () => {
+    localStorage.setItem('companin-docs-session-c-a', JSON.stringify({ sessionId: 'stored-sess', expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString() }))
+
+    global.fetch = jest.fn((input: RequestInfo, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('/auth/widget-token')) {
+        return Promise.resolve({ ok: true, json: async () => ({ token: 'tok' }) }) as any
+      }
+      if (url.includes('/widget-config/')) {
+        return Promise.resolve({ ok: true, json: async () => ({ data: { hide_on_mobile: false, widget_type: 'docs' } }) }) as any
+      }
+      if (url.includes('/sessions/stored-sess/messages') && (!init || init.method === 'GET')) {
+        return Promise.resolve({ ok: true, json: async () => ({ status: 'error', detail: 'invalid' }) }) as any
+      }
+      if (url.includes('/sessions') && init?.method === 'POST') {
+        return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { session_id: 'new-sess', expires_at: new Date(Date.now() + 10000).toISOString() } }) }) as any
+      }
+      if (url.includes('/sessions/') && (!init || init.method === 'GET')) {
+        return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { messages: [] } }) }) as any
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) }) as any
+    }) as any
+
+    render(<DocsClient clientId="c" assistantId="a" configId="cfg" locale="en" startOpen={false} />)
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/sessions/stored-sess/messages'), expect.objectContaining({ method: 'GET' })))
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/sessions'), expect.objectContaining({ method: 'POST' })))
+  })
+
+  it('surfaces config warnings and send-message failures', async () => {
+    global.fetch = jest.fn((input: RequestInfo, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('/auth/widget-token')) {
+        return Promise.resolve({ ok: true, json: async () => ({ token: 'tok' }) }) as any
+      }
+      if (url.includes('/widget-config/')) {
+        return Promise.resolve({ ok: true, json: async () => ({ data: { hide_on_mobile: true, widget_type: 'chat', title: { en: 'Docs' }, subtitle: { en: 'Help' } } }) }) as any
+      }
+      if (url.includes('/sessions') && init?.method === 'POST') {
+        return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { session_id: 's1', expires_at: new Date(Date.now() + 10000).toISOString() } }) }) as any
+      }
+      if (url.includes('/sessions/') && (!init || init.method === 'GET')) {
+        return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { messages: [] } }) }) as any
+      }
+      if (url.includes('/sessions/') && init?.method === 'POST') {
+        return Promise.resolve({ ok: false, json: async () => ({ detail: 'send failed' }) }) as any
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) }) as any
+    }) as any
+
+    const { findByText } = render(<DocsClient clientId="c" assistantId="a" configId="cfg" locale="en" startOpen={true} />)
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+    await waitFor(() => expect(parentPostMessageSpy).toHaveBeenCalled())
+    await expect(findByText('Docs')).resolves.toBeTruthy()
+
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'OPEN_DOCS_DIALOG' } }))
+    })
+
+    await waitFor(() => expect(parentPostMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'WIDGET_RESIZE' }), expect.any(String)))
+
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'CLOSE_DOCS_DIALOG' } }))
+    })
+
+    await waitFor(() => expect(parentPostMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'WIDGET_RESIZE' }), expect.any(String)))
+  })
+
+  it('renders feedback controls for assistant messages and marks submitted feedback', async () => {
+    global.fetch = jest.fn((input: RequestInfo, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('/auth/widget-token')) {
+        return Promise.resolve({ ok: true, json: async () => ({ token: 'tok' }) }) as any
+      }
+      if (url.includes('/widget-config/')) {
+        return Promise.resolve({ ok: true, json: async () => ({ data: { hide_on_mobile: false, title: { en: 'Docs' }, subtitle: { en: 'Help' } } }) }) as any
+      }
+      if (url.includes('/sessions') && init?.method === 'POST') {
+        return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { session_id: 's1', expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString() } }) }) as any
+      }
+      if (url.includes('/sessions/') && (!init || init.method === 'GET')) {
+        return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { messages: [ { id: 'u1', sender: 'user', content: 'user prompt' }, { id: 'm1', sender: 'assistant', content: 'assistant reply' } ] } }) }) as any
+      }
+      if (url.includes('/messages/') && url.includes('/feedback')) {
+        return Promise.resolve({ ok: true, json: async () => ({ status: 'success' }) }) as any
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) }) as any
+    }) as any
+
+    const { findByText } = render(<DocsClient clientId="c" assistantId="a" configId="cfg" locale="en" startOpen={true} />)
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+    await expect(findByText('Docs')).resolves.toBeTruthy()
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/sessions/s1/messages'), expect.objectContaining({ method: 'GET' })))
   })
 
   it('falls back to default title when widgetConfig title is missing', async () => {
@@ -124,5 +267,59 @@ describe('DocsClient targeted branches', () => {
 
     // default title should be shown when no title provided
     await waitFor(() => expect(getByText('Documentation Assistant')).toBeTruthy())
+  })
+
+  it('does not post hide/show when running in the top window', async () => {
+    Object.defineProperty(window, 'parent', {
+      configurable: true,
+      value: window,
+    })
+
+    const topWindowPostMessageSpy = jest.spyOn(window, 'postMessage').mockImplementation(() => undefined as any)
+
+    render(<DocsClient clientId="c" assistantId="a" configId="cfg" locale="en" startOpen={true} />)
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+
+    expect(topWindowPostMessageSpy).not.toHaveBeenCalled()
+    topWindowPostMessageSpy.mockRestore()
+  })
+
+  it('clears an expired session when the interval check finds no stored session', async () => {
+    let intervalCallback: (() => void) | undefined
+    const setIntervalSpy = jest.spyOn(global, 'setInterval').mockImplementation(((callback: TimerHandler) => {
+      intervalCallback = callback as () => void
+      return 1 as any
+    }) as any)
+
+    render(<DocsClient clientId="c" assistantId="a" configId="cfg" locale="en" startOpen={false} />)
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+
+    localStorage.clear()
+
+    act(() => {
+      intervalCallback?.()
+    })
+
+    expect(intervalCallback).toBeDefined()
+
+    setIntervalSpy.mockRestore()
+  })
+
+  it('swallows parent.postMessage failures in the hide/show effect', async () => {
+    Object.defineProperty(window, 'parent', {
+      configurable: true,
+      value: {
+        postMessage: jest.fn(() => {
+          throw new Error('boom')
+        }),
+      },
+    })
+
+    render(<DocsClient clientId="c" assistantId="a" configId="cfg" locale="en" startOpen={false} />)
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+    await waitFor(() => expect(document.body).toHaveTextContent('hello'))
   })
 })

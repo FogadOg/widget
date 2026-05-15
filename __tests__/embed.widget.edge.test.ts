@@ -123,6 +123,7 @@ describe('widget edge cases', () => {
     const container = document.querySelector('[id^="companin-widget-container-"]') as HTMLElement;
     const iframe = container && container.querySelector('iframe') as HTMLIFrameElement;
     if (iframe) {
+      iframe.remove();
       try {
         Object.defineProperty(iframe, 'contentWindow', { get: () => { throw new Error('boom'); }, configurable: true });
       } catch (e) {}

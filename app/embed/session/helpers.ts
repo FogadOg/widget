@@ -49,6 +49,20 @@ export function getPageContext(
   windowObj: Window = window,
   documentObj: Document = document
 ) {
+  const safeLocation = () => {
+    try {
+      return {
+        href: windowObj.location.href,
+        pathname: windowObj.location.pathname,
+      };
+    } catch {
+      return {
+        href: '',
+        pathname: '',
+      };
+    }
+  };
+
   try {
     const isEmbedded = (() => {
       try {
@@ -78,15 +92,16 @@ export function getPageContext(
     }
 
     return {
-      url: windowObj.location.href,
-      pathname: windowObj.location.pathname,
+      url: safeLocation().href,
+      pathname: safeLocation().pathname,
       title: documentObj.title,
       referrer: documentObj.referrer || null,
     };
   } catch {
+    const location = safeLocation();
     return {
-      url: windowObj.location.href,
-      pathname: windowObj.location.pathname,
+      url: location.href,
+      pathname: location.pathname,
       title: 'Unknown Page',
       referrer: null,
     };

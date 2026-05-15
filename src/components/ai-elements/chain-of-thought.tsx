@@ -91,6 +91,9 @@ export const ChainOfThoughtHeader = memo(
             "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
             className
           )}
+          data-testid="cot-trigger"
+          aria-expanded={isOpen}
+          data-state={isOpen ? "open" : "closed"}
           {...props}
         >
           <BrainIcon className="size-4" />

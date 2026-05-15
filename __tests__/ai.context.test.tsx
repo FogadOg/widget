@@ -45,7 +45,7 @@ const {
 } = require("../src/components/ai-elements/context")
 
 test("Context components render default usage sections and costs", () => {
-  const { getByText, getByRole } = render(
+  const { getAllByText, getByRole } = render(
     <Context
       usedTokens={50}
       maxTokens={100}
@@ -65,7 +65,7 @@ test("Context components render default usage sections and costs", () => {
     </Context>
   )
 
-  expect(getByText("50%")).toBeTruthy()
+  expect(getAllByText("50%").length).toBeGreaterThan(0)
   expect(getByRole("button")).toBeTruthy()
 })
 

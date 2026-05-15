@@ -131,24 +131,22 @@ describe('embed session helpers', () => {
 
   test('getPageContext outer catch returns Unknown Page when location access throws', () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    // Try to make accessing location.href throw; if not possible, skip assertion
-    let redefined = false;
-    try {
-      Object.defineProperty(window, 'location', { get: () => { throw new Error('boom'); }, configurable: true });
-      redefined = true;
-    } catch (e) {
-      // can't redefine in this environment
-    }
+    const fakeWindow = {
+      top: null,
+      self: null,
+      get location() {
+        throw new Error('boom');
+      },
+    } as any;
+    const fakeDocument = {
+      get title() {
+        throw new Error('boom');
+      },
+      referrer: '',
+    } as any;
 
-    const ctx = helpers.getPageContext();
-    if (redefined) {
-      expect(ctx.title).toBe('Unknown Page');
-    } else {
-      // nothing to assert reliably; ensure function returns an object
-      expect(ctx).toBeDefined();
-    }
-
-    if (redefined) Object.defineProperty(window, 'location', { value: window.location, configurable: true });
+    const ctx = helpers.getPageContext(fakeWindow, fakeDocument);
+    expect(ctx.title).toBe('Unknown Page');
     consoleErrorSpy.mockRestore();
   });
 });

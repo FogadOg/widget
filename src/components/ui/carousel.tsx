@@ -1,16 +1,14 @@
 "use client"
 
 import * as React from "react"
-import useEmblaCarousel, {
-  type UseEmblaCarouselType,
-} from "embla-carousel-react"
+import useEmblaCarousel, { type UseEmblaCarouselType } from "embla-carousel-react"
+
 import DynamicIcon from "@/components/DynamicIcon"
-
-const ArrowLeft = (props: any) => <DynamicIcon name="ArrowLeft" {...props} />;
-const ArrowRight = (props: any) => <DynamicIcon name="ArrowRight" {...props} />;
-
 import { cn } from "@/lib/utils"
 import { Button } from "./button"
+
+const ArrowLeft = (props: any) => <DynamicIcon name="ArrowLeft" {...props} />
+const ArrowRight = (props: any) => <DynamicIcon name="ArrowRight" {...props} />
 
 type CarouselApi = UseEmblaCarouselType[1]
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
@@ -26,11 +24,12 @@ type CarouselProps = {
 
 type CarouselContextProps = {
   carouselRef: ReturnType<typeof useEmblaCarousel>[0]
-  api: ReturnType<typeof useEmblaCarousel>[1]
+  api: CarouselApi
   scrollPrev: () => void
   scrollNext: () => void
   canScrollPrev: boolean
   canScrollNext: boolean
+  orientation: "horizontal" | "vertical"
 } & CarouselProps
 
 const CarouselContext = React.createContext<CarouselContextProps | null>(null)
@@ -61,42 +60,40 @@ function Carousel({
     },
     plugins
   )
+  const [canScrollPrev, setCanScrollPrev] = React.useState(false)
+  const [canScrollNext, setCanScrollNext] = React.useState(false)
 
-  const subscribe = React.useCallback(
-    (onStoreChange: () => void) => {
-      if (!api) return () => {}
-      api.on("reInit", onStoreChange)
-      api.on("select", onStoreChange)
-
-      return () => {
-        api.off("reInit", onStoreChange)
-        api.off("select", onStoreChange)
+  const updateScrollButtons = React.useCallback(
+    (emblaApi: CarouselApi | undefined = api) => {
+      if (!emblaApi) {
+        setCanScrollPrev(false)
+        setCanScrollNext(false)
+        return
       }
+
+      setCanScrollPrev(emblaApi.canScrollPrev())
+      setCanScrollNext(emblaApi.canScrollNext())
     },
     [api]
   )
 
-  const getSnapshot = React.useCallback(
-    () => ({
-      canScrollPrev: api?.canScrollPrev() ?? false,
-      canScrollNext: api?.canScrollNext() ?? false,
-    }),
-    [api]
-  )
+  React.useEffect(() => {
+    if (!api) {
+      setCanScrollPrev(false)
+      setCanScrollNext(false)
+      return
+    }
 
-  const getServerSnapshot = React.useCallback(
-    () => ({
-      canScrollPrev: false,
-      canScrollNext: false,
-    }),
-    []
-  )
+    setApi?.(api)
+    updateScrollButtons(api)
+    api.on("select", updateScrollButtons)
+    api.on("reInit", updateScrollButtons)
 
-  const { canScrollPrev, canScrollNext } = React.useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    getServerSnapshot
-  )
+    return () => {
+      api.off("select", updateScrollButtons)
+      api.off("reInit", updateScrollButtons)
+    }
+  }, [api, setApi, updateScrollButtons])
 
   const scrollPrev = React.useCallback(() => {
     api?.scrollPrev()
@@ -119,19 +116,14 @@ function Carousel({
     [scrollPrev, scrollNext]
   )
 
-  React.useEffect(() => {
-    if (!api || !setApi) return
-    setApi(api)
-  }, [api, setApi])
-
   return (
     <CarouselContext.Provider
       value={{
         carouselRef,
-        api: api,
+        api,
         opts,
-        orientation:
-          orientation || (opts?.axis === "y" ? "vertical" : "horizontal"),
+        plugins,
+        orientation,
         scrollPrev,
         scrollNext,
         canScrollPrev,
@@ -156,11 +148,7 @@ function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
   const { carouselRef, orientation } = useCarousel()
 
   return (
-    <div
-      ref={carouselRef}
-      className="overflow-hidden"
-      data-slot="carousel-content"
-    >
+    <div ref={carouselRef} className="overflow-hidden" data-slot="carousel-content">
       <div
         className={cn(
           "flex",

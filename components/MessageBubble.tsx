@@ -57,36 +57,29 @@ export default function MessageBubble({ message, widgetConfig, assistantName, sh
   const hasFeedback = messageFeedbackSubmitted.has(message.id);
 
   const [copied, setCopied] = useState(false);
-  const [ReactMarkdown, setReactMarkdown] = useState<React.ComponentType<any> | null>(null);
-  const [remarkGfm, setRemarkGfm] = useState<any>(null);
+  const [ReactMarkdown, setReactMarkdown] = useState<React.ComponentType<any> | null>(() => {
+    try {
+      // @ts-ignore - require is available in Jest/Node environments
+      const rmMod = require('react-markdown');
+      return (rmMod && (rmMod.default || rmMod)) || null;
+    } catch {
+      return null;
+    }
+  });
+  const [remarkGfm, setRemarkGfm] = useState<any>(() => {
+    try {
+      // @ts-ignore - require is available in Jest/Node environments
+      const gfmMod = require('remark-gfm');
+      return (gfmMod && (gfmMod.default || gfmMod)) || null;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
+    if (ReactMarkdown) return;
+
     let mounted = true;
-    // First try a synchronous require path — this helps Jest's module mocking
-    // (which wires up CommonJS `require`) so tests don't have to wait for
-    // the async import. If require isn't available or the module isn't
-    // present, fall back to dynamic import.
-    try {
-      // @ts-ignore - require is available in Node/Jest environments
-      const rmMod = require('react-markdown');
-      // @ts-ignore
-      const gfmMod = (() => { try { return require('remark-gfm'); } catch { return null; } })();
-      const RM = rmMod && (rmMod.default || rmMod);
-      const gfm = gfmMod && (gfmMod.default || gfmMod);
-      if (mounted && RM) {
-        const id = window.setTimeout(() => {
-          if (!mounted) return;
-          setReactMarkdown(() => RM as any);
-          setRemarkGfm(() => gfm);
-        }, 0);
-        return () => {
-          window.clearTimeout(id);
-          mounted = false;
-        };
-      }
-    } catch {
-      // ignore and fall through to dynamic import
-    }
 
     Promise.all([
       import('react-markdown').then(m => m.default || m).catch(() => null),
@@ -95,16 +88,12 @@ export default function MessageBubble({ message, widgetConfig, assistantName, sh
       if (mounted) {
         // React state setters treat functions as updaters, so wrap imported
         // function values to store them as state instead of invoking them.
-        const id = window.setTimeout(() => {
-          if (!mounted) return;
-          setReactMarkdown(() => RM as any);
-          setRemarkGfm(() => gfm);
-        }, 0);
-        return () => window.clearTimeout(id);
+        setReactMarkdown(() => RM as any);
+        setRemarkGfm(() => gfm);
       }
     });
     return () => { mounted = false; };
-  }, []);
+  }, [ReactMarkdown]);
   // Two-pass citation processing:
   // Pass 1: "Source Title[n]" → "[Source Title](url)" — phrase becomes the link.
   // Pass 2: bare [n] → "[n](url)" numeric superscript fallback.

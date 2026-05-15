@@ -26,6 +26,33 @@ if (typeof globalThis.Request === 'undefined') {
 // Set up environment variables for testing
 process.env.NEXT_PUBLIC_API_BASE_URL = 'https://api.test.com';
 
+// Polyfill crypto.randomUUID for jsdom environments that lack it.
+// jest.spyOn requires the property to exist on the object before spying.
+if (typeof globalThis.crypto === 'undefined') {
+  globalThis.crypto = {};
+}
+if (typeof globalThis.crypto.randomUUID !== 'function') {
+  Object.defineProperty(globalThis.crypto, 'randomUUID', {
+    configurable: true,
+    writable: true,
+    value: () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx',
+  });
+}
+
+// Polyfill MessageChannel for jsdom environments.
+// react-dom/server.browser.js requires MessageChannel at import time.
+if (typeof globalThis.MessageChannel === 'undefined') {
+  const { MessageChannel } = require('worker_threads');
+  globalThis.MessageChannel = MessageChannel;
+}
+
+// Polyfill TextEncoder/TextDecoder for jsdom environments that lack them.
+if (typeof globalThis.TextEncoder === 'undefined') {
+  const { TextEncoder, TextDecoder } = require('util');
+  globalThis.TextEncoder = TextEncoder;
+  globalThis.TextDecoder = TextDecoder;
+}
+
 // baseline-browser-mapping prints a warning if its data is old; tests don't need this info
 // Some packages pull it in automatically and it logs on import, so instead of
 // mocking we simply suppress the warning text so our test output stays clean.
