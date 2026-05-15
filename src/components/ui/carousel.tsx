@@ -63,35 +63,35 @@ function Carousel({
   const [canScrollPrev, setCanScrollPrev] = React.useState(false)
   const [canScrollNext, setCanScrollNext] = React.useState(false)
 
-  const updateScrollButtons = React.useCallback(
-    (emblaApi: CarouselApi | undefined = api) => {
-      if (!emblaApi) {
-        setCanScrollPrev(false)
-        setCanScrollNext(false)
-        return
-      }
-
-      setCanScrollPrev(emblaApi.canScrollPrev())
-      setCanScrollNext(emblaApi.canScrollNext())
-    },
-    [api]
-  )
+  const updateScrollButtons = React.useCallback((emblaApi: CarouselApi) => {
+    setCanScrollPrev(emblaApi.canScrollPrev())
+    setCanScrollNext(emblaApi.canScrollNext())
+  }, [])
 
   React.useEffect(() => {
     if (!api) {
-      setCanScrollPrev(false)
-      setCanScrollNext(false)
+      queueMicrotask(() => {
+        setCanScrollPrev(false)
+        setCanScrollNext(false)
+      })
       return
     }
 
     setApi?.(api)
-    updateScrollButtons(api)
-    api.on("select", updateScrollButtons)
-    api.on("reInit", updateScrollButtons)
+
+    const onChange = () => {
+      updateScrollButtons(api)
+    }
+
+    api.on("select", onChange)
+    api.on("reInit", onChange)
+
+    // Sync initial state after subscriptions are in place.
+    queueMicrotask(onChange)
 
     return () => {
-      api.off("select", updateScrollButtons)
-      api.off("reInit", updateScrollButtons)
+      api.off("select", onChange)
+      api.off("reInit", onChange)
     }
   }, [api, setApi, updateScrollButtons])
 
