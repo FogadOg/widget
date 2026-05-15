@@ -11,6 +11,7 @@ const ArrowLeft = (props: any) => <DynamicIcon name="ArrowLeft" {...props} />
 const ArrowRight = (props: any) => <DynamicIcon name="ArrowRight" {...props} />
 
 type CarouselApi = UseEmblaCarouselType[1]
+type ActiveCarouselApi = NonNullable<CarouselApi>
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
 type CarouselOptions = UseCarouselParameters[0]
 type CarouselPlugin = UseCarouselParameters[1]
@@ -63,7 +64,7 @@ function Carousel({
   const [canScrollPrev, setCanScrollPrev] = React.useState(false)
   const [canScrollNext, setCanScrollNext] = React.useState(false)
 
-  const updateScrollButtons = React.useCallback((emblaApi: CarouselApi) => {
+  const updateScrollButtons = React.useCallback((emblaApi: ActiveCarouselApi) => {
     setCanScrollPrev(emblaApi.canScrollPrev())
     setCanScrollNext(emblaApi.canScrollNext())
   }, [])
@@ -77,21 +78,23 @@ function Carousel({
       return
     }
 
-    setApi?.(api)
+    const emblaApi = api
+
+    setApi?.(emblaApi)
 
     const onChange = () => {
-      updateScrollButtons(api)
+      updateScrollButtons(emblaApi)
     }
 
-    api.on("select", onChange)
-    api.on("reInit", onChange)
+    emblaApi.on("select", onChange)
+    emblaApi.on("reInit", onChange)
 
     // Sync initial state after subscriptions are in place.
     queueMicrotask(onChange)
 
     return () => {
-      api.off("select", onChange)
-      api.off("reInit", onChange)
+      emblaApi.off("select", onChange)
+      emblaApi.off("reInit", onChange)
     }
   }, [api, setApi, updateScrollButtons])
 
