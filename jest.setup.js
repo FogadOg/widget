@@ -1,4 +1,6 @@
 import '@testing-library/jest-dom'
+import { MessageChannel } from 'worker_threads'
+import { TextEncoder, TextDecoder } from 'util'
 
 // ---------------------------------------------------------------------------
 // Polyfill Web Fetch API globals (Request, Response, Headers, fetch)
@@ -42,19 +44,13 @@ if (typeof globalThis.crypto.randomUUID !== 'function') {
 // Polyfill MessageChannel for jsdom environments.
 // react-dom/server.browser.js requires MessageChannel at import time.
 if (typeof globalThis.MessageChannel === 'undefined') {
-  (async () => {
-    const { MessageChannel } = await import('worker_threads');
-    globalThis.MessageChannel = MessageChannel;
-  })();
+  globalThis.MessageChannel = MessageChannel;
 }
 
 // Polyfill TextEncoder/TextDecoder for jsdom environments that lack them.
 if (typeof globalThis.TextEncoder === 'undefined') {
-  (async () => {
-    const { TextEncoder, TextDecoder } = await import('util');
-    globalThis.TextEncoder = TextEncoder;
-    globalThis.TextDecoder = TextDecoder;
-  })();
+  globalThis.TextEncoder = TextEncoder;
+  globalThis.TextDecoder = TextDecoder;
 }
 
 // baseline-browser-mapping prints a warning if its data is old; tests don't need this info

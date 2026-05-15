@@ -31,6 +31,14 @@ const eslintConfig = defineConfig([
       'react/display-name': 'off',
     },
   },
+  {
+    // Jest bootstrapping files run as CommonJS in Node and intentionally use require().
+    files: ['jest.custom-environment.js', 'jest.env.js'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-var-requires': 'off',
+    },
+  },
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
