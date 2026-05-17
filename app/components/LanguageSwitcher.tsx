@@ -3,16 +3,16 @@
 import { useRouter, usePathname } from 'next/navigation';
 
 const LANGUAGES = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'nb', name: 'Norsk', flag: '🇳🇴' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'nl', name: 'Nederlands', flag: '🇳🇱' },
-  { code: 'pt', name: 'Português', flag: '🇵🇹' },
-  { code: 'sv', name: 'Svenska', flag: '🇸🇪' },
-  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
-  { code: 'pl', name: 'Polski', flag: '🇵🇱' },
+  { code: 'en', name: 'English', flag: 'us' },
+  { code: 'nb', name: 'Norsk', flag: 'no' },
+  { code: 'de', name: 'Deutsch', flag: 'de' },
+  { code: 'fr', name: 'Français', flag: 'fr' },
+  { code: 'es', name: 'Español', flag: 'es' },
+  { code: 'nl', name: 'Nederlands', flag: 'nl' },
+  { code: 'pt', name: 'Português', flag: 'pt' },
+  { code: 'sv', name: 'Svenska', flag: 'se' },
+  { code: 'it', name: 'Italiano', flag: 'it' },
+  { code: 'pl', name: 'Polski', flag: 'pl' },
 ];
 
 const LOCALE_PATTERN = new RegExp(`^/(${LANGUAGES.map((l) => l.code).join('|')})(?=/|$)`);
@@ -35,7 +35,13 @@ export default function LanguageSwitcher({ locale }: { locale: string }) {
         className="flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
         aria-label="Switch language"
       >
-        <span>{current.flag}</span>
+        <img
+          src={`https://cdn.jsdelivr.net/gh/HatScripts/circle-flags@2.7.0/flags/${current.flag}.svg`}
+          width={20}
+          height={20}
+          alt={current.name}
+          className="flex-shrink-0"
+        />
         <span>{current.code.toUpperCase()}</span>
         <svg className="h-3.5 w-3.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="m6 9 6 6 6-6" />
@@ -50,7 +56,13 @@ export default function LanguageSwitcher({ locale }: { locale: string }) {
               lang.code === locale ? 'font-semibold text-zinc-900 dark:text-zinc-50' : 'text-zinc-600 dark:text-zinc-400'
             }`}
           >
-            <span>{lang.flag}</span>
+            <img
+              src={`https://cdn.jsdelivr.net/gh/HatScripts/circle-flags@2.7.0/flags/${lang.flag}.svg`}
+              width={20}
+              height={20}
+              alt={lang.name}
+              className="flex-shrink-0"
+            />
             <span>{lang.name}</span>
           </button>
         ))}
