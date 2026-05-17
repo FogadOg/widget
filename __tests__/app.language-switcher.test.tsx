@@ -25,8 +25,8 @@ describe('LanguageSwitcher', () => {
   it('renders current locale flag', () => {
     render(<LanguageSwitcher locale="de" />);
     expect(screen.getByText('DE')).toBeInTheDocument();
-    // flag appears twice (trigger + dropdown item) — both should be present
-    expect(screen.getAllByText('🇩🇪').length).toBeGreaterThanOrEqual(1);
+    // The switcher renders a flag image, not an emoji character.
+    expect(screen.getAllByRole('img', { name: 'Deutsch' }).length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows all language options in dropdown', () => {
