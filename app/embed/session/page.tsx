@@ -1,6 +1,7 @@
 import EmbedClient from './EmbedClient';
 import ErrorBoundary from '../../../components/ErrorBoundary';
 import { getLocaleDirection, getTranslations } from '../../../lib/i18n';
+import { shouldEnforceEmbedTokenValidation, verifyEmbedToken } from '../../../lib/embedToken';
 
 type Props = {
   searchParams: Promise<{
@@ -92,6 +93,95 @@ export default async function EmbedPage({ searchParams }: Props) {
         </body>
       </html>
     );
+  }
+
+  const shouldVerifyToken = shouldEnforceEmbedTokenValidation();
+  if (shouldVerifyToken) {
+    const secret = process.env.WIDGET_EMBED_TOKEN_SECRET;
+    if (!secret) {
+      // Fail closed when JWT enforcement is enabled but secret is missing.
+      const dir = getLocaleDirection(locale);
+      return (
+        <html lang={locale} dir={dir}>
+          <head>
+            <title>{t.widgetConfigError as string}</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+          </head>
+          <body style={{
+            margin: 0,
+            padding: 16,
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            backgroundColor: '#fef2f2',
+          }}>
+            <div style={{
+              maxWidth: '500px',
+              margin: '0 auto',
+              padding: '24px',
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            }}>
+              <h3 style={{
+                color: '#dc2626',
+                marginTop: 0,
+                fontSize: '18px',
+                fontWeight: '600',
+              }}>
+                {t.widgetConfigError as string}
+              </h3>
+              <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
+                Widget token verification is enabled but not configured correctly.
+              </p>
+            </div>
+          </body>
+        </html>
+      );
+    }
+
+    const claims = verifyEmbedToken(clientId, secret, {
+      requiredAudience: process.env.WIDGET_EMBED_TOKEN_AUDIENCE,
+      requiredIssuer: process.env.WIDGET_EMBED_TOKEN_ISSUER,
+      assistantId,
+    });
+
+    if (!claims) {
+      const dir = getLocaleDirection(locale);
+      return (
+        <html lang={locale} dir={dir}>
+          <head>
+            <title>{t.widgetConfigError as string}</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+          </head>
+          <body style={{
+            margin: 0,
+            padding: 16,
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            backgroundColor: '#fef2f2',
+          }}>
+            <div style={{
+              maxWidth: '500px',
+              margin: '0 auto',
+              padding: '24px',
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            }}>
+              <h3 style={{
+                color: '#dc2626',
+                marginTop: 0,
+                fontSize: '18px',
+                fontWeight: '600',
+              }}>
+                Unauthorized widget request
+              </h3>
+              <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
+                The embed token is invalid or expired. Please regenerate your widget snippet.
+              </p>
+            </div>
+          </body>
+        </html>
+      );
+    }
   }
 
   // Pass validated params to client component wrapped in error boundary

@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import InteractionButtons from './InteractionButtons';
 import MessageBubble from './MessageBubble';
 import DynamicIcon from './DynamicIcon';
@@ -52,6 +52,19 @@ type Props = {
 };
 
 
+// Simple chat skeleton loader
+function ChatSkeleton() {
+  return (
+    <div className="flex flex-col gap-4 p-4 animate-pulse">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+          <div className="h-6 w-2/3 rounded-lg bg-gray-200/60" style={{ minWidth: 120 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function EmbedShell({
   isEmbedded,
   isCollapsed,
@@ -97,12 +110,67 @@ export default function EmbedShell({
   // Ref for scroll container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when messages or flow responses change
+  // Ref for input (for focus management)
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Robust Escape-to-close and modal Escape handling
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    const handleGlobalKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        // If a modal is open, close it first
+        if (unsureModal && typeof unsureModal === 'object' && onShowUnsureModal) {
+          onShowUnsureModal();
+          e.stopPropagation();
+          return;
+        }
+        if (handoffModal) {
+          // Handoff modal should provide a close prop (handled by parent)
+          e.stopPropagation();
+          return;
+        }
+        if (showFeedbackDialog && feedbackDialog) {
+          e.stopPropagation();
+          return;
+        }
+        // If widget is open and not collapsed, minimize/close
+        if (!isCollapsed && !hideCloseButton) {
+          toggleCollapsed();
+          e.stopPropagation();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown, true);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown, true);
+  }, [isCollapsed, hideCloseButton, toggleCollapsed, unsureModal, onShowUnsureModal, handoffModal, showFeedbackDialog, feedbackDialog]);
+
+  // Helper: should auto-scroll if user is at or near bottom
+  const shouldAutoScroll = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return true;
+    const threshold = 64; // px from bottom
+    return el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  };
+
+  // Auto-scroll to bottom only if user is at/near bottom
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    if (shouldAutoScroll()) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [messages, flowResponses, isTyping]);
+
+  // Skeleton loading state for chat
+  const [showSkeleton, setShowSkeleton] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setShowSkeleton(false), 1000);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Mobile input anchoring: add bottom padding for safe-area-inset
+  const mobileSafeAreaStyle = {
+    paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+  };
 
   useEffect(() => {
     const latestAssistant = [...messages]
@@ -332,122 +400,129 @@ export default function EmbedShell({
                 aria-relevant="additions text"
                 aria-atomic="false"
                 aria-label={translate(locale, 'chatMessages')}
+                style={mobileSafeAreaStyle}
               >
-                {showGreeting && (
-                  <div className="flex flex-col items-start w-full">
-                    <div className="flex items-start gap-2">
-                       {showMessageAvatars && widgetConfig?.bot_avatar && (
-                         <img src={widgetConfig.bot_avatar} alt={(assistantName || getText(widgetConfig?.title) || 'assistant') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
-                       )}
-                       <div className="max-w-[80%] p-2 rounded-lg bg-gray-200" style={{ color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
-                         {greetingText}
-                       </div>
-                    </div>
-                  </div>
-                )}
-
-                {showButtons && (
-                  <div className="flex flex-col gap-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>
-                    <InteractionButtons
-                      buttons={interactionButtons}
-                      clickedButtons={clickedButtons}
-                      onButtonClick={handleInteractionButtonClickWrapper}
-                      primaryColor={primaryColor}
-                      buttonBorderRadius={buttonBorderRadius}
-                      fontStyles={fontStyles}
-                      getLocalizedText={getText}
-                    />
-                  </div>
-                )}
-
-                {mergedContent.map((item, index) => {
-                  if (item.type === 'message') {
-                    const message = item.data;
-                    return (
-                      <div key={message.id} className={`flex w-full ${message.from === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <MessageBubble
-                          message={message}
-                          widgetConfig={widgetConfig}
-                          assistantName={assistantName}
-                          showMessageAvatars={showMessageAvatars}
-                          textColor={textColor}
-                          fontStyles={fontStyles}
-                          messageBubbleRadius={messageBubbleRadius}
-                          onSubmitMessageFeedback={onSubmitMessageFeedback}
-                          messageFeedbackSubmitted={messageFeedbackSet}
-                          showTimestamps={showTimestamps}
-                        />
-                      </div>
-                    );
-                  } else {
-                    const flowResponse = item.data;
-                    return (
-                      <div key={`flow-${index}`} className="space-y-2">
-                        {flowResponse.text && (
-                          <MessageBubble
-                            message={{ id: `flow-text-${index}`, text: flowResponse.text, from: 'assistant' }}
-                            widgetConfig={widgetConfig}
-                            assistantName={assistantName}
-                            showMessageAvatars={showMessageAvatars}
-                            textColor={textColor}
-                            fontStyles={fontStyles}
-                            messageBubbleRadius={messageBubbleRadius}
-                            showTimestamps={false}
-                          />
-                        )}
-                        {flowResponse.buttons.length > 0 && (
-                          <div className="flex flex-col gap-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>
-                                {flowResponse.buttons.map((button: FlowButton) => {
-                              const buttonId = getButtonId(button);
-                              const isClicked = clickedButtons.has(buttonId);
-                              return (
-                                <button
-                                  key={buttonId}
-                                  type="button"
-                                  onClick={() => handleFollowUpButtonClickWrapper(button)}
-                                  disabled={isClicked}
-                                  style={{
-                                    backgroundColor: isClicked ? '#9ca3af' : primaryColor,
-                                    borderRadius: `${buttonBorderRadius}px`,
-                                    ...fontStyles
-                                  }}
-                                  className={`w-fit px-3 py-2 text-white text-sm transition-opacity flex items-center gap-2 ${
-                                    isClicked ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
-                                  }`}
-                                >
-                                  {button.icon && (() => {
-                                    const name = (button.icon as string).split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
-                                    return (
-                                      <DynamicIcon name={name} className="w-4 h-4" fallback={<span>{button.icon}</span>} />
-                                    );
-                                  })()}
-                                  {getText(button.label) || 'Button'}
-                                </button>
-                              );
-                            })}
+                {showSkeleton ? (
+                  <ChatSkeleton />
+                ) : (
+                  <>
+                    {showGreeting && (
+                      <div className="flex flex-col items-start w-full">
+                        <div className="flex items-start gap-2">
+                          {showMessageAvatars && widgetConfig?.bot_avatar && (
+                            <img src={widgetConfig.bot_avatar} alt={(assistantName || getText(widgetConfig?.title) || 'assistant') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                          )}
+                          <div className="max-w-[80%] p-2 rounded-lg bg-gray-200" style={{ color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
+                            {greetingText}
                           </div>
-                        )}
-                      </div>
-                    );
-                  }
-                })}
-
-                {showTypingIndicator && isTyping && (
-                  <div className="flex justify-start" role="status" aria-live="polite">
-                    <div className="flex items-start gap-2">
-                      {showMessageAvatars && widgetConfig?.bot_avatar && (
-                        <img src={widgetConfig.bot_avatar} alt={(assistantName || getText(widgetConfig?.title) || 'assistant') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
-                      )}
-                      <div className="p-3" style={{ backgroundColor: '#e5e7eb', color: textColor, borderRadius: `${messageBubbleRadius}px` }}>
-                        <span style={{ position: 'absolute', left: '-9999px' }}>{translate(locale, 'assistantTyping')}</span>
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
-                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                         </div>
                       </div>
-                    </div>
-                  </div>
+                    )}
+
+                    {showButtons && (
+                      <div className="flex flex-col gap-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>
+                        <InteractionButtons
+                          buttons={interactionButtons}
+                          clickedButtons={clickedButtons}
+                          onButtonClick={handleInteractionButtonClickWrapper}
+                          primaryColor={primaryColor}
+                          buttonBorderRadius={buttonBorderRadius}
+                          fontStyles={fontStyles}
+                          getLocalizedText={getText}
+                        />
+                      </div>
+                    )}
+
+                    {mergedContent.map((item, index) => {
+                      if (item.type === 'message') {
+                        const message = item.data;
+                        return (
+                          <div key={message.id} className={`flex w-full ${message.from === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <MessageBubble
+                              message={message}
+                              widgetConfig={widgetConfig}
+                              assistantName={assistantName}
+                              showMessageAvatars={showMessageAvatars}
+                              textColor={textColor}
+                              fontStyles={fontStyles}
+                              messageBubbleRadius={messageBubbleRadius}
+                              onSubmitMessageFeedback={onSubmitMessageFeedback}
+                              messageFeedbackSubmitted={messageFeedbackSet}
+                              showTimestamps={showTimestamps}
+                            />
+                          </div>
+                        );
+                      } else {
+                        const flowResponse = item.data;
+                        return (
+                          <div key={`flow-${index}`} className="space-y-2">
+                            {flowResponse.text && (
+                              <MessageBubble
+                                message={{ id: `flow-text-${index}`, text: flowResponse.text, from: 'assistant' }}
+                                widgetConfig={widgetConfig}
+                                assistantName={assistantName}
+                                showMessageAvatars={showMessageAvatars}
+                                textColor={textColor}
+                                fontStyles={fontStyles}
+                                messageBubbleRadius={messageBubbleRadius}
+                                showTimestamps={false}
+                              />
+                            )}
+                            {flowResponse.buttons.length > 0 && (
+                              <div className="flex flex-col gap-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>
+                                {flowResponse.buttons.map((button: FlowButton) => {
+                                  const buttonId = getButtonId(button);
+                                  const isClicked = clickedButtons.has(buttonId);
+                                  return (
+                                    <button
+                                      key={buttonId}
+                                      type="button"
+                                      onClick={() => handleFollowUpButtonClickWrapper(button)}
+                                      disabled={isClicked}
+                                      style={{
+                                        backgroundColor: isClicked ? '#9ca3af' : primaryColor,
+                                        borderRadius: `${buttonBorderRadius}px`,
+                                        ...fontStyles
+                                      }}
+                                      className={`w-fit px-3 py-2 text-white text-sm transition-opacity flex items-center gap-2 ${
+                                        isClicked ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+                                      }`}
+                                    >
+                                      {button.icon && (() => {
+                                        const name = (button.icon as string).split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+                                        return (
+                                          <DynamicIcon name={name} className="w-4 h-4" fallback={<span>{button.icon}</span>} />
+                                        );
+                                      })()}
+                                      {getText(button.label) || 'Button'}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                    })}
+
+                    {showTypingIndicator && isTyping && (
+                      <div className="flex justify-start" role="status" aria-live="polite">
+                        <div className="flex items-start gap-2">
+                          {showMessageAvatars && widgetConfig?.bot_avatar && (
+                            <img src={widgetConfig.bot_avatar} alt={(assistantName || getText(widgetConfig?.title) || 'assistant') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                          )}
+                          <div className="p-3" style={{ backgroundColor: '#e5e7eb', color: textColor, borderRadius: `${messageBubbleRadius}px` }}>
+                            <span style={{ position: 'absolute', left: '-9999px' }}>{translate(locale, 'assistantTyping')}</span>
+                            <div className="flex space-x-1">
+                              <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
+                              <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                              <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -481,6 +556,7 @@ export default function EmbedShell({
               <form onSubmit={handleSubmit} className="p-3 border-t">
                 <div className="flex space-x-2">
                   <input
+                    ref={inputRef}
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -493,6 +569,7 @@ export default function EmbedShell({
                       ...fontStyles
                     }}
                     disabled={isTyping}
+                    tabIndex={0}
                   />
                   <button
                     type="submit"
@@ -503,6 +580,7 @@ export default function EmbedShell({
                       ...fontStyles
                     }}
                     className="px-4 py-2 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    tabIndex={0}
                   >
                     {translate(locale, 'send')}
                   </button>

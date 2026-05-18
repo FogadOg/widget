@@ -19,6 +19,12 @@ jest.mock('../lib/i18n', () => ({
 import DocsPage from '../app/embed/docs/page';
 
 describe('Docs page server component', () => {
+  const originalEnv = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
   test('renders error UI when required params are missing', async () => {
     const element = await (DocsPage as any)({ searchParams: Promise.resolve({}) });
     const html = renderToStaticMarkup(element);
@@ -58,5 +64,23 @@ describe('Docs page server component', () => {
     expect(Array.isArray(props.suggestions)).toBe(true);
     expect(props.suggestions).toEqual(['one', 'two']);
     expect(props.pagePath).toBe('/doc');
+  });
+
+  test('renders unauthorized UI when JWT enforcement is enabled and token is invalid', async () => {
+    process.env.WIDGET_EMBED_ENFORCE_JWT = 'true';
+    process.env.WIDGET_EMBED_TOKEN_SECRET = 'test-secret';
+
+    const element = await (DocsPage as any)({
+      searchParams: Promise.resolve({
+        clientId: 'not-a-jwt-token',
+        assistantId: 'a1',
+        configId: 'cfg',
+        locale: 'en',
+      }),
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain('Unauthorized widget request');
+    expect(html).not.toContain('data-props=');
   });
 });

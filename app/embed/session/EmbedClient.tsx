@@ -40,6 +40,8 @@ import {
   close as registryClose,
 } from '../../../src/lib/widgetRegistry';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+// For streaming decoding
+const textDecoder = typeof window !== 'undefined' && window.TextDecoder ? new window.TextDecoder() : undefined;
 import EmbedShell from 'components/EmbedShell';
 
 // helpers exposed so tests can call them directly
@@ -228,6 +230,8 @@ export default function EmbedClient({
   const lastReadStorageKey = helpers.lastReadStorageKey(initialClientId, initialAssistantId);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  // Streaming state: holds the partial assistant message being streamed
+  const [streamingMessage, setStreamingMessage] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(true);
 
   // emit widget_load telemetry when widget mounts, but only once per
@@ -612,6 +616,64 @@ export default function EmbedClient({
     };
   }, [getAuthToken, initialAssistantId, initialClientId, initialConfigId, initialParentOrigin, sessionStorageKey, t.failedToLoadWidget]);
 
+  // --- Streaming sendMessage handler ---
+  // This replaces the normal message send logic if the API supports streaming
+  const sendMessageWithStreaming = async (userMessage: string) => {
+    if (!sessionId || !authToken) return;
+    setIsTyping(true);
+    setStreamingMessage('');
+    try {
+      const response = await fetch(API.sessionMessages(sessionId), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+          'Accept': 'text/event-stream, application/json',
+        },
+        body: JSON.stringify({ content: userMessage, stream: true }),
+      });
+      // If the response is a stream (SSE or ReadableStream)
+      if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
+        const reader = response.body.getReader();
+        let fullText = '';
+        let done = false;
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          if (value) {
+            const chunk = textDecoder ? textDecoder.decode(value) : new TextDecoder().decode(value);
+            // For SSE, split on newlines and parse data: lines
+            chunk.split(/\n/).forEach(line => {
+              if (line.startsWith('data:')) {
+                const data = line.replace(/^data:/, '').trim();
+                if (data === '[DONE]') return;
+                fullText += data;
+                setStreamingMessage(fullText);
+              }
+            });
+          }
+        }
+        // Add the final message to the chat
+        setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, text: fullText, from: 'assistant', timestamp: Date.now() }]);
+        setStreamingMessage(null);
+      } else {
+        // Fallback: not a stream, parse as JSON
+        const data = await response.json();
+        if (data.status === 'success' && data.data?.message) {
+          setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, text: data.data.message, from: 'assistant', timestamp: Date.now() }]);
+        }
+        setStreamingMessage(null);
+      }
+    } catch (err) {
+      setStreamingMessage(null);
+      setError('Failed to stream response.');
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  // --- END streaming sendMessage handler ---
+
   // Listen for queued-message events dispatched by PromptInput when offline
   useEffect(() => {
     const onQueued = (ev: Event) => {
@@ -664,57 +726,65 @@ export default function EmbedClient({
               } else if (idx >= 0) {
                 // Mark as delivered (clear pending flag)
                 next[idx] = { ...next[idx], pending: false };
-              }
-            } else {
-              // leave as pending; optionally could mark error state
-            }
-          }
-          return next;
-        });
-      } catch {
-        // ignore
-      }
-    };
-
-    navigator.serviceWorker.addEventListener('message', handler);
-    return () => navigator.serviceWorker.removeEventListener('message', handler);
-  }, []);
-
-  // Load session messages helper (moved above effects that reference it)
-  async function loadSessionMessages(sessionId: string, token: string, isInitial: boolean = false, _retry: boolean = false) {
-    if (!sessionId) {
-      logError('Skipping loadSessionMessages: missing sessionId', { action: 'loadSessionMessages', isInitial });
-      return;
-    }
-    try {
-      // Runtime requests should include auth + embed origin headers.
-      // Some older tests only mock bare GET URLs, so we keep a fallback.
-      let response = await fetch(API.sessionMessages(sessionId ?? undefined), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          ...embedOriginHeader(initialParentOrigin),
-        },
-      });
-
-      if (!response.ok) {
-        // If auth failed (expired token / session) try an unauthenticated fetch as a fallback
-        // but if the server explicitly returned 401/404, attempt silent recovery once.
-        const status = response.status;
-        if ((status === 401 || status === 404) && !_retry) {
-          // Clear any stored session reference to force recreation
-          try { localStorage.removeItem(sessionStorageKey); } catch {}
-          // Try to refresh auth token silently
-          let newToken = authTokenRef.current || token;
-          try {
-            const maybe = await (getAuthToken as any)(initialClientId, initialParentOrigin);
-            if (maybe) newToken = maybe;
-          } catch {
-            // ignore
-          }
-
-          // Attempt to create a fresh session if we have a token
-          if (newToken) {
+              return (
+                <EmbedShell
+                  isEmbedded={isEmbedded}
+                  isCollapsed={isCollapsed}
+                  toggleCollapsed={() => setIsCollapsed((c) => !c)}
+                  messages={streamingMessage ? [...messages, { id: 'streaming', text: streamingMessage, from: 'assistant', timestamp: Date.now() }] : messages}
+                  isTyping={isTyping}
+                  input={input}
+                  setInput={setInput}
+                  // Patch: use streaming send handler for assistant messages
+                  handleSubmit={async (e) => {
+                    e.preventDefault();
+                    const message = input.trim();
+                    if (!message) return;
+                    setMessages(prev => [...prev, { id: `user-${Date.now()}`, text: message, from: 'user', timestamp: Date.now() }]);
+                    setInput('');
+                    await sendMessageWithStreaming(message);
+                  }}
+                  error={error}
+                  title={widgetConfig?.title?.[activeLocale] || ''}
+                  assistantName={assistantName}
+                  widgetConfig={widgetConfig}
+                  onInteractionButtonClick={handleInteractionButtonClick}
+                  onFollowUpButtonClick={handleFollowUpButtonClick}
+                  flowResponses={flowResponses}
+                  getLocalizedText={getLocalizedText}
+                  showFeedbackDialog={showFeedbackDialog}
+                  feedbackDialog={showFeedbackDialog ? (
+                    <FeedbackDialog
+                      open={showFeedbackDialog}
+                      onClose={() => setShowFeedbackDialog(false)}
+                      onSubmit={handleFeedbackSubmit}
+                      submitted={feedbackSubmitted}
+                    />
+                  ) : null}
+                  messageFeedbackSubmitted={messageFeedbackSubmitted}
+                  onSubmitMessageFeedback={handleMessageFeedbackSubmit}
+                  unsureModal={showUnsureModal ? (
+                    <HandoffModal
+                      open={showUnsureModal}
+                      onClose={() => setShowUnsureModal(false)}
+                      messages={unsureMessages}
+                    />
+                  ) : null}
+                  handoffModal={showHandoffModal ? (
+                    <HandoffModal
+                      open={showHandoffModal}
+                      onClose={() => setShowHandoffModal(false)}
+                      messages={unsureMessages}
+                    />
+                  ) : null}
+                  unsureMessages={unsureMessages}
+                  onShowUnsureModal={() => setShowUnsureModal((v) => !v)}
+                  unreadCount={unreadCount}
+                  locale={activeLocale}
+                  hideCloseButton={isPersistent}
+                  isPersistent={isPersistent}
+                />
+              );
             try {
               await createSession(initialAssistantId, newToken);
               const newSid = sessionIdRef.current;
