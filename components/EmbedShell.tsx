@@ -115,7 +115,7 @@ export default function EmbedShell({
 
   // Robust Escape-to-close and modal Escape handling
   useEffect(() => {
-    const handleGlobalKeyDown = (e) => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         // If a modal is open, close it first
         if (unsureModal && typeof unsureModal === 'object' && onShowUnsureModal) {
