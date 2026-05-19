@@ -161,7 +161,9 @@ export default function EmbedShell({
   }, [messages, flowResponses, isTyping]);
 
   // Skeleton loading state for chat
-  const [showSkeleton, setShowSkeleton] = useState(true);
+  const [showSkeleton, setShowSkeleton] = useState(
+    messages.length === 0 && flowResponses.length === 0 && !widgetConfig?.greeting_message?.text
+  );
   useEffect(() => {
     const t = setTimeout(() => setShowSkeleton(false), 1000);
     return () => clearTimeout(t);

@@ -726,205 +726,23 @@ export default function EmbedClient({
               } else if (idx >= 0) {
                 // Mark as delivered (clear pending flag)
                 next[idx] = { ...next[idx], pending: false };
-              return (
-                <EmbedShell
-                  isEmbedded={isEmbedded}
-                  isCollapsed={isCollapsed}
-                  toggleCollapsed={() => setIsCollapsed((c) => !c)}
-                  messages={streamingMessage ? [...messages, { id: 'streaming', text: streamingMessage, from: 'assistant', timestamp: Date.now() }] : messages}
-                  isTyping={isTyping}
-                  input={input}
-                  setInput={setInput}
-                  // Patch: use streaming send handler for assistant messages
-                  handleSubmit={async (e) => {
-                    e.preventDefault();
-                    const message = input.trim();
-                    if (!message) return;
-                    setMessages(prev => [...prev, { id: `user-${Date.now()}`, text: message, from: 'user', timestamp: Date.now() }]);
-                    setInput('');
-                    await sendMessageWithStreaming(message);
-                  }}
-                  error={error}
-                  title={widgetConfig?.title?.[activeLocale] || ''}
-                  assistantName={assistantName}
-                  widgetConfig={widgetConfig}
-                  onInteractionButtonClick={handleInteractionButtonClick}
-                  onFollowUpButtonClick={handleFollowUpButtonClick}
-                  flowResponses={flowResponses}
-                  getLocalizedText={getLocalizedText}
-                  showFeedbackDialog={showFeedbackDialog}
-                  feedbackDialog={showFeedbackDialog ? (
-                    <FeedbackDialog
-                      open={showFeedbackDialog}
-                      onClose={() => setShowFeedbackDialog(false)}
-                      onSubmit={handleFeedbackSubmit}
-                      submitted={feedbackSubmitted}
-                    />
-                  ) : null}
-                  messageFeedbackSubmitted={messageFeedbackSubmitted}
-                  onSubmitMessageFeedback={handleMessageFeedbackSubmit}
-                  unsureModal={showUnsureModal ? (
-                    <HandoffModal
-                      open={showUnsureModal}
-                      onClose={() => setShowUnsureModal(false)}
-                      messages={unsureMessages}
-                    />
-                  ) : null}
-                  handoffModal={showHandoffModal ? (
-                    <HandoffModal
-                      open={showHandoffModal}
-                      onClose={() => setShowHandoffModal(false)}
-                      messages={unsureMessages}
-                    />
-                  ) : null}
-                  unsureMessages={unsureMessages}
-                  onShowUnsureModal={() => setShowUnsureModal((v) => !v)}
-                  unreadCount={unreadCount}
-                  locale={activeLocale}
-                  hideCloseButton={isPersistent}
-                  isPersistent={isPersistent}
-                />
-              );
-            try {
-              await createSession(initialAssistantId, newToken);
-              const newSid = sessionIdRef.current;
-              if (newSid) {
-                // Retry loading messages with new session/token (only once)
-                return await loadSessionMessages(newSid, newToken, isInitial, true);
-              }
-            } catch {
-              // fall through to unauthenticated attempt below
-            }
-          }
-
-        }
-
-        // Fallback unauthenticated attempt
-        response = await fetch(API.sessionMessages(sessionId ?? undefined));
-      }
-
-      if (!response.ok) {
-        throw new Error(`Failed to load messages: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.status === 'success' && Array.isArray(data.data?.messages)) {
-        // Convert API messages to widget message format
-        const loadedMessages: Message[] = (data.data.messages as unknown[])
-          .filter((msg: unknown) => {
-            // Filter out assistant greeting messages
-            const m = msg as { sender?: string };
-            if (m.sender === 'assistant') {
-              const userMessages = (data.data.messages as unknown[]).filter(
-                (m2: unknown) => (m2 as { sender?: string }).sender === 'user'
-              );
-              return userMessages.length > 0;
-            }
-            return true;
-          })
-          .map((msg: unknown) => {
-            const m = msg as {
-              id: string;
-              content: string;
-              sender: string;
-              created_at?: string;
-              sources?: unknown[];
-            };
-            return {
-              id: m.id,
-              text: m.content,
-              from: m.sender as 'user' | 'assistant',
-              timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
-              sources: (m.sources as SourceData[]) || [],  // Include sources from API
-            };
-          });
-
-        // Merge with existing messages: keep any local-only messages (e.g. button
-        // user bubbles with temp- IDs) that the server doesn't know about, while
-        // replacing/adding all server-sourced messages.
-        setMessages(prev => {
-          const serverIds = new Set(loadedMessages.map(m => m.id));
-          // In-memory local messages (normal operation — page not hard-reloaded)
-          const inMemoryLocal = prev.filter(
-            (m) => m.id.startsWith('temp-') && !serverIds.has(m.id) && !(m as any).pending
-          );
-          // Persisted local messages (hard-reload recovery)
-          let storedLocal: Message[] = [];
-          try {
-            const raw = localStorage.getItem(helpers.localMessagesStorageKey(sessionId));
-            if (raw) {
-              const parsed = JSON.parse(raw) as Message[];
-              if (Array.isArray(parsed)) {
-                const inMemoryIds = new Set(inMemoryLocal.map((m) => m.id));
-                // Filter out any local messages that are already present on server
-                // or that appear to be duplicates of server messages (same text
-                // and within 30s of a server timestamp).
-                storedLocal = parsed.filter((m) => {
-                  if (serverIds.has(m.id) || inMemoryIds.has(m.id)) return false;
-                  try {
-                    const isDup = loadedMessages.some(lm => ((lm.text || (lm as any).content || '') === (m.text || (m as any).content || '')) && Math.abs((lm.timestamp || 0) - (m.timestamp || 0)) < 30000);
-                    return !isDup;
-                  } catch {
-                    return true;
-                  }
-                });
               }
             }
-          } catch {
-            // ignore
           }
-          const allLocal = [...inMemoryLocal, ...storedLocal];
-          return [...loadedMessages, ...allLocal].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+          return next;
         });
+      } catch { /* ignore */ }
+    };
 
-        // Mark that at least one real load has completed so the persist effect
-        // knows it's safe to remove stale localStorage entries.
-        hasLoadedMessagesRef.current = true;
-
-        // Notify parent window about the latest message(s)
-        try {
-          if (window.parent !== window) {
-            const last = loadedMessages[loadedMessages.length - 1];
-            if (last) {
-              if (parentSensitiveOrigin) {
-                // Post a generic message event for the last message
-                window.parent.postMessage({ type: EMBED_EVENTS.MESSAGE, data: last }, parentSensitiveOrigin);
-
-                // If the last message is from assistant, also post a response event
-                if (last.from === 'assistant') {
-                  window.parent.postMessage({ type: EMBED_EVENTS.RESPONSE, data: last }, parentSensitiveOrigin);
-                }
-              }
-            }
-          }
-        } catch {
-          // ignore
-        }
-
-      } else {
-        throw new Error('Invalid messages response format');
-      }
-    } catch (err: any) {
-      // If this is a programmatic reload (no isInitial flag), rethrow so
-      // callers can handle and log with their own context (e.g. handleSubmit).
-      if (!isInitial) {
-        throw err;
-      }
-
-      try {
-        console.error('EmbedClient.loadSessionMessages error', err, { sessionId, isInitial });
-      } catch {}
-
-      logError(err instanceof Error ? (err.message || 'Unknown error') : String(err), { sessionId, isInitial, action: 'loadSessionMessages' });
-      // Non-critical error for initial loads
-      if (isInitial) {
-        setError('Failed to load conversation history');
-      }
-    } finally {
-      setIsTyping(false);
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handler as EventListener);
     }
-  }
+    return () => {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handler as EventListener);
+      }
+    };
+  }, []);
 
   // Client-mediated flush: when the page comes online or SW asks to flush,
   // read the IndexedDB queue and POST messages using sessionId+authToken.
@@ -1260,7 +1078,158 @@ export default function EmbedClient({
       }
     }
   }, [widgetConfig, isCollapsed, initialParentOrigin, parentTargetOrigin]);
-  // `loadSessionMessages` helper is defined earlier in the file.
+  async function loadSessionMessages(sessionId: string, token?: string, isInitial = false, forceReload = false) {
+    setIsTyping(true);
+    try {
+      let response: Response;
+      if (token && !forceReload) {
+        response = await fetch(API.sessionMessages(sessionId), {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            ...embedOriginHeader(initialParentOrigin),
+          },
+        });
+        if (response.status === 401) {
+          let newToken: string | undefined;
+          try {
+            newToken = await (getAuthToken as any)(initialClientId, initialParentOrigin);
+          } catch {}
+          if (newToken) {
+            try {
+              await createSession(initialAssistantId, newToken);
+              const newSid = sessionIdRef.current;
+              if (newSid) {
+                // Retry loading messages with new session/token (only once)
+                return await loadSessionMessages(newSid, newToken, isInitial, true);
+              }
+            } catch {
+              // fall through to unauthenticated attempt below
+            }
+          }
+        }
+
+        // Fallback unauthenticated attempt
+        response = await fetch(API.sessionMessages(sessionId ?? undefined));
+      } else {
+        response = await fetch(API.sessionMessages(sessionId ?? undefined));
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to load messages: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status === 'success' && Array.isArray(data.data?.messages)) {
+        // Convert API messages to widget message format
+        const loadedMessages: Message[] = (data.data.messages as unknown[])
+          .filter((msg: unknown) => {
+            // Filter out assistant greeting messages
+            const m = msg as { sender?: string };
+            if (m.sender === 'assistant') {
+              const userMessages = (data.data.messages as unknown[]).filter(
+                (m2: unknown) => (m2 as { sender?: string }).sender === 'user'
+              );
+              return userMessages.length > 0;
+            }
+            return true;
+          })
+          .map((msg: unknown) => {
+            const m = msg as {
+              id: string;
+              content: string;
+              sender: string;
+              created_at?: string;
+              sources?: unknown[];
+            };
+            return {
+              id: m.id,
+              text: m.content,
+              from: m.sender as 'user' | 'assistant',
+              timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
+              sources: (m.sources as SourceData[]) || [],
+            };
+          });
+
+        // Merge with existing messages: keep any local-only messages (e.g. button
+        // user bubbles with temp- IDs) that the server doesn't know about, while
+        // replacing/adding all server-sourced messages.
+        setMessages(prev => {
+          const serverIds = new Set(loadedMessages.map(m => m.id));
+          // In-memory local messages (normal operation — page not hard-reloaded)
+          const inMemoryLocal = prev.filter(
+            (m) => m.id.startsWith('temp-') && !serverIds.has(m.id) && !(m as any).pending
+          );
+          // Persisted local messages (hard-reload recovery)
+          let storedLocal: Message[] = [];
+          try {
+            const raw = localStorage.getItem(helpers.localMessagesStorageKey(sessionId));
+            if (raw) {
+              const parsed = JSON.parse(raw) as Message[];
+              if (Array.isArray(parsed)) {
+                const inMemoryIds = new Set(inMemoryLocal.map((m) => m.id));
+                storedLocal = parsed.filter((m) => {
+                  if (serverIds.has(m.id) || inMemoryIds.has(m.id)) return false;
+                  try {
+                    const isDup = loadedMessages.some(lm => ((lm.text || (lm as any).content || '') === (m.text || (m as any).content || '')) && Math.abs((lm.timestamp || 0) - (m.timestamp || 0)) < 30000);
+                    return !isDup;
+                  } catch {
+                    return true;
+                  }
+                });
+              }
+            }
+          } catch {
+            // ignore
+          }
+          const allLocal = [...inMemoryLocal, ...storedLocal];
+          return [...loadedMessages, ...allLocal].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        });
+
+        // Mark that at least one real load has completed so the persist effect
+        // knows it's safe to remove stale localStorage entries.
+        hasLoadedMessagesRef.current = true;
+
+        // Notify parent window about the latest message(s)
+        try {
+          if (window.parent !== window) {
+            const last = loadedMessages[loadedMessages.length - 1];
+            if (last) {
+              if (parentSensitiveOrigin) {
+                window.parent.postMessage({ type: EMBED_EVENTS.MESSAGE, data: last }, parentSensitiveOrigin);
+                if (last.from === 'assistant') {
+                  window.parent.postMessage({ type: EMBED_EVENTS.RESPONSE, data: last }, parentSensitiveOrigin);
+                }
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+
+      } else {
+        throw new Error('Invalid messages response format');
+      }
+    } catch (err: any) {
+      // If this is a programmatic reload (no isInitial flag), rethrow so
+      // callers can handle and log with their own context (e.g. handleSubmit).
+      if (!isInitial) {
+        throw err;
+      }
+
+      try {
+        console.error('EmbedClient.loadSessionMessages error', err, { sessionId, isInitial });
+      } catch {}
+
+      logError(err instanceof Error ? (err.message || 'Unknown error') : String(err), { sessionId, isInitial, action: 'loadSessionMessages' });
+      // Non-critical error for initial loads
+      if (isInitial) {
+        setError('Failed to load conversation history');
+      }
+    } finally {
+      setIsTyping(false);
+    }
+  }
 
   async function createSession(assistant: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null, skipMessageLoad = false) {
     try {
