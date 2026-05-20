@@ -6,6 +6,27 @@
   const COMPANY_NAME = 'Companin';
   let POWERED_BY_TEXT = (typeof window !== 'undefined' && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`] && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`].poweredBy) || 'Powered by ';
   const BASE_WIDGET_HOST = 'https://widget.companin.tech';
+  const WIDGET_VERSION = '__WIDGET_VERSION__';
+  try { window.__COMPANIN_WIDGET_VERSION__ = WIDGET_VERSION; } catch (e) {}
+
+  // Strict origin parser: substring matching on 'companin.tech' would also accept
+  // hosts like evil-companin.tech.attacker.com, so we require either an exact host
+  // match or a trailing .companin.tech suffix.
+  const WIDGET_HOST_SUFFIXES = ['companin.tech'];
+  const isTrustedWidgetOrigin = function (origin, allowInsecure) {
+    if (!origin || typeof origin !== 'string') return false;
+    try {
+      const u = new URL(origin);
+      if (!u.host) return false;
+      if (!allowInsecure && u.protocol !== 'https:') return false;
+      const host = u.host.toLowerCase();
+      for (let i = 0; i < WIDGET_HOST_SUFFIXES.length; i++) {
+        const s = WIDGET_HOST_SUFFIXES[i];
+        if (host === s || host.endsWith('.' + s)) return true;
+      }
+      return false;
+    } catch (e) { return false; }
+  };
   const DOCS_REGISTRY_KEY = `__${COMPANY_NAME.toUpperCase()}_DOCS_WIDGET_INSTANCES__`;
   const sanitizeInstanceId = (value) => String(value || 'default').replace(/[^a-zA-Z0-9_-]/g, '-');
   const getOrCreateRegistry = () => {
@@ -234,6 +255,12 @@
         `;
         iframe.setAttribute("allow", "clipboard-write");
         iframe.setAttribute("title", COMPANY_NAME + ' Docs Widget');
+        iframe.setAttribute(
+          'sandbox',
+          'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms'
+        );
+        iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+        iframe.setAttribute('loading', 'lazy');
 
         // Handle iframe load errors
         let iframeLoaded = false;
@@ -576,12 +603,17 @@
             if (event.source !== iframe.contentWindow) return;
 
             // Verify origin - always validate, even in dev mode.
-            // Allow explicit host-target origin to support custom widget domains.
+            // Use strict URL parsing to defeat substring bypasses (gap #3/#13 in
+            // LAUNCH-READINESS.md).
             const validOrigins = new Set([baseUrl, targetOrigin]);
-            const isDevOrigin = event.origin.includes('localhost') || event.origin.includes('127.0.0.1');
+            let isDevOrigin = false;
+            try {
+              const _u = new URL(event.origin);
+              isDevOrigin = _u.hostname === 'localhost' || _u.hostname === '127.0.0.1';
+            } catch (e) {}
             if (isDev) {
-              if (!validOrigins.has(event.origin) && !isDevOrigin) return;
-            } else if (!validOrigins.has(event.origin) && !event.origin.includes("companin.tech")) {
+              if (!validOrigins.has(event.origin) && !isDevOrigin && !isTrustedWidgetOrigin(event.origin, true)) return;
+            } else if (!validOrigins.has(event.origin) && !isTrustedWidgetOrigin(event.origin, false)) {
               return;
             }
 

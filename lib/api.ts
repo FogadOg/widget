@@ -46,9 +46,12 @@ export const API = {
   // Assistant endpoints
   assistant: (assistantId: string) => `${getApiV1BaseUrl()}/assistants/${assistantId}`,
 
-  // Config endpoints
+  // Config endpoints. Widget runtime now uses the read-only public projection
+  // (LAUNCH-READINESS #17) so a widget_visitor JWT can load the config without
+  // impersonating an admin user. The admin dashboard continues to call the
+  // unsuffixed path for CRUD.
   widgetConfig: (configId: string, visitorId?: string, forceVariantId?: string) => {
-    const base = `${getApiBaseUrl()}/widget-config/${configId}`;
+    const base = `${getApiBaseUrl()}/widget-config/${configId}/public/`;
     const params = new URLSearchParams();
     if (visitorId) params.set('visitor_id', visitorId);
     if (forceVariantId) params.set('force_variant_id', forceVariantId);

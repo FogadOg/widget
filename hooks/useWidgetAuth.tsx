@@ -100,6 +100,19 @@ export function useWidgetAuth() {
                 );
               }
 
+              // 429 means the server told us to back off. Retrying just
+              // multiplies the storm — surface a non-retryable error and let
+              // the caller decide when to try again (instead of burning
+              // retryWithBackoff's 3 attempts per page mount).
+              if (response.status === 429) {
+                const err = createAuthError(
+                  errorMessage || 'Too many authentication requests. Please slow down.',
+                  WidgetErrorCode.AUTH_TOKEN_FAILED,
+                );
+                err.retryable = false;
+                throw err;
+              }
+
               if (response.status >= 500) {
                 throw createNetworkError(
                   errorMessage,
@@ -118,7 +131,14 @@ export function useWidgetAuth() {
               );
             }
 
-            return data.token;
+            // Return both the token and the server-reported expiry so callers
+            // can schedule a refresh that actually matches the JWT's lifetime
+            // instead of a hardcoded 55-min guess (LAUNCH-READINESS.md gap #15).
+            const expiresInSec = Number(data.expires_in);
+            const expiresAtMs = Number.isFinite(expiresInSec) && expiresInSec > 0
+              ? Date.now() + expiresInSec * 1000
+              : null;
+            return { token: data.token, expiresAtMs };
           } catch (fetchError: any) {
             clearTimeout(timeoutId);
 
@@ -148,19 +168,31 @@ export function useWidgetAuth() {
         }
       );
 
-      // Success - store token
-      setAuthToken(token);
+      // The retryWithBackoff callback returns either a raw string (legacy /
+      // test mocks) or { token, expiresAtMs } (current path that captures the
+      // server-reported expiry). Normalize both shapes so the hook's public
+      // API stays "returns a token string" and tests don't need to mock the
+      // object shape.
+      let tokenString: string | null = null;
+      let expiresAtMs: number | null = null;
+      if (typeof token === 'string') {
+        tokenString = token;
+      } else if (token && typeof token === 'object') {
+        const t = token as { token?: unknown; expiresAtMs?: unknown };
+        if (typeof t.token === 'string') tokenString = t.token;
+        if (typeof t.expiresAtMs === 'number' && Number.isFinite(t.expiresAtMs)) {
+          expiresAtMs = t.expiresAtMs;
+        }
+      }
+
+      setAuthToken(tokenString);
       setAuthError(null);
       setRetryCount(0);
+      tokenExpiresAtRef.current = expiresAtMs;
 
-      // Parse expiry from response and schedule auto-refresh 2 minutes before expiry
-      // Re-fetch the raw data to check for expires_at (token already validated above)
-      // We look for expires_at in the global response before returning token.
-      // Since retryWithBackoff already parsed it, we re-derive expiry from the callback result.
-      // Schedule auto-refresh: callers that need proactive refresh can use the scheduleRefresh helper.
       if (autoRefreshTimerRef.current) clearTimeout(autoRefreshTimerRef.current);
 
-      return token;
+      return tokenString;
     } catch (err: any) {
       // Handle errors
       let errorMessage = 'Failed to authenticate';

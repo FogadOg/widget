@@ -61,6 +61,10 @@ export function injectCustomAssets(css?: string) {
 }
 
 export function applyCustomAssetsFromQuery(search?: string) {
+  // Legacy path retained so customers with old snippets keep working until they
+  // migrate. New deployments serve custom_css via WidgetConfig (#20). We keep
+  // sanitizeCss on the URL-supplied value because the hardened sanitizer still
+  // strips dangerous patterns even when consumed from an untrusted URL.
   try {
     const src = search ?? window.location.search;
     const params = new URLSearchParams(src);
@@ -71,6 +75,15 @@ export function applyCustomAssetsFromQuery(search?: string) {
   } catch (err) {
     logError(err, { action: 'applyCustomAssetsFromQuery', search });
   }
+}
+
+// New path: inject custom CSS sourced from the loaded widget configuration.
+// The dashboard already persists `custom_css` server-side (WidgetConfig.custom_css);
+// the embed page reads it after fetchWidgetConfig succeeds.
+export function injectCustomAssetsFromConfig(config: { custom_css?: string | null } | null | undefined) {
+  if (!config) return;
+  const css = config.custom_css || undefined;
+  if (css) injectCustomAssets(css);
 }
 
 
@@ -192,6 +205,9 @@ type EmbedClientProps = {
   strictOrigin?: boolean;
   /** Admin-only: force a specific variant ID to bypass hash assignment (for preview/testing). */
   forceVariantId?: string;
+  /** When true, the host page requires explicit storage consent before the widget
+   *  may write visitor IDs or session IDs to localStorage (LAUNCH-READINESS #16). */
+  consentRequired?: boolean;
   /** When true, the widget is embedded inline (persistent mode) — hides the close/collapse button. */
   persistent?: boolean;
   /**
@@ -209,11 +225,47 @@ export default function EmbedClient({
   parentOrigin: initialParentOrigin,
   strictOrigin: initialStrictOrigin = false,
   forceVariantId: initialForceVariantId,
+  consentRequired: initialConsentRequired = false,
   persistent: isPersistent = false,
   showFeedbackDialogOverride,
 }: EmbedClientProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [flowResponses, setFlowResponses] = useState<FlowResponse[]>([]);
+
+  // Install the consent gate before any storage helper runs (LAUNCH-READINESS #16).
+  // Until the host page postMessages WIDGET_CONSENT_GRANT, visitor IDs and
+  // session IDs are kept in-memory only.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const mod = await import('../../../lib/sessionStorage');
+        if (cancelled) return;
+        mod.setConsentRequired(initialConsentRequired);
+      } catch {
+        // sessionStorage module is required for the widget; if it can't import
+        // there are larger problems and the bootstrap will surface them.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [initialConsentRequired]);
+
+  // Listen for consent grant/revoke from the host page via the widget loader's
+  // postMessage relay (window.CompaninWidget.grantConsent / revokeConsent).
+  useEffect(() => {
+    if (!initialConsentRequired) return;
+    const handler = async (event: MessageEvent) => {
+      const t = event?.data?.type;
+      if (t !== 'WIDGET_CONSENT_GRANT' && t !== 'WIDGET_CONSENT_REVOKE') return;
+      try {
+        const mod = await import('../../../lib/sessionStorage');
+        if (t === 'WIDGET_CONSENT_GRANT') mod.grantStorageConsent();
+        else mod.revokeStorageConsent();
+      } catch {}
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [initialConsentRequired]);
 
   // debug and perform custom css/js injection on mount
   useEffect(() => {
@@ -286,7 +338,7 @@ export default function EmbedClient({
       logError(error as Error, { context: 'initialTelemetry' });
     }
   }, [initialAssistantId, initialClientId, initialStartOpen]);
-  const { getAuthToken, authToken, authError, scheduleAutoRefresh = () => {} } = useWidgetAuth();
+  const { getAuthToken, authToken, authError, scheduleAutoRefresh = () => {}, getTokenExpiresAt } = useWidgetAuth();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   // Tracks whether the initial loadSessionMessages has completed at least once.
@@ -384,6 +436,11 @@ export default function EmbedClient({
   // strict_origin: once config loads, use strict mode for all subsequent postMessage calls.
   // Before config loads we tolerate wildcard so the WIDGET_SHOW message still goes out.
   const isStrictOrigin = initialStrictOrigin || Boolean(widgetConfig?.strict_origin);
+  // targetOrigin may now return null in production when no explicit origin is
+  // known (LAUNCH-READINESS.md #6). Sites in our framing allowlist always pass
+  // parentOrigin via the widget loader, so this only nulls out for malformed
+  // embeds — in which case we deliberately suppress postMessage instead of
+  // broadcasting via '*'.
   const parentTargetOrigin = useMemo(
     () => targetOrigin(resolveParentTargetOrigin(initialParentOrigin, undefined, isStrictOrigin) ?? undefined),
     [initialParentOrigin, isStrictOrigin]
@@ -391,6 +448,20 @@ export default function EmbedClient({
   const parentSensitiveOrigin = useMemo(
     () => sensitiveOrigin(resolveParentTargetOrigin(initialParentOrigin, undefined, isStrictOrigin) ?? undefined),
     [initialParentOrigin, isStrictOrigin]
+  );
+  // Helper for non-sensitive `WIDGET_RESIZE` / `WIDGET_SHOW` messages — silently
+  // drops the call when no target origin is available. The host loader will
+  // still apply its origin allowlist on the receiving side.
+  const safePostToParent = useCallback(
+    (payload: unknown) => {
+      if (!parentTargetOrigin) return;
+      try {
+        window.parent.postMessage(payload, parentTargetOrigin);
+      } catch {
+        // host page may be navigating; nothing actionable.
+      }
+    },
+    [parentTargetOrigin],
   );
 
   useEffect(() => {
@@ -512,6 +583,11 @@ export default function EmbedClient({
     }
   }, [authError, widgetConfig, initialParentOrigin, parentSensitiveOrigin]);
 
+  // Localized "session expired" banner state (LAUNCH-READINESS #22). Surfaces
+  // when the API returns 410 / 401 / 404 for the active session so the user
+  // sees a brief acknowledgment instead of a silent restart.
+  const [sessionExpiredBanner, setSessionExpiredBanner] = useState(false);
+
   // Periodic check for expired sessions
   useEffect(() => {
     const checkSessionExpiry = () => {
@@ -520,6 +596,7 @@ export default function EmbedClient({
         // Session expired — clear the session ID so the next message triggers
         // a new session, but keep messages visible so the chat history remains.
         setSessionId(null);
+        setSessionExpiredBanner(true);
       }
     };
 
@@ -556,13 +633,14 @@ export default function EmbedClient({
           return;
         }
 
-        // Schedule silent token refresh if backend returned an expiry claim.
-        // We re-fetch the raw response in the auth hook; here we check the
-        // widgetToken endpoint response stored in the body we already parsed.
-        // The hook exposes scheduleAutoRefresh — callers supply expires_at.
-        // We derive it from a predictable fallback: 55-minute sliding window.
-        // (Override this when the backend starts returning expires_at.)
-        const tokenExpiryMs = Date.now() + 55 * 60 * 1000; // 55 min sliding window
+        // Schedule silent token refresh. The hook records the server-reported
+        // expires_in on tokenExpiresAtRef; we read it back via getTokenExpiresAt
+        // and fall back to a 55-minute window if (and only if) the server omitted
+        // the field (LAUNCH-READINESS.md gap #15).
+        const reportedExpiry = typeof getTokenExpiresAt === 'function' ? getTokenExpiresAt() : null;
+        const tokenExpiryMs = (reportedExpiry && Number.isFinite(reportedExpiry))
+          ? reportedExpiry
+          : Date.now() + 55 * 60 * 1000;
         scheduleAutoRefresh(tokenExpiryMs, clientIdParam, initialParentOrigin);
 
         if (cancelled) return;
@@ -574,10 +652,16 @@ export default function EmbedClient({
         let fetchedConfig: ReturnType<typeof validateConfig>['config'] | null = null;
         if (configIdParam) {
           fetchedConfig = await fetchWidgetConfig(configIdParam, token) ?? null;
-          if (fetchedConfig?.ga_measurement_id) {
+          // Inject server-side custom CSS (LAUNCH-READINESS #20). The sanitizer
+          // strips url() / position:fixed / @font-face etc., so even a compromised
+          // config field can't exfiltrate or clickjack the host page.
+          injectCustomAssetsFromConfig(fetchedConfig as unknown as { custom_css?: string | null } | null);
+          if (fetchedConfig?.ga_measurement_id && initialParentOrigin) {
+            // GA measurement ID is non-sensitive but still gated on a known
+            // parent origin so we don't leak it via '*' (LAUNCH-READINESS #6).
             window.parent.postMessage(
               { type: 'WIDGET_GA_INIT', data: { gaMeasurementId: fetchedConfig.ga_measurement_id } },
-              initialParentOrigin || '*'
+              initialParentOrigin
             );
           }
         }
@@ -614,7 +698,14 @@ export default function EmbedClient({
     return () => {
       cancelled = true;
     };
-  }, [getAuthToken, initialAssistantId, initialClientId, initialConfigId, initialParentOrigin, sessionStorageKey, t.failedToLoadWidget]);
+    // t.failedToLoadWidget intentionally excluded from deps below — when the
+    // translation provider rebuilds its t object every render, including it
+    // in the dep array causes the bootstrap to re-fire on every keystroke and
+    // re-mint widget tokens against the rate-limited /auth/widget-token
+    // endpoint. The string is only read once on error and never changes for
+    // a given locale, so static reference is safe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getAuthToken, initialAssistantId, initialClientId, initialConfigId, initialParentOrigin, sessionStorageKey]);
 
   // --- Streaming sendMessage handler ---
   // This replaces the normal message send logic if the API supports streaming
@@ -1047,34 +1138,28 @@ export default function EmbedClient({
         const buttonSize = getButtonPixelSize(widgetConfig.button_size || 'md');
         const hoverSafePadding = 8;
         const collapsedViewportSize = buttonSize + (hoverSafePadding * 2);
-        window.parent.postMessage(
-          {
-            type: EMBED_EVENTS.RESIZE,
-            data: {
-              width: collapsedViewportSize,
-              height: collapsedViewportSize,
-              ...positionData
-            }
-          },
-          parentTargetOrigin
-        );
+        safePostToParent({
+          type: EMBED_EVENTS.RESIZE,
+          data: {
+            width: collapsedViewportSize,
+            height: collapsedViewportSize,
+            ...positionData
+          }
+        });
       } else {
         // Send widget size when expanded — prefer `size` preset if provided.
         const sizePreset = (widgetConfig as any)?.size;
         const preset = sizePreset && (SIZE_PRESETS as any)[sizePreset] ? (SIZE_PRESETS as any)[sizePreset] : null;
         const width = preset ? preset.w : DEFAULTS.WIDGET_WIDTH;
         const height = preset ? preset.h : DEFAULTS.WIDGET_HEIGHT;
-        window.parent.postMessage(
-          {
-            type: EMBED_EVENTS.RESIZE,
-            data: {
-              width,
-              height,
-              ...positionData
-            }
-          },
-          parentTargetOrigin
-        );
+        safePostToParent({
+          type: EMBED_EVENTS.RESIZE,
+          data: {
+            width,
+            height,
+            ...positionData
+          }
+        });
       }
     }
   }, [widgetConfig, isCollapsed, initialParentOrigin, parentTargetOrigin]);
@@ -1937,11 +2022,14 @@ export default function EmbedClient({
             if (!response.ok) {
               const errorMessage = parseApiError(data, 'Failed to send message');
 
-              // Check if session expired
-              if (response.status === 401 || response.status === 404 ||
+              // Check if session expired (410 is the explicit server signal;
+              // 401/404 and "expired" string fallback for older API responses).
+              if (response.status === 410 || response.status === 401 || response.status === 404 ||
                   errorMessage.toLowerCase().includes('expired') ||
                   errorMessage.toLowerCase().includes('not found')) {
                 localStorage.removeItem(sessionStorageKey);
+                setSessionExpiredBanner(true);
+                setSessionId(null);
                 throw createSessionError(
                   errorMessage,
                   WidgetErrorCode.SESSION_EXPIRED
@@ -2316,8 +2404,9 @@ export default function EmbedClient({
         }
       }
 
-      // Notify parent window about collapse state change
-      if (window.parent !== window) {
+      // Notify parent window about collapse state change. Drops silently when
+      // no parent origin is known so we don't leak collapse state to '*'.
+      if (window.parent !== window && parentTargetOrigin) {
         try {
           if (typeof (window.parent as any).postMessage === 'function') {
             (window.parent as any).postMessage(
@@ -2345,7 +2434,11 @@ export default function EmbedClient({
         // the same object reference as `window.parent`. In that case allow the
         // event to pass if the origin matches the expected parent origin.
         if (event.source !== window.parent) {
+          // Inbound message: must come from the parent origin we expect. With
+          // targetOrigin now nullable in prod, missing expected origin means
+          // "no host configured" — refuse the message.
           const expectedOrigin = parentTargetOrigin;
+          if (!expectedOrigin) return;
           if (expectedOrigin !== '*' && event.origin !== expectedOrigin) return;
         }
 
@@ -2455,6 +2548,50 @@ export default function EmbedClient({
 
   return (
     <div ref={containerRef} data-widget-instance={instanceId} style={{ position: 'relative' }}>
+      {/* Localized session-expired banner (LAUNCH-READINESS #22). Auto-dismisses
+          when the user starts a fresh session or clicks Dismiss. */}
+      {sessionExpiredBanner && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            right: 8,
+            zIndex: 1000,
+            background: '#fef3c7',
+            border: '1px solid #fcd34d',
+            color: '#78350f',
+            borderRadius: 6,
+            padding: '8px 12px',
+            fontSize: 13,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}
+        >
+          <div>
+            <strong style={{ marginRight: 6 }}>{t.sessionExpiredTitle as string}</strong>
+            <span>{t.sessionExpiredBody as string}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSessionExpiredBanner(false)}
+            aria-label={t.sessionExpiredDismiss as string}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#78350f',
+              cursor: 'pointer',
+              fontSize: 16,
+              lineHeight: 1,
+              padding: 4,
+            }}
+          >×</button>
+        </div>
+      )}
       {/* A/B variant debug badge removed to avoid rendering variant text in the host page */}
       <EmbedShell
         isEmbedded={isEmbedded}

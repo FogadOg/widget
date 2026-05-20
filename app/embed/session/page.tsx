@@ -14,12 +14,13 @@ type Props = {
     parentOrigin?: string;
     strictOrigin?: string;
     forceVariantId?: string;
+    consentRequired?: string;
   }>;
 };
 
 export default async function EmbedPage({ searchParams }: Props) {
   const params = await searchParams;
-  const { clientId, assistantId, configId, locale = "en", startOpen = "false", pagePath, parentOrigin, strictOrigin, forceVariantId } = params;
+  const { clientId, assistantId, configId, locale = "en", startOpen = "false", pagePath, parentOrigin, strictOrigin, forceVariantId, consentRequired } = params;
 
   const t = getTranslations(locale);
 
@@ -197,6 +198,7 @@ export default async function EmbedPage({ searchParams }: Props) {
         parentOrigin={parentOrigin}
         strictOrigin={strictOrigin === "true"}
         forceVariantId={forceVariantId}
+        consentRequired={consentRequired === "true"}
       />
     </ErrorBoundary>
   );

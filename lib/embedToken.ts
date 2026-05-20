@@ -93,6 +93,11 @@ export function verifyEmbedToken(token: string, secret: string, options?: Verify
 }
 
 export function shouldEnforceEmbedTokenValidation(): boolean {
-  const raw = process.env.WIDGET_EMBED_ENFORCE_JWT;
-  return raw === '1' || raw === 'true';
+  // Fail-closed in production: enforcement is on unless WIDGET_EMBED_ENFORCE_JWT
+  // is explicitly set to '0' or 'false'. In non-production environments we keep
+  // the previous opt-in behavior so local dev / tests don't require token mints.
+  const raw = (process.env.WIDGET_EMBED_ENFORCE_JWT || '').toLowerCase();
+  if (raw === '0' || raw === 'false' || raw === 'no' || raw === 'off') return false;
+  if (raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on') return true;
+  return process.env.NODE_ENV === 'production';
 }

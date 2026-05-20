@@ -129,5 +129,8 @@
   "handoffSubmitButton": "Send Request",
   "handoffSubmittingButton": "Sending...",
   "handoffError": "Something went wrong. Please try again.",
-  "handoffConfirmation": "Your message has been sent. Our team will be in touch."
+  "handoffConfirmation": "Your message has been sent. Our team will be in touch.",
+  "sessionExpiredTitle": "Your session expired",
+  "sessionExpiredBody": "We've started a fresh session so you can keep chatting.",
+  "sessionExpiredDismiss": "Dismiss"
 }

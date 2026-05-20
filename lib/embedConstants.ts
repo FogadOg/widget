@@ -24,14 +24,29 @@ export const STORAGE_KEYS = {
 };
 
 /**
- * Helper to get safest postMessage target origin.
- * Prefer explicit origin (provided by host page), otherwise fallback to '*'.
+ * Resolve the postMessage target origin (LAUNCH-READINESS.md #6).
+ *
+ * Returns the explicit origin when provided. Falls back to `null` in production
+ * so callers explicitly suppress messages with no known recipient rather than
+ * broadcasting to any framing site with `'*'`. In dev/test we keep the `'*'`
+ * fallback so iframe-based test harnesses (jsdom, Playwright) still receive
+ * the events they assert on.
+ *
+ * NOTE: returning null means the caller should guard the call:
+ *   const target = targetOrigin(parentOrigin);
+ *   if (target) window.parent.postMessage(msg, target);
  */
-export const targetOrigin = (explicit?: string) => explicit || '*';
+export const targetOrigin = (explicit?: string): string | null => {
+  if (explicit) return explicit;
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
+    return '*';
+  }
+  return null;
+};
 
 /**
  * Like targetOrigin but for sensitive messages (auth, chat content).
- * Returns null when no explicit origin is available so callers can
- * suppress the send rather than broadcasting to any origin.
+ * Always refuses to broadcast — returns null when no explicit origin is
+ * available so callers suppress the send rather than leaking to any origin.
  */
 export const sensitiveOrigin = (explicit?: string): string | null => explicit || null;

@@ -54,9 +54,17 @@ const nextConfig = {
     const rawAllowlist = process.env.EMBED_ALLOWLIST || process.env.NEXT_PUBLIC_EMBED_ALLOWLIST || '';
     const origins = rawAllowlist.split(',').map(s => s.trim()).filter(Boolean);
 
-    // If an allowlist is provided, restrict framing to those origins + self.
-    // If no allowlist is configured, allow embedding from any origin to avoid
-    // blocking host pages unexpectedly.
+    // In production we refuse to start with an unrestricted frame-ancestors policy:
+    // without a per-tenant allowlist any site on the internet can frame the embed
+    // page. Local dev and tests fall back to '*' so iframe-based test runners work.
+    if (process.env.NODE_ENV === 'production' && origins.length === 0) {
+      throw new Error(
+        'EMBED_ALLOWLIST is required in production. Set it to a comma-separated ' +
+        'list of trusted embedding origins (e.g. "https://customer-a.com,https://customer-b.com"). ' +
+        'See LAUNCH-READINESS.md gap #2 for context.'
+      );
+    }
+
     const cspSources = origins.length > 0 ? ["'self'", ...origins].join(' ') : '*';
 
     // HSTS — set for all routes in production
@@ -99,8 +107,10 @@ const nextConfig = {
             // Restrict framing to explicit origins (includes 'self')
             value: `frame-ancestors ${cspSources};`,
           },
-          // Allow embedding only from the configured origins
-          { key: 'X-Frame-Options', value: origins.length > 0 ? `ALLOW-FROM ${origins[0]}` : 'SAMEORIGIN' },
+          // X-Frame-Options ALLOW-FROM is non-standard and ignored by Chromium/Safari
+          // (only IE/old-Edge honored it). The CSP frame-ancestors directive above is
+          // the authoritative gate; we omit X-Frame-Options on /embed/* so modern
+          // browsers don't fall back to a deny when the CSP would have allowed it.
           // Embed iframes are cross-origin resources — relax CORP
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
           // Allow cross-origin prefetch/fetch of embed pages (e.g. from localhost:3000 in dev)
@@ -140,4 +150,37 @@ const nextConfig = {
   },
 };
 
-module.exports = withBundleAnalyzer(nextConfig);
+// Sentry wrapper (LAUNCH-READINESS.md #18). withSentryConfig is a no-op at runtime
+// when SENTRY_DSN is unset — the wrapper is safe to apply unconditionally so long
+// as @sentry/nextjs is installed. We require() it inside a try so a missing dep
+// (e.g. early dev environments) doesn't break the build.
+let withSentryConfig = (cfg) => cfg;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  withSentryConfig = require('@sentry/nextjs').withSentryConfig;
+} catch {
+  // @sentry/nextjs not installed yet — `npm install` will add it.
+}
+
+const SENTRY_WEBPACK_OPTIONS = {
+  silent: true,
+  // Upload source maps only when an auth token is provided (CI). Without the
+  // token, Sentry's webpack plugin is fully disabled so dev builds are fast.
+  authToken: process.env.SENTRY_AUTH_TOKEN || undefined,
+  org: process.env.SENTRY_ORG || undefined,
+  project: process.env.SENTRY_PROJECT || undefined,
+  // Sentry CLI also picks up additional files for the release. Point it at the
+  // versioned widget bundles so stack frames from widget.js report against the
+  // right release (LAUNCH-READINESS.md #18 source-map sub-task).
+  release: {
+    name: process.env.npm_package_version || undefined,
+    setCommits: { auto: true, ignoreMissing: true },
+    uploadLegacySourcemaps: process.env.SENTRY_AUTH_TOKEN
+      ? { paths: ['public/'], urlPrefix: '~/' }
+      : undefined,
+  },
+  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+};
+
+module.exports = withSentryConfig(withBundleAnalyzer(nextConfig), SENTRY_WEBPACK_OPTIONS);

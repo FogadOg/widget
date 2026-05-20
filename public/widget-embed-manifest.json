@@ -1,0 +1,12 @@
+{
+  "docs-widget": {
+    "version": "0.1.0",
+    "file": "/docs-widget-0.1.0.js",
+    "integrity": "sha384-tsd50vYsAoplEOvaRm8VE1LweTb7KNOgioLsWGlCu4eMZUPwJRZ4e8tf8/NlyZO+"
+  },
+  "widget": {
+    "version": "0.1.0",
+    "file": "/widget-0.1.0.js",
+    "integrity": "sha384-IbkzvsVboq2Y32icWV37LBOx9G6Dtx1d2P+kv9/+8oLuZVlEqTp/P8lIXoyjlMGl"
+  }
+}

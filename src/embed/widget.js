@@ -6,6 +6,33 @@
   const COMPANY_NAME = 'Companin';
   let POWERED_BY_TEXT = (typeof window !== 'undefined' && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`] && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`].poweredBy) || 'Powered by ';
   const BASE_WIDGET_HOST = 'https://widget.companin.tech';
+  // __WIDGET_VERSION__ is replaced at build time by scripts/build-embed.js using
+  // package.json's version. The literal token below is the build-time sentinel.
+  const WIDGET_VERSION = '__WIDGET_VERSION__';
+  try {
+    window.__COMPANIN_WIDGET_VERSION__ = WIDGET_VERSION;
+  } catch (e) {}
+
+  // Parse an origin string and decide if it belongs to the widget host (companin.tech
+  // or a subdomain). Substring matching would accept e.g. evil-companin.tech.attacker.com,
+  // so we must compare hostnames after URL parsing.
+  const WIDGET_HOST_SUFFIXES = ['companin.tech'];
+  const isTrustedWidgetOrigin = function (origin, allowInsecure) {
+    if (!origin || typeof origin !== 'string') return false;
+    try {
+      const u = new URL(origin);
+      if (!u.host) return false;
+      if (!allowInsecure && u.protocol !== 'https:') return false;
+      const host = u.host.toLowerCase();
+      for (let i = 0; i < WIDGET_HOST_SUFFIXES.length; i++) {
+        const suffix = WIDGET_HOST_SUFFIXES[i];
+        if (host === suffix || host.endsWith('.' + suffix)) return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  };
 
   const REGISTRY_KEY = `__${COMPANY_NAME.toUpperCase()}_WIDGET_INSTANCES__`;
   const sanitizeInstanceId = (value) => String(value || 'default').replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -28,63 +55,70 @@
     console.error(COMPANY_NAME + ' Widget Error:', message, context);
   };
 
-  try {
-    var script = document.currentScript;
-    // document.currentScript can be null when scripts are injected asynchronously
-    // (e.g. by frameworks like Next.js). Try a few robust fallbacks so attributes
-    // such as `data-locale` can still be read from the host page.
-    if (!script) {
+  // Atomically pick an unbound script tag AND mark it bound before returning,
+  // so that multiple widget loaders running back-to-back (LAUNCH-READINESS #21)
+  // never read attributes from a tag that another instance is about to claim.
+  // The bound flag is set inside this helper, not after attribute reads.
+  function selectAndBindScript() {
+    var isBound = function (s) {
+      try { return !!(s && s.getAttribute && s.getAttribute('data-companin-widget-bound') === 'true'); }
+      catch (e) { return false; }
+    };
+    var hasWidgetAttrs = function (s) {
       try {
-        // Prefer an explicit id on the host script if present.
-        // Support both the bare id and locale-suffixed variants (e.g. companin-widget-script-es).
-        script = document.getElementById('companin-widget-script') ||
-          Array.from(document.querySelectorAll('[id^="companin-widget-script"]'))[0] ||
-          script;
+        return !!(s && s.getAttribute && (
+          s.getAttribute('data-client-id') ||
+          s.getAttribute('data-assistant-id') ||
+          (s.src && /widget(\.|\/)/i.test(s.src))
+        ));
+      } catch (e) { return false; }
+    };
+
+    var candidate = document.currentScript;
+    if (candidate && isBound(candidate)) candidate = null;
+
+    if (!candidate) {
+      try {
+        var byId = document.getElementById('companin-widget-script');
+        if (byId && !isBound(byId)) {
+          candidate = byId;
+        } else {
+          var idMatches = Array.from(document.querySelectorAll('[id^="companin-widget-script"]'));
+          for (var i = 0; i < idMatches.length; i++) {
+            if (!isBound(idMatches[i])) { candidate = idMatches[i]; break; }
+          }
+        }
       } catch (e) {}
     }
 
-    if (!script) {
+    if (!candidate) {
       try {
-        // Find any script tag that carries the widget-specific data attributes
-        const scripts = Array.from(document.getElementsByTagName('script'));
-        script = scripts.find(function (s) {
-          try {
-            if (s.getAttribute && s.getAttribute('data-companin-widget-bound') === 'true') return false;
-          } catch (e) {}
-          try {
-            return s && s.getAttribute && (
-              !!s.getAttribute('data-client-id') ||
-              !!s.getAttribute('data-assistant-id') ||
-              // fallback: script whose src looks like a remote widget loader
-              (s.src && /widget(\.|\/)/i.test(s.src))
-            );
-          } catch (e) {
-            return false;
+        var scripts = Array.from(document.getElementsByTagName('script'));
+        for (var j = 0; j < scripts.length; j++) {
+          if (!isBound(scripts[j]) && hasWidgetAttrs(scripts[j])) {
+            candidate = scripts[j];
+            break;
           }
-        }) || scripts.find(function (s) {
-          try {
-            return s && s.getAttribute && (
-              !!s.getAttribute('data-client-id') ||
-              !!s.getAttribute('data-assistant-id') ||
-              // fallback: script whose src looks like a remote widget loader
-              (s.src && /widget(\.|\/)/i.test(s.src))
-            );
-          } catch (e) {
-            return false;
-          }
-        }) || script;
+        }
       } catch (e) {}
     }
+
+    // Mark bound BEFORE returning so the next invocation (whether sync or async)
+    // sees the flag and can't pick the same tag mid-attribute-read.
+    if (candidate && candidate.setAttribute) {
+      try { candidate.setAttribute('data-companin-widget-bound', 'true'); } catch (e) {}
+    }
+    return candidate;
+  }
+
+  try {
+    var script = selectAndBindScript();
 
     if (!script) {
       // As a last resort, avoid crashing the embed and proceed with a safe stub.
       logError("Failed to get current script reference; using fallback stub", {});
       script = { getAttribute: function () { return null; } };
     }
-
-    try {
-      if (script && script.setAttribute) script.setAttribute('data-companin-widget-bound', 'true');
-    } catch (e) {}
 
     // Resolve powered-by text: attribute -> global locales -> default
     try {
@@ -129,6 +163,10 @@
     const autoOpenScrollDepth = parseFloat(script.getAttribute("data-auto-open-scroll-depth") || '0') || 0;
     // Strict origin mode: refuse to postMessage to '*' — only send to the known parent origin
     const strictOrigin = script.getAttribute("data-strict-origin") === "true";
+    // Consent-required mode (LAUNCH-READINESS #16): when set, the widget will
+    // not persist visitor IDs / sessions in localStorage until the host page
+    // calls window.CompaninWidget.grantConsent(). Required for GDPR-strict deploys.
+    const consentRequired = script.getAttribute("data-consent-required") === "true";
     if (!clientId || !assistantId || !configId) {
       const missing = [];
       if (!clientId) missing.push("data-client-id");
@@ -308,15 +346,21 @@
           parentOrigin: window.location.origin,
         });
 
-        // Add custom CSS if provided
-        const customCss = script.getAttribute("data-custom-css");
-        if (customCss) {
-          params.set('customCss', customCss);
+        // Custom CSS is no longer forwarded via the URL query (LAUNCH-READINESS #20).
+        // The dashboard now stores it on WidgetConfig.custom_css and the embed
+        // page reads it from the loaded config. Passing `data-custom-css` is now
+        // a deprecation warning so existing snippets keep working until the
+        // next breaking release.
+        const legacyCustomCss = script.getAttribute("data-custom-css");
+        if (legacyCustomCss) {
+          console.warn(COMPANY_NAME + ' Widget: data-custom-css is deprecated; ' +
+            'set custom_css on your widget configuration in the dashboard instead.');
         }
         // Proactive trigger params
         if (autoOpenDelay > 0) params.set('autoOpenDelay', String(autoOpenDelay));
         if (autoOpenScrollDepth > 0) params.set('autoOpenScrollDepth', String(autoOpenScrollDepth));
         if (strictOrigin) params.set('strictOrigin', 'true');
+        if (consentRequired) params.set('consentRequired', 'true');
 
         iframe.src = `${baseUrl}/embed/session?${params.toString()}`;
         iframe.style.cssText = `
@@ -328,6 +372,16 @@
         `;
         iframe.setAttribute("allow", "clipboard-write");
         iframe.setAttribute("title", COMPANY_NAME + ' Chat Widget');
+        // Defense-in-depth: sandbox the iframe and constrain referrer leakage.
+        // allow-same-origin is required so the embed page can read its own cookies
+        // / localStorage. allow-popups + allow-popups-to-escape-sandbox lets handoff
+        // / source links open in a new tab without inheriting the sandbox.
+        iframe.setAttribute(
+          'sandbox',
+          'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms'
+        );
+        iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+        iframe.setAttribute('loading', 'lazy');
 
         // Handle iframe load errors
         // Use a longer timeout in dev mode since Next.js cold compilation can exceed 15s
@@ -613,6 +667,33 @@
             }
           },
           getErrors: () => errors,
+          // Storage-consent API (LAUNCH-READINESS #16). The host page calls
+          // grantConsent() once the visitor accepts the cookie banner;
+          // revokeConsent() purges widget-prefixed localStorage entries.
+          grantConsent: () => {
+            try {
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'WIDGET_CONSENT_GRANT' },
+                  targetOrigin
+                );
+              }
+            } catch (err) {
+              logError('Failed to forward consent grant', { error: err && err.message });
+            }
+          },
+          revokeConsent: () => {
+            try {
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'WIDGET_CONSENT_REVOKE' },
+                  targetOrigin
+                );
+              }
+            } catch (err) {
+              logError('Failed to forward consent revoke', { error: err && err.message });
+            }
+          },
           destroy: () => {
             try {
               window.removeEventListener("message", handleMessage);
@@ -669,11 +750,18 @@
 
             // Verify origin - always validate, even in dev mode.
             // Allow explicit host-target origin to support custom widget domains.
+            // NOTE: previously this used event.origin.includes("companin.tech"), which
+            // matched any host with that substring (e.g. evil-companin.tech.attacker.com).
+            // We now parse the origin and compare hostnames against a suffix allowlist.
             const validOrigins = new Set([baseUrl, targetOrigin]);
-            const isDevOrigin = event.origin.includes('localhost') || event.origin.includes('127.0.0.1');
+            let isDevOrigin = false;
+            try {
+              const _u = new URL(event.origin);
+              isDevOrigin = _u.hostname === 'localhost' || _u.hostname === '127.0.0.1';
+            } catch (e) {}
             const isValidOrigin = isDev
-              ? (validOrigins.has(event.origin) || isDevOrigin)
-              : (validOrigins.has(event.origin) || event.origin.includes("companin.tech"));
+              ? (validOrigins.has(event.origin) || isDevOrigin || isTrustedWidgetOrigin(event.origin, true))
+              : (validOrigins.has(event.origin) || isTrustedWidgetOrigin(event.origin, false));
 
             if (!isValidOrigin) {
               logError("Message from unauthorized origin", { origin: event.origin });
@@ -895,7 +983,25 @@
     });
   }
 
-  // Helper function to show error in a styled widget
+  // Build a "Powered by Companin" footer node. Uses textContent / createElement
+  // throughout to keep dynamic strings (POWERED_BY_TEXT) out of innerHTML.
+  function buildPoweredByFooter() {
+    const footer = document.createElement('div');
+    footer.style.cssText = 'margin-top:8px; font-size:12px; color:#6b7280;';
+    footer.appendChild(document.createTextNode(POWERED_BY_TEXT + ' '));
+    const link = document.createElement('a');
+    link.href = 'https://' + COMPANY_NAME.toLowerCase() + '.tech';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.style.cssText = 'color:#2563eb; text-decoration:none; margin-left:6px;';
+    link.textContent = COMPANY_NAME;
+    footer.appendChild(link);
+    return footer;
+  }
+
+  // Helper function to show error in a styled widget. Uses textContent for the
+  // dynamic title/message values so callers can't introduce HTML injection if
+  // they ever pass untrusted input.
   function showErrorWidget(title, message) {
     try {
       const errorContainer = document.createElement("div");
@@ -914,23 +1020,40 @@
         z-index: 999999;
       `;
 
-      errorContainer.innerHTML = `
-        <div style="display: flex; align-items: start; gap: 12px;">
-          <div style="flex-shrink: 0; width: 20px; height: 20px; color: #dc2626;">
-            <svg viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-            </svg>
-          </div>
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #dc2626;">${title}</h4>
-            <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.5;">${message}</p>
-          </div>
-          <button onclick="this.parentElement.parentElement.remove()" style="flex-shrink: 0; background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 20px; line-height: 1; padding: 0;">×</button>
-        </div>
-        <div style="margin-top:8px; font-size:12px; color:#6b7280;">
-          ${POWERED_BY_TEXT} <a href="https://${COMPANY_NAME.toLowerCase()}.tech" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:none; margin-left:6px;">${COMPANY_NAME}</a>
-        </div>
-      `;
+      const row = document.createElement('div');
+      row.style.cssText = 'display: flex; align-items: start; gap: 12px;';
+
+      const iconWrap = document.createElement('div');
+      iconWrap.style.cssText = 'flex-shrink: 0; width: 20px; height: 20px; color: #dc2626;';
+      // SVG is a static literal — innerHTML is safe here because none of the
+      // markup is interpolated from caller-provided values.
+      iconWrap.innerHTML = '<svg viewBox="0 0 20 20" fill="currentColor">'
+        + '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>'
+        + '</svg>';
+
+      const body = document.createElement('div');
+      body.style.cssText = 'flex: 1;';
+      const h4 = document.createElement('h4');
+      h4.style.cssText = 'margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #dc2626;';
+      h4.textContent = String(title || '');
+      const p = document.createElement('p');
+      p.style.cssText = 'margin: 0; font-size: 13px; color: #6b7280; line-height: 1.5;';
+      p.textContent = String(message || '');
+      body.appendChild(h4);
+      body.appendChild(p);
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.setAttribute('aria-label', 'Close');
+      closeBtn.style.cssText = 'flex-shrink: 0; background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 20px; line-height: 1; padding: 0;';
+      closeBtn.textContent = '×';
+      closeBtn.addEventListener('click', function () { errorContainer.remove(); });
+
+      row.appendChild(iconWrap);
+      row.appendChild(body);
+      row.appendChild(closeBtn);
+      errorContainer.appendChild(row);
+      errorContainer.appendChild(buildPoweredByFooter());
 
       if (document.body) {
         document.body.appendChild(errorContainer);
@@ -944,34 +1067,31 @@
     }
   }
 
-  // Helper to show error in existing container
+  // Helper to show error in existing container. Same defense as above: any
+  // dynamic string goes through textContent.
   function showErrorInContainer(container, message) {
     try {
-      container.innerHTML = `
-        <div style="
-          background: #fef2f2;
-          border: 1px solid #dc2626;
-          border-radius: 8px;
-          padding: 16px;
-          font-family: system-ui, -apple-system, sans-serif;
-          max-width: 320px;
-        ">
-          <p style="margin: 0; font-size: 14px; color: #dc2626;">${message}</p>
-          <button onclick="window.location.reload()" style="
-            margin-top: 12px;
-            background: #dc2626;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 13px;
-            cursor: pointer;
-          ">Reload Page</button>
-          <div style="margin-top:8px; font-size:12px; color:#6b7280;">
-            ${POWERED_BY_TEXT} <a href="https://${COMPANY_NAME.toLowerCase()}.tech" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:none; margin-left:6px;">${COMPANY_NAME}</a>
-          </div>
-        </div>
-      `;
+      while (container.firstChild) container.removeChild(container.firstChild);
+
+      const card = document.createElement('div');
+      card.style.cssText = 'background: #fef2f2; border: 1px solid #dc2626; border-radius: 8px; padding: 16px; font-family: system-ui, -apple-system, sans-serif; max-width: 320px;';
+
+      const p = document.createElement('p');
+      p.style.cssText = 'margin: 0; font-size: 14px; color: #dc2626;';
+      p.textContent = String(message || '');
+
+      const reload = document.createElement('button');
+      reload.type = 'button';
+      reload.style.cssText = 'margin-top: 12px; background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer;';
+      reload.textContent = 'Reload Page';
+      reload.addEventListener('click', function () {
+        try { window.location.reload(); } catch (e) {}
+      });
+
+      card.appendChild(p);
+      card.appendChild(reload);
+      card.appendChild(buildPoweredByFooter());
+      container.appendChild(card);
     } catch (err) {
       console.error("Failed to show error in container:", err);
     }
