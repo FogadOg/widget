@@ -20,6 +20,13 @@ export function useWidgetAuth() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  // Mirror retryCount into a ref so we can read it inside getAuthToken without
+  // adding retryCount to the useCallback dep array. Putting it in deps caused
+  // every onRetry → setRetryCount → callback identity change → consumer
+  // useEffect teardown+restart, spawning a fresh bootstrap on top of the
+  // still-running retryWithBackoff — a self-amplifying retry storm against
+  // /auth/widget-token.
+  const retryCountRef = useRef(0);
   // Track token expiry so callers can schedule proactive silent refresh
   const tokenExpiresAtRef = useRef<number | null>(null);
   const autoRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -158,6 +165,7 @@ export function useWidgetAuth() {
           initialDelay: 1000,
           maxDelay: 5000,
           onRetry: (attempt, error) => {
+            retryCountRef.current = attempt;
             setRetryCount(attempt);
             logError(error, {
               clientId,
@@ -187,6 +195,7 @@ export function useWidgetAuth() {
 
       setAuthToken(tokenString);
       setAuthError(null);
+      retryCountRef.current = 0;
       setRetryCount(0);
       tokenExpiresAtRef.current = expiresAtMs;
 
@@ -207,17 +216,18 @@ export function useWidgetAuth() {
 
       setAuthError(errorMessage);
       setAuthToken(null);
-      logError(err, { clientId, retryCount });
+      logError(err, { clientId, retryCount: retryCountRef.current });
 
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, [retryCount]);
+  }, []);
 
   const clearAuth = useCallback(() => {
     setAuthToken(null);
     setAuthError(null);
+    retryCountRef.current = 0;
     setRetryCount(0);
     tokenExpiresAtRef.current = null;
     if (autoRefreshTimerRef.current) {
