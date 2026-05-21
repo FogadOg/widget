@@ -240,6 +240,7 @@
           locale,
           startOpen: startOpen.toString(),
           pagePath: window.location.pathname,
+          parentOrigin: window.location.origin,
         });
 
         if (suggestions) {
@@ -260,10 +261,28 @@
           'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms'
         );
         iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-        iframe.setAttribute('loading', 'lazy');
+        // Do NOT use loading="lazy": the container starts display:none until
+        // the iframe sends WIDGET_RESIZE/WIDGET_SHOW. Chrome defers navigation
+        // for lazy iframes with zero layout area, so a lazy iframe inside a
+        // hidden container never fetches → never runs → never posts → the
+        // parent's load timeout fires.
 
         // Handle iframe load errors
         let iframeLoaded = false;
+        // Messages posted before iframe.onload fires would target about:blank,
+        // not the eventual http(s) origin — the browser warns "target origin
+        // doesn't match recipient origin" and silently drops them. Queue calls
+        // that arrive during the initial navigation and flush after load so
+        // a fast click immediately after script injection still opens the
+        // dialog as soon as it's ready.
+        const pendingPosts = [];
+        function postToIframe(message) {
+          if (iframeLoaded && iframe.contentWindow) {
+            iframe.contentWindow.postMessage(message, targetOrigin);
+          } else {
+            pendingPosts.push(message);
+          }
+        }
         const loadTimeout = setTimeout(() => {
           if (!iframeLoaded) {
             logError("Docs widget iframe failed to load (timeout)", { src: iframe.src });
@@ -277,6 +296,13 @@
         iframe.onload = () => {
           iframeLoaded = true;
           clearTimeout(loadTimeout);
+          while (pendingPosts.length && iframe.contentWindow) {
+            try {
+              iframe.contentWindow.postMessage(pendingPosts.shift(), targetOrigin);
+            } catch (e) {
+              logError("Failed to flush queued docs widget message", { error: e && e.message });
+            }
+          }
         };
 
         iframe.onerror = (error) => {
@@ -493,13 +519,7 @@
           },
           open: () => {
             try {
-              if (!iframe.contentWindow) {
-                throw new Error("iframe not ready");
-              }
-              iframe.contentWindow.postMessage(
-                { type: "OPEN_DOCS_DIALOG" },
-                targetOrigin
-              );
+              postToIframe({ type: "OPEN_DOCS_DIALOG" });
               emitEvent("open", { source: "host-api" }, { rawType: "HOST_OPEN_DOCS_DIALOG" });
             } catch (err) {
               logError("Failed to open docs widget", { error: err.message });
@@ -508,13 +528,7 @@
           },
           close: () => {
             try {
-              if (!iframe.contentWindow) {
-                throw new Error("iframe not ready");
-              }
-              iframe.contentWindow.postMessage(
-                { type: "CLOSE_DOCS_DIALOG" },
-                targetOrigin
-              );
+              postToIframe({ type: "CLOSE_DOCS_DIALOG" });
               emitEvent("close", { source: "host-api" }, { rawType: "HOST_CLOSE_DOCS_DIALOG" });
             } catch (err) {
               logError("Failed to close docs widget", { error: err.message });
@@ -542,13 +556,7 @@
           sendMessage: (message) => {
             try {
               emitEvent("message", message, { rawType: "HOST_MESSAGE_SENT", debounceMs: 120 });
-              if (!iframe.contentWindow) {
-                throw new Error("iframe not ready");
-              }
-              iframe.contentWindow.postMessage(
-                { type: "HOST_MESSAGE", data: message },
-                targetOrigin
-              );
+              postToIframe({ type: "HOST_MESSAGE", data: message });
             } catch (err) {
               logError("Failed to send message to docs widget", {
                 error: err.message,

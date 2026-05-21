@@ -1163,38 +1163,37 @@ export default function EmbedClient({
       }
     }
   }, [widgetConfig, isCollapsed, initialParentOrigin, parentTargetOrigin]);
+  // Helper to make an authenticated API call with 401 retry logic
+  async function fetchWithAuthRetry(fetchFn, ...args) {
+    let token = authTokenRef.current || authToken;
+    let response = await fetchFn(token, ...args);
+    if (response.status === 401) {
+      // Try to refresh token and retry once
+      try {
+        const newToken = await (getAuthToken as any)(initialClientId, initialParentOrigin);
+        if (newToken) {
+          authTokenRef.current = newToken;
+          token = newToken;
+          response = await fetchFn(token, ...args);
+        }
+      } catch {}
+    }
+    return response;
+  }
+
   async function loadSessionMessages(sessionId: string, token?: string, isInitial = false, forceReload = false) {
     setIsTyping(true);
     try {
-      let response: Response;
+      // Always use fetchWithAuthRetry for authenticated calls
+      const fetchFn = (tok) => fetch(API.sessionMessages(sessionId), {
+        headers: tok ? {
+          'Authorization': `Bearer ${tok}`,
+          ...embedOriginHeader(initialParentOrigin),
+        } : {},
+      });
+      let response;
       if (token && !forceReload) {
-        response = await fetch(API.sessionMessages(sessionId), {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            ...embedOriginHeader(initialParentOrigin),
-          },
-        });
-        if (response.status === 401) {
-          let newToken: string | undefined;
-          try {
-            newToken = await (getAuthToken as any)(initialClientId, initialParentOrigin);
-          } catch {}
-          if (newToken) {
-            try {
-              await createSession(initialAssistantId, newToken);
-              const newSid = sessionIdRef.current;
-              if (newSid) {
-                // Retry loading messages with new session/token (only once)
-                return await loadSessionMessages(newSid, newToken, isInitial, true);
-              }
-            } catch {
-              // fall through to unauthenticated attempt below
-            }
-          }
-        }
-
-        // Fallback unauthenticated attempt
-        response = await fetch(API.sessionMessages(sessionId ?? undefined));
+        response = await fetchWithAuthRetry(fetchFn);
       } else {
         response = await fetch(API.sessionMessages(sessionId ?? undefined));
       }
@@ -1206,10 +1205,10 @@ export default function EmbedClient({
       const data = await response.json();
 
       if (data.status === 'success' && Array.isArray(data.data?.messages)) {
-        // Convert API messages to widget message format
+        // ...existing code...
         const loadedMessages: Message[] = (data.data.messages as unknown[])
           .filter((msg: unknown) => {
-            // Filter out assistant greeting messages
+            // ...existing code...
             const m = msg as { sender?: string };
             if (m.sender === 'assistant') {
               const userMessages = (data.data.messages as unknown[]).filter(
@@ -1220,6 +1219,7 @@ export default function EmbedClient({
             return true;
           })
           .map((msg: unknown) => {
+            // ...existing code...
             const m = msg as {
               id: string;
               content: string;
@@ -1236,16 +1236,13 @@ export default function EmbedClient({
             };
           });
 
-        // Merge with existing messages: keep any local-only messages (e.g. button
-        // user bubbles with temp- IDs) that the server doesn't know about, while
-        // replacing/adding all server-sourced messages.
+        // ...existing code...
         setMessages(prev => {
+          // ...existing code...
           const serverIds = new Set(loadedMessages.map(m => m.id));
-          // In-memory local messages (normal operation — page not hard-reloaded)
           const inMemoryLocal = prev.filter(
             (m) => m.id.startsWith('temp-') && !serverIds.has(m.id) && !(m as any).pending
           );
-          // Persisted local messages (hard-reload recovery)
           let storedLocal: Message[] = [];
           try {
             const raw = localStorage.getItem(helpers.localMessagesStorageKey(sessionId));
@@ -1271,11 +1268,8 @@ export default function EmbedClient({
           return [...loadedMessages, ...allLocal].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
         });
 
-        // Mark that at least one real load has completed so the persist effect
-        // knows it's safe to remove stale localStorage entries.
         hasLoadedMessagesRef.current = true;
 
-        // Notify parent window about the latest message(s)
         try {
           if (window.parent !== window) {
             const last = loadedMessages[loadedMessages.length - 1];
@@ -1296,18 +1290,13 @@ export default function EmbedClient({
         throw new Error('Invalid messages response format');
       }
     } catch (err: any) {
-      // If this is a programmatic reload (no isInitial flag), rethrow so
-      // callers can handle and log with their own context (e.g. handleSubmit).
       if (!isInitial) {
         throw err;
       }
-
       try {
         console.error('EmbedClient.loadSessionMessages error', err, { sessionId, isInitial });
       } catch {}
-
       logError(err instanceof Error ? (err.message || 'Unknown error') : String(err), { sessionId, isInitial, action: 'loadSessionMessages' });
-      // Non-critical error for initial loads
       if (isInitial) {
         setError('Failed to load conversation history');
       }

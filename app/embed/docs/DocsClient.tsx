@@ -18,7 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useWidgetAuth } from '../../../hooks/useWidgetAuth'
 import { useWidgetTranslation } from '../../../hooks/useWidgetTranslation'
 import { getLocaleDirection, t as translate } from '../../../lib/i18n'
-import { API } from '../../../lib/api'
+import { API, embedOriginHeader } from '../../../lib/api'
 import { validateConfig } from '../../../lib/validateConfig'
 import {
   MessageBranch,
@@ -110,6 +110,7 @@ type Props = {
   startOpen: boolean;
   suggestions?: string[];
   pagePath?: string;
+  parentOrigin?: string;
 };
 
 type MessageType = {
@@ -149,7 +150,7 @@ const defaultSuggestions = [
   "How do I troubleshoot issues?",
 ];
 
-export default function DocsClient({ clientId, assistantId, configId, locale: initialLocale, startOpen, suggestions, pagePath }: Props) {
+export default function DocsClient({ clientId, assistantId, configId, locale: initialLocale, startOpen, suggestions, pagePath, parentOrigin: initialParentOrigin }: Props) {
   const currentSuggestions = suggestions || defaultSuggestions;
   const [open, setOpen] = useState(startOpen);
   const [text, setText] = useState<string>("");
@@ -172,7 +173,13 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [messageFeedbackSubmitted, setMessageFeedbackSubmitted] = useState<Set<string>>(new Set());
   const [widgetConfig, setWidgetConfig] = useState<any>(null);
+  // Parent origin is provided by docs-widget.js as a URL param. The token's
+  // `origin` claim is pinned to this value at /auth/widget-token mint time,
+  // and WidgetScopeMiddleware rejects (403 Origin mismatch) any later API
+  // call whose X-Embed-Origin/Origin/Referer doesn't match. Falling back to
+  // document.referrer is unreliable under strict-origin-when-cross-origin.
   const [parentOrigin] = useState<string>(() => {
+    if (initialParentOrigin) return initialParentOrigin;
     if (typeof window === 'undefined') return '*';
     try {
       if (document.referrer) {
@@ -188,6 +195,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
   });
 
   const resolveParentOrigin = useCallback((): string | undefined => {
+    if (initialParentOrigin) return initialParentOrigin;
     if (typeof window === 'undefined') return undefined;
 
     try {
@@ -203,7 +211,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
     }
 
     return undefined;
-  }, []);
+  }, [initialParentOrigin]);
 
   useEffect(() => {
     helpersScrollToBottom(conversationEndRef.current, scrollAreaRef.current);
@@ -259,6 +267,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          ...embedOriginHeader(initialParentOrigin),
         },
         body: JSON.stringify(requestBody),
       });
@@ -284,7 +293,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
       console.error('Session creation error:', err);
       setError(errorMsg);
     }
-  }, [assistantId, activeLocale]);
+  }, [assistantId, activeLocale, clientId, initialParentOrigin]);
 
   // Validate and restore existing session
   const validateAndRestoreSession = useCallback(async (sessionId: string, token: string) => {
@@ -297,6 +306,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
+          ...embedOriginHeader(initialParentOrigin),
         },
       });
 
@@ -351,6 +361,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
+          ...embedOriginHeader(initialParentOrigin),
         },
       });
 
@@ -391,6 +402,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
+          ...embedOriginHeader(initialParentOrigin),
         },
       });
 
@@ -416,7 +428,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
       console.error('Error fetching widget config:', err);
     }
     return undefined;
-  }, [clientId]);
+  }, [clientId, initialParentOrigin]);
 
 
 
@@ -434,6 +446,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`,
+          ...embedOriginHeader(initialParentOrigin),
         },
         body: JSON.stringify({
           content: content,
@@ -460,7 +473,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
     } finally {
       setStatus("ready");
     }
-  }, [sessionId, authToken, activeLocale, loadSessionMessages]);
+  }, [sessionId, authToken, activeLocale, loadSessionMessages, initialParentOrigin]);
 
   // Handle message feedback submission
   const handleSubmitMessageFeedback = useCallback(async (messageId: string, feedbackType: string = 'thumbs_up') => {
@@ -472,6 +485,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`,
+          ...embedOriginHeader(initialParentOrigin),
         },
         body: JSON.stringify({
           feedback_type: feedbackType,
@@ -492,7 +506,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
     } catch (error) {
       console.error('Error submitting message feedback:', error);
     }
-  }, [authToken]);
+  }, [authToken, initialParentOrigin]);
 
   const addUserMessage = useCallback(
     async (content: string) => {

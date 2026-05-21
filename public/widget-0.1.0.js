@@ -387,7 +387,11 @@
           'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms'
         );
         iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-        iframe.setAttribute('loading', 'lazy');
+        // Do NOT use loading="lazy" here: the container starts display:none
+        // until the iframe sends WIDGET_RESIZE/WIDGET_SHOW. Chrome defers
+        // navigation for lazy iframes with zero layout area, so a lazy iframe
+        // inside a hidden container never fetches → never runs → never posts
+        // → the parent's load timeout fires.
 
         // Handle iframe load errors
         // Use a longer timeout in dev mode since Next.js cold compilation can exceed 15s

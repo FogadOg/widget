@@ -132,10 +132,16 @@ const nextConfig = {
         ],
       },
       {
-        // Next.js static assets under _next may be requested cross-origin
+        // Next.js static assets under _next may be requested cross-origin.
+        // Fonts use <link rel="preload" as="font" crossorigin="anonymous">,
+        // which makes the font fetch a CORS request — CORP alone is not
+        // enough, the response also needs Access-Control-Allow-Origin.
         source: '/_next/static/:path*',
         headers: [
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, OPTIONS' },
+          { key: 'Timing-Allow-Origin', value: '*' },
         ],
       },
       // ── API routes: restrict CORS strictly ───────────────────────────────
