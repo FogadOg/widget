@@ -1865,7 +1865,12 @@ export default function EmbedClient({
       return false;
     }
 
-    const flows = widgetConfig?.greeting_message?.flows || [];
+    // Only consider flows whose `languages` whitelist includes the visitor's
+    // locale (legacy flows with no `languages` are visible in all locales).
+    const flows = (widgetConfig?.greeting_message?.flows || []).filter((candidate: Flow) => {
+      const langs = candidate.languages;
+      return !langs || langs.length === 0 || langs.includes(activeLocale);
+    });
     const flow = flows.find((candidate: Flow) => candidate.trigger === action);
 
     if (!flow) {

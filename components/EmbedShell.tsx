@@ -236,8 +236,16 @@ export default function EmbedShell({
   const hasGreetingMessage = messages.some(m => m.id.startsWith('greeting-'));
   const showGreeting = widgetConfig?.greeting_message && !hasGreetingMessage;
   const greetingText = showGreeting ? getText(widgetConfig.greeting_message.text) : '';
-  // Always show interaction buttons if they exist
-  const interactionButtons = widgetConfig?.greeting_message?.buttons || [];
+  // Only show interaction buttons whose `languages` whitelist includes the
+  // current locale (legacy buttons with no `languages` field are visible in
+  // all locales). The admin manages this per editing-language.
+  const isVisibleInLocale = (item: { languages?: string[] } | null | undefined) => {
+    if (!item) return false;
+    const langs = item.languages;
+    if (!langs || langs.length === 0) return true;
+    return langs.includes(locale);
+  };
+  const interactionButtons = (widgetConfig?.greeting_message?.buttons || []).filter(isVisibleInLocale);
   const showButtons = interactionButtons.length > 0;
 
   // Merge messages and flow responses, then sort by timestamp

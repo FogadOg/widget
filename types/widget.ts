@@ -26,6 +26,8 @@ export type FlowButton = {
   label: Record<string, string>;
   action: string;
   icon?: string;
+  // Optional language whitelist. Undefined/empty means visible in all locales.
+  languages?: string[];
   response?: {
     text?: Record<string, string>;
     buttons?: FlowButton[];
@@ -41,6 +43,8 @@ export type FlowResponse = {
 export type Flow = {
   id: string;
   trigger: string;
+  // Optional language whitelist. Undefined/empty means visible in all locales.
+  languages?: string[];
   responses: Array<{
     text?: Record<string, string>;
     buttons?: FlowButton[];
