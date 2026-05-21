@@ -166,15 +166,6 @@ const initialMessages: MessageType[] = [
 ];
 
 
-const defaultSuggestions = [
-  "How do I get started?",
-  "What are the main features?",
-  "Show me code examples",
-  "Explain the API",
-  "What are best practices?",
-  "How do I troubleshoot issues?",
-];
-
 export default function DocsClient({ clientId, assistantId, configId, locale: initialLocale, startOpen, pagePath, parentOrigin: initialParentOrigin }: Props) {
   const [open, setOpen] = useState(startOpen);
   const [text, setText] = useState<string>("");
@@ -700,9 +691,9 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         <DialogContent className='mb-8 flex h-[calc(100vh-20vh)] min-w-[calc(100vw-20vw)] flex-col justify-between gap-0 p-0'>
           <ScrollArea ref={scrollAreaRef} className='flex flex-col justify-between overflow-hidden'>
             <DialogHeader className='contents space-y-0 text-left'>
-              <DialogTitle className='px-6 pt-6'>{getLocalizedText(widgetConfig?.data?.title, activeLocale) || 'Documentation Assistant'}</DialogTitle>
+              <DialogTitle className='px-6 pt-6'>{getLocalizedText(widgetConfig?.data?.title, activeLocale) || translate(activeLocale, 'docsTitleFallback')}</DialogTitle>
               <DialogDescription className='px-6 text-sm text-muted-foreground'>
-                {getLocalizedText(widgetConfig?.data?.subtitle, activeLocale) || 'How can we help you today?'}
+                {getLocalizedText(widgetConfig?.data?.subtitle, activeLocale) || translate(activeLocale, 'docsSubtitleFallback')}
               </DialogDescription>
               {error && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 px-6 py-2 text-sm" role="alert">
@@ -802,23 +793,25 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
           </ScrollArea>
           <DialogFooter className='px-6 pb-6 sm:justify-end w-full'>
             <div className="flex flex-col gap-4 w-full">
-              <Suggestions>
-                {(() => {
-                  const resolved = resolveLocalizedSuggestions(
-                    widgetConfig?.data?.suggestions,
-                    activeLocale,
-                    widgetConfig?.data?.default_language,
-                  );
-                  const list = resolved.length > 0 ? resolved : defaultSuggestions;
-                  return list.map((suggestion: string) => (
-                    <Suggestion
-                      key={suggestion}
-                      onClick={() => handleSuggestionClick(suggestion)}
-                      suggestion={suggestion}
-                    />
-                  ));
-                })()}
-              </Suggestions>
+              {(() => {
+                const resolved = resolveLocalizedSuggestions(
+                  widgetConfig?.data?.suggestions,
+                  activeLocale,
+                  widgetConfig?.data?.default_language,
+                );
+                if (resolved.length === 0) return null;
+                return (
+                  <Suggestions>
+                    {resolved.map((suggestion: string) => (
+                      <Suggestion
+                        key={suggestion}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        suggestion={suggestion}
+                      />
+                    ))}
+                  </Suggestions>
+                );
+              })()}
               <PromptInput globalDrop multiple onSubmit={handleSubmit}>
                 <PromptInputHeader>
                   <PromptInputAttachments>

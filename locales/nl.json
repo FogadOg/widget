@@ -129,5 +129,8 @@
   "handoffSubmitButton": "Verzoek verzenden",
   "handoffSubmittingButton": "Verzenden...",
   "handoffError": "Er ging iets mis. Probeer het opnieuw.",
-  "handoffConfirmation": "Uw bericht is verzonden. Ons team neemt contact met u op."
+  "handoffConfirmation": "Uw bericht is verzonden. Ons team neemt contact met u op.",
+  "docsTitleFallback": "Documentatie-assistent",
+  "docsSubtitleFallback": "Hoe kunnen we u vandaag helpen?",
+  "docsInitialGreeting": "Hallo! Ik ben uw documentatie-assistent. Hoe kan ik u vandaag helpen?"
 }

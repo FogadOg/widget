@@ -132,5 +132,8 @@
   "handoffConfirmation": "Your message has been sent. Our team will be in touch.",
   "sessionExpiredTitle": "Your session expired",
   "sessionExpiredBody": "We've started a fresh session so you can keep chatting.",
-  "sessionExpiredDismiss": "Dismiss"
+  "sessionExpiredDismiss": "Dismiss",
+  "docsTitleFallback": "Documentation Assistant",
+  "docsSubtitleFallback": "How can we help you today?",
+  "docsInitialGreeting": "Hello! I'm your documentation assistant. How can I help you today?"
 }

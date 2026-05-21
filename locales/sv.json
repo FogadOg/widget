@@ -129,5 +129,8 @@
   "handoffSubmitButton": "Skicka förfrågan",
   "handoffSubmittingButton": "Skickar...",
   "handoffError": "Något gick fel. Försök igen.",
-  "handoffConfirmation": "Ditt meddelande har skickats. Vårt team hör av sig."
+  "handoffConfirmation": "Ditt meddelande har skickats. Vårt team hör av sig.",
+  "docsTitleFallback": "Dokumentationsassistent",
+  "docsSubtitleFallback": "Hur kan vi hjälpa dig idag?",
+  "docsInitialGreeting": "Hej! Jag är din dokumentationsassistent. Hur kan jag hjälpa dig idag?"
 }

@@ -134,11 +134,25 @@
     const registry = getOrCreateRegistry();
     let instanceId = sanitizeInstanceId(requestedInstanceId);
     if (registry[instanceId]) {
-      let copyIndex = 2;
-      while (registry[`${instanceId}-${copyIndex}`]) {
-        copyIndex += 1;
+      // The host re-executed the embed (e.g. host page changed locale and the
+      // <script> remounted with a new src). The previous instance is now stale
+      // — its iframe was created with the old locale. If the host gave an
+      // explicit data-instance-id we reuse that slot by destroying the prior
+      // instance; otherwise (anonymous instance) we fall back to a suffixed id
+      // so two distinct embeds on the same page don't collide.
+      if (explicitInstanceId) {
+        try {
+          const prior = registry[instanceId];
+          if (prior && typeof prior.destroy === 'function') prior.destroy();
+        } catch (_e) {}
+        delete registry[instanceId];
+      } else {
+        let copyIndex = 2;
+        while (registry[`${instanceId}-${copyIndex}`]) {
+          copyIndex += 1;
+        }
+        instanceId = `${instanceId}-${copyIndex}`;
       }
-      instanceId = `${instanceId}-${copyIndex}`;
     }
     const containerId = `${DOCS_WIDGET_SCRIPT_ID}-container-${instanceId}`;
 

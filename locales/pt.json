@@ -129,5 +129,8 @@
   "handoffSubmitButton": "Enviar solicitação",
   "handoffSubmittingButton": "Enviando...",
   "handoffError": "Algo deu errado. Por favor, tente novamente.",
-  "handoffConfirmation": "Sua mensagem foi enviada. Nossa equipe entrará em contato."
+  "handoffConfirmation": "Sua mensagem foi enviada. Nossa equipe entrará em contato.",
+  "docsTitleFallback": "Assistente de documentação",
+  "docsSubtitleFallback": "Como podemos ajudá-lo hoje?",
+  "docsInitialGreeting": "Olá! Sou seu assistente de documentação. Como posso ajudá-lo hoje?"
 }

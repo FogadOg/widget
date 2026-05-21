@@ -129,5 +129,8 @@
   "handoffSubmitButton": "Invia richiesta",
   "handoffSubmittingButton": "Invio in corso...",
   "handoffError": "Qualcosa è andato storto. Riprova.",
-  "handoffConfirmation": "Il tuo messaggio è stato inviato. Il nostro team ti contatterà."
+  "handoffConfirmation": "Il tuo messaggio è stato inviato. Il nostro team ti contatterà.",
+  "docsTitleFallback": "Assistente di documentazione",
+  "docsSubtitleFallback": "Come possiamo aiutarti oggi?",
+  "docsInitialGreeting": "Ciao! Sono il tuo assistente di documentazione. Come posso aiutarti oggi?"
 }

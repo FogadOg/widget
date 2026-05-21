@@ -129,5 +129,8 @@
   "handoffSubmitButton": "Send forespørsel",
   "handoffSubmittingButton": "Sender...",
   "handoffError": "Noe gikk galt. Vennligst prøv igjen.",
-  "handoffConfirmation": "Meldingen din er sendt. Teamet vårt tar kontakt."
+  "handoffConfirmation": "Meldingen din er sendt. Teamet vårt tar kontakt.",
+  "docsTitleFallback": "Dokumentasjonsassistent",
+  "docsSubtitleFallback": "Hvordan kan vi hjelpe deg i dag?",
+  "docsInitialGreeting": "Hei! Jeg er dokumentasjonsassistenten din. Hvordan kan jeg hjelpe deg i dag?"
 }

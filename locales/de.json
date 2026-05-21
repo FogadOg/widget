@@ -129,5 +129,8 @@
   "handoffSubmitButton": "Anfrage senden",
   "handoffSubmittingButton": "Wird gesendet...",
   "handoffError": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
-  "handoffConfirmation": "Ihre Nachricht wurde gesendet. Unser Team meldet sich bei Ihnen."
+  "handoffConfirmation": "Ihre Nachricht wurde gesendet. Unser Team meldet sich bei Ihnen.",
+  "docsTitleFallback": "Dokumentationsassistent",
+  "docsSubtitleFallback": "Wie können wir Ihnen heute helfen?",
+  "docsInitialGreeting": "Hallo! Ich bin Ihr Dokumentationsassistent. Wie kann ich Ihnen heute helfen?"
 }
