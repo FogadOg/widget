@@ -60,6 +60,7 @@ export type WidgetConfig = {
   title: Record<string, string>;
   subtitle: Record<string, string>;
   placeholder: Record<string, string>;
+  suggestions?: string[] | Record<string, string[]>;
   greeting_message: {
     text: Record<string, string>;
     buttons?: FlowButton[];

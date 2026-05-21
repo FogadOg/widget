@@ -42,7 +42,6 @@ describe('Docs page server component', () => {
       configId: 'cfg',
       locale: 'en',
       startOpen: 'true',
-      suggestions: 'one,two',
       pagePath: '/doc',
     };
 
@@ -61,8 +60,7 @@ describe('Docs page server component', () => {
     expect(props.configId).toBe('cfg');
     expect(props.locale).toBe('en');
     expect(props.startOpen).toBe(true);
-    expect(Array.isArray(props.suggestions)).toBe(true);
-    expect(props.suggestions).toEqual(['one', 'two']);
+    expect(props.suggestions).toBeUndefined();
     expect(props.pagePath).toBe('/doc');
   });
 

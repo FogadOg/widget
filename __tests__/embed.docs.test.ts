@@ -90,13 +90,8 @@ describe('bootstrap — valid attributes', () => {
     expect(iframe!.src).toContain('pagePath=');
   });
 
-  it('includes suggestions param in iframe URL when data-suggestions is set', () => {
+  it('does NOT include suggestions param in iframe URL (suggestions now come from widget config)', () => {
     const { iframe } = loadDocsWidget({ ...VALID, 'data-suggestions': 'q1,q2' });
-    expect(iframe!.src).toContain('suggestions=');
-  });
-
-  it('does NOT include suggestions param when data-suggestions is absent', () => {
-    const { iframe } = loadDocsWidget(VALID);
     expect(iframe!.src).not.toContain('suggestions=');
   });
 

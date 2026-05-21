@@ -96,7 +96,6 @@
       script.getAttribute("data-instance") ||
       script.getAttribute("data-key");
     const startOpen = script.getAttribute("data-start-open") === "true";
-    const suggestions = script.getAttribute("data-suggestions");
 
     // Validate required attributes
     if (!clientId || !assistantId || !configId) {
@@ -242,10 +241,6 @@
           pagePath: window.location.pathname,
           parentOrigin: window.location.origin,
         });
-
-        if (suggestions) {
-          params.set("suggestions", suggestions);
-        }
 
         iframe.src = `${baseUrl}/embed/docs?${params.toString()}`;
         iframe.style.cssText = `

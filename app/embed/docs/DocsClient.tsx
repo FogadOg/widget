@@ -102,13 +102,38 @@ export function getLocalizedText(textObj: { [lang: string]: string } | undefined
   return values.length > 0 ? values[0] : '';
 }
 
+export function resolveLocalizedSuggestions(
+  raw: unknown,
+  loc?: string,
+  defaultLanguage?: string,
+): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((s): s is string => typeof s === 'string');
+  }
+  if (raw && typeof raw === 'object') {
+    const map = raw as Record<string, unknown>;
+    const candidates = [loc, defaultLanguage, 'en'].filter(Boolean) as string[];
+    for (const lang of candidates) {
+      const arr = map[lang];
+      if (Array.isArray(arr) && arr.length > 0) {
+        return arr.filter((s): s is string => typeof s === 'string');
+      }
+    }
+    for (const arr of Object.values(map)) {
+      if (Array.isArray(arr) && arr.length > 0) {
+        return arr.filter((s): s is string => typeof s === 'string');
+      }
+    }
+  }
+  return [];
+}
+
 type Props = {
   clientId: string;
   assistantId: string;
   configId: string;
   locale: string;
   startOpen: boolean;
-  suggestions?: string[];
   pagePath?: string;
   parentOrigin?: string;
 };
@@ -150,8 +175,7 @@ const defaultSuggestions = [
   "How do I troubleshoot issues?",
 ];
 
-export default function DocsClient({ clientId, assistantId, configId, locale: initialLocale, startOpen, suggestions, pagePath, parentOrigin: initialParentOrigin }: Props) {
-  const currentSuggestions = suggestions || defaultSuggestions;
+export default function DocsClient({ clientId, assistantId, configId, locale: initialLocale, startOpen, pagePath, parentOrigin: initialParentOrigin }: Props) {
   const [open, setOpen] = useState(startOpen);
   const [text, setText] = useState<string>("");
   const [status, setStatus] = useState<
@@ -779,13 +803,21 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
           <DialogFooter className='px-6 pb-6 sm:justify-end w-full'>
             <div className="flex flex-col gap-4 w-full">
               <Suggestions>
-                {currentSuggestions.map((suggestion: string) => (
-                  <Suggestion
-                    key={suggestion}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    suggestion={suggestion}
-                  />
-                ))}
+                {(() => {
+                  const resolved = resolveLocalizedSuggestions(
+                    widgetConfig?.data?.suggestions,
+                    activeLocale,
+                    widgetConfig?.data?.default_language,
+                  );
+                  const list = resolved.length > 0 ? resolved : defaultSuggestions;
+                  return list.map((suggestion: string) => (
+                    <Suggestion
+                      key={suggestion}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      suggestion={suggestion}
+                    />
+                  ));
+                })()}
               </Suggestions>
               <PromptInput globalDrop multiple onSubmit={handleSubmit}>
                 <PromptInputHeader>
