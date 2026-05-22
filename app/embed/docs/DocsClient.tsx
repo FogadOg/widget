@@ -365,7 +365,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
                 content: msg.content
               }]
             }));
-          setMessages(loadedMessages);
+          setMessages(loadedMessages.length > 0 ? loadedMessages : initialMessages);
           setIsInitialLoad(false);
         } else {
           localStorage.removeItem(getSessionStorageKey(clientId, assistantId));
@@ -417,7 +417,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
                 content: msg.content
               }]
             }));
-          setMessages(loadedMessages);
+          setMessages(loadedMessages.length > 0 ? loadedMessages : initialMessages);
           setIsInitialLoad(false);
         }
       }
