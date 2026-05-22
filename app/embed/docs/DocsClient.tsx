@@ -18,7 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useWidgetAuth } from '../../../hooks/useWidgetAuth'
 import { useWidgetTranslation } from '../../../hooks/useWidgetTranslation'
 import { getLocaleDirection, t as translate } from '../../../lib/i18n'
-import { API, embedOriginHeader } from '../../../lib/api'
+import { API, embedOriginHeader, trackEvent } from '../../../lib/api'
 import { validateConfig } from '../../../lib/validateConfig'
 import {
   MessageBranch,
@@ -238,6 +238,23 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
       document.documentElement.dir = getLocaleDirection(activeLocale);
     }
   }, [activeLocale]);
+
+  // Emit widget_load telemetry once per browser session so the install-status
+  // endpoint can confirm the docs widget is active on a site.
+  useEffect(() => {
+    const loadKey = `companin-telemetry-load-${clientId}-${assistantId}-${configId}`;
+    try {
+      if (localStorage.getItem(loadKey)) return;
+    } catch {
+      // localStorage unavailable — fire anyway
+    }
+    trackEvent('widget_load', assistantId, { widget_config_id: configId }, clientId).catch(() => {});
+    try {
+      localStorage.setItem(loadKey, '1');
+    } catch {
+      // ignore storage errors
+    }
+  }, [assistantId, clientId]);
 
   useEffect(() => {
     const latestAssistant = [...messages].reverse().find((msg) => msg.from === 'assistant');
