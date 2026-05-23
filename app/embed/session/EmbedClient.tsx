@@ -1164,7 +1164,7 @@ export default function EmbedClient({
     }
   }, [widgetConfig, isCollapsed, initialParentOrigin, parentTargetOrigin]);
   // Helper to make an authenticated API call with 401 retry logic
-  async function fetchWithAuthRetry(fetchFn, ...args) {
+  async function fetchWithAuthRetry(fetchFn: (token: string | null, ...rest: unknown[]) => Promise<Response>, ...args: unknown[]) {
     let token = authTokenRef.current || authToken;
     let response = await fetchFn(token, ...args);
     if (response.status === 401) {
@@ -1185,7 +1185,7 @@ export default function EmbedClient({
     setIsTyping(true);
     try {
       // Always use fetchWithAuthRetry for authenticated calls
-      const fetchFn = (tok) => fetch(API.sessionMessages(sessionId), {
+      const fetchFn = (tok: string | null) => fetch(API.sessionMessages(sessionId), {
         headers: tok ? {
           'Authorization': `Bearer ${tok}`,
           ...embedOriginHeader(initialParentOrigin),
