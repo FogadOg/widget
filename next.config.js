@@ -53,19 +53,26 @@ const nextConfig = {
     // Example: EMBED_ALLOWLIST="https://example.com,https://partners.example"
     const rawAllowlist = process.env.EMBED_ALLOWLIST || process.env.NEXT_PUBLIC_EMBED_ALLOWLIST || '';
     const origins = rawAllowlist.split(',').map(s => s.trim()).filter(Boolean);
+    const allowlistMode = (process.env.EMBED_ALLOWLIST_MODE || '').toLowerCase();
+    const dynamicOriginsEnabled = allowlistMode === 'dynamic';
 
     // In production we refuse to start with an unrestricted frame-ancestors policy:
     // without a per-tenant allowlist any site on the internet can frame the embed
     // page. Local dev and tests fall back to '*' so iframe-based test runners work.
-    if (process.env.NODE_ENV === 'production' && origins.length === 0) {
+    if (process.env.NODE_ENV === 'production' && origins.length === 0 && !dynamicOriginsEnabled) {
       throw new Error(
         'EMBED_ALLOWLIST is required in production. Set it to a comma-separated ' +
         'list of trusted embedding origins (e.g. "https://customer-a.com,https://customer-b.com"). ' +
+        'Or set EMBED_ALLOWLIST_MODE=dynamic to manage origin restrictions via backend token policies. ' +
         'See LAUNCH-READINESS.md gap #2 for context.'
       );
     }
 
-    const cspSources = origins.length > 0 ? ["'self'", ...origins].join(' ') : '*';
+    // Dynamic mode avoids deploy-time customer URL updates in this service.
+    // Per-customer enforcement is delegated to backend widget-token/API checks.
+    const cspSources = dynamicOriginsEnabled
+      ? ["'self'", 'https:'].join(' ')
+      : (origins.length > 0 ? ["'self'", ...origins].join(' ') : '*');
 
     // HSTS — set for all routes in production
     const hstsValue = 'max-age=31536000; includeSubDomains; preload';
@@ -114,7 +121,7 @@ const nextConfig = {
           // Embed iframes are cross-origin resources — relax CORP
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
           // Allow cross-origin prefetch/fetch of embed pages (e.g. from localhost:3000 in dev)
-          { key: 'Access-Control-Allow-Origin', value: origins.length > 0 ? origins[0] : '*' },
+          { key: 'Access-Control-Allow-Origin', value: dynamicOriginsEnabled ? '*' : (origins.length > 0 ? origins[0] : '*') },
         ],
       },
       // ── Widget bootstrap and static assets: allow cross-origin loading ──
