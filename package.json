@@ -35,7 +35,6 @@
     "dev:widget": "next dev -p 3001"
   },
   "dependencies": {
-    "@sentry/nextjs": "^9.0.0",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
@@ -51,6 +50,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
+    "@sentry/nextjs": "^10.53.1",
     "@size-limit/preset-small-lib": "^7.0.8",
     "@size-limit/webpack": "^7.0.8",
     "@size-limit/webpack-why": "^7.0.8",
