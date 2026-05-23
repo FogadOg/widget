@@ -48,12 +48,20 @@ import EmbedShell from 'components/EmbedShell';
 export function injectCustomAssets(css?: string) {
   try {
     if (css) {
-      const safe = sanitizeCss(css);
-      if (safe) {
-        const style = document.createElement('style');
-        style.textContent = safe;
-        document.head.appendChild(style);
+      let safe: string | undefined = undefined;
+      try {
+        safe = sanitizeCss(css);
+      } catch (err) {
+        logError(err as Error, { action: 'injectCustomAssets', css });
+        return;
       }
+      if (!safe) {
+        logError('sanitizeCss returned falsy', { action: 'injectCustomAssets', css });
+        return;
+      }
+      const style = document.createElement('style');
+      style.textContent = safe;
+      document.head.appendChild(style);
     }
   } catch (err) {
     logError(err as Error, { action: 'injectCustomAssets', css });

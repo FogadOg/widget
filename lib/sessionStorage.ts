@@ -104,7 +104,6 @@ export const getOrCreateVisitorId = (storageKey: string, prefix: string = 'widge
     if (storedVisitorId) {
       return storedVisitorId;
     }
-
     const visitorId = `${prefix}-${createRandomId()}`;
     safeSet(storageKey, visitorId);
     return visitorId;
@@ -114,11 +113,8 @@ export const getOrCreateVisitorId = (storageKey: string, prefix: string = 'widge
       storageKey,
     });
     try {
-      // Generate a non-colliding fallback id when localStorage is unavailable.
-      // Use secure random where available; fall back to timestamp/random.
-      const randomPart = typeof createRandomId === 'function'
-        ? createRandomId()
-        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
+      // Fallback: use timestamp/random, do NOT call createRandomId (which throws)
+      const randomPart = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
       return `${prefix}-fallback-${randomPart}`;
     } catch {
       return `${prefix}-fallback-${Date.now().toString(36)}`;

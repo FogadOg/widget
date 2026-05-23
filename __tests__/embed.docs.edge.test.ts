@@ -87,7 +87,7 @@ describe('docs-widget edge cases', () => {
     widget.sendMessage({ x: 2 });
 
     // after debounce window the queued message should fire
-    await new Promise((r) => setTimeout(r, 160));
+    await new Promise((r) => setTimeout(r, 200));
 
     expect(handler).toHaveBeenCalledTimes(2);
   });

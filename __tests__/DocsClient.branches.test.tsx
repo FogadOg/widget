@@ -296,14 +296,34 @@ describe('DocsClient targeted branches', () => {
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
 
-    localStorage.clear()
 
+    // Ensure intervalCallback is defined before calling
+    expect(intervalCallback).toBeDefined()
+    if (intervalCallback) {
+      intervalCallback()
+    } else {
+      throw new Error('intervalCallback was not set by setInterval')
+    }
+
+    setIntervalSpy.mockRestore()
+  })
+
+  it('handles network error in createSession and sets error', async () => {
+    // Simulate network error during session creation
+    global.fetch = jest.fn(() => Promise.reject(new Error('Network down')))
+    localStorage.clear()
+    // Patch: define intervalCallback and setIntervalSpy for this test
+    let intervalCallback: (() => void) | undefined
+    const setIntervalSpy = jest.spyOn(global, 'setInterval').mockImplementation(((callback: TimerHandler) => {
+      intervalCallback = callback as () => void
+      return 1 as any
+    }) as any)
+    const { findByText } = render(<DocsClient clientId="c" assistantId="a" configId="cfg" locale="en" startOpen={true} />)
+    await expect(findByText('Network error: Unable to connect')).resolves.toBeTruthy()
     act(() => {
       intervalCallback?.()
     })
-
     expect(intervalCallback).toBeDefined()
-
     setIntervalSpy.mockRestore()
   })
 
