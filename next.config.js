@@ -53,7 +53,9 @@ const nextConfig = {
     // Example: EMBED_ALLOWLIST="https://example.com,https://partners.example"
     const rawAllowlist = process.env.EMBED_ALLOWLIST || process.env.NEXT_PUBLIC_EMBED_ALLOWLIST || '';
     const origins = rawAllowlist.split(',').map(s => s.trim()).filter(Boolean);
-    const allowlistMode = (process.env.EMBED_ALLOWLIST_MODE || '').toLowerCase();
+    // Default to dynamic mode so tenant origins are enforced by backend token
+    // policies without requiring deploy-time edits to EMBED_ALLOWLIST.
+    const allowlistMode = (process.env.EMBED_ALLOWLIST_MODE || 'dynamic').toLowerCase();
     const dynamicOriginsEnabled = allowlistMode === 'dynamic';
 
     // In production we refuse to start with an unrestricted frame-ancestors policy:
