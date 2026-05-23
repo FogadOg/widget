@@ -100,7 +100,7 @@ const createRandomId = (): string => {
 
 export const getOrCreateVisitorId = (storageKey: string, prefix: string = 'widget'): string => {
   try {
-    const storedVisitorId = safeGet(storageKey);
+    const storedVisitorId = localStorage.getItem(storageKey);
     if (storedVisitorId) {
       return storedVisitorId;
     }

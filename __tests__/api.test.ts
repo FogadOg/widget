@@ -74,7 +74,7 @@ describe('API utilities', () => {
 
     it('constructs widgetConfig endpoint correctly', async () => {
       const { API } = await mockEnv({ NEXT_PUBLIC_API_BASE_URL: 'https://api.example.com' });
-      expect(API.widgetConfig('config123')).toBe('https://api.example.com/widget-config/config123');
+      expect(API.widgetConfig('config123')).toBe('https://api.example.com/widget-config/config123/public/');
     });
   });
 

@@ -249,6 +249,8 @@ describe('API — show / hide / open / close / sendMessage / getErrors', () => {
   beforeEach(() => {
     ({ api, iframe } = loadDocsWidget(VALID));
     cw = mockCW(iframe!);
+    // trigger onload so iframeLoaded=true; postToIframe sends directly instead of queuing
+    iframe!.onload!(new Event('load'));
   });
 
   it('show() sets container display:block', () => {

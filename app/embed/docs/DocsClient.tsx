@@ -242,6 +242,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
   // Emit widget_load telemetry once per browser session so the install-status
   // endpoint can confirm the docs widget is active on a site.
   useEffect(() => {
+    if (!clientId || !assistantId) return;
     const loadKey = `companin-telemetry-load-${clientId}-${assistantId}-${configId}`;
     try {
       if (localStorage.getItem(loadKey)) return;

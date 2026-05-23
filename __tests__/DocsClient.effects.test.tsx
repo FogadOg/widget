@@ -279,7 +279,7 @@ describe('DocsClient missing effect/flow coverage', () => {
       if (method === 'GET' && urlStr.includes('widget-config')) {
         return {
           ok: true,
-          json: async () => ({ data: { title: { en: 'Doc Assist' }, subtitle: { en: 'Ask me' }, placeholder: { en: 'Ask here' } } }),
+          json: async () => ({ data: { title: { en: 'Doc Assist' }, subtitle: { en: 'Ask me' }, placeholder: { en: 'Ask here' }, suggestions: ['How do I get started?', 'Tell me more'] } }),
         } as any
       }
 

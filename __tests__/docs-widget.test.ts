@@ -146,6 +146,9 @@ describe('public/docs-widget.js loader', () => {
       },
     });
 
+    // trigger onload so iframeLoaded=true; sendMessage will call postMessage directly, which throws
+    iframe.onload!(new Event('load'));
+
     const onError = jest.fn();
     window.CompaninDocsWidget.onError(onError);
 
@@ -176,6 +179,9 @@ describe('public/docs-widget.js loader', () => {
       writable: true,
       value: { postMessage: postSpy },
     });
+
+    // trigger onload so iframeLoaded=true and postToIframe sends directly
+    iframe.onload!(new Event('load'));
 
     window.CompaninDocsWidget.open();
     expect(postSpy).toHaveBeenCalledWith({ type: 'OPEN_DOCS_DIALOG' }, expect.any(String));

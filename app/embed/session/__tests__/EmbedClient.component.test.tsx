@@ -338,9 +338,15 @@ describe('EmbedClient component', () => {
         data: { id: 'cfg1', widget_type: 'chat', auto_open_delay: 1000 },
       }),
     } as any);
-    fetchMock.mockResolvedValue({
+    // createSession
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ status: 'success', data: { session_id: 'sess-ao', visitor_id: 'v6' } }),
+    } as any);
+    // loadSessionMessages
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: 'success', data: { messages: [] } }),
     } as any);
     global.fetch = fetchMock;
 
@@ -369,9 +375,15 @@ describe('EmbedClient component', () => {
         data: { id: 'cfg1', widget_type: 'chat', auto_open_scroll_depth: 50 },
       }),
     } as any);
-    fetchMock.mockResolvedValue({
+    // createSession
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ status: 'success', data: { session_id: 'sess-scroll', visitor_id: 'v7' } }),
+    } as any);
+    // loadSessionMessages
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: 'success', data: { messages: [] } }),
     } as any);
     global.fetch = fetchMock;
 
@@ -403,13 +415,19 @@ describe('EmbedClient component', () => {
         data: { id: 'cfg1', widget_type: 'chat', ga_measurement_id: 'G-TEST123' },
       }),
     } as any);
-    fetchMock.mockResolvedValue({
+    // createSession
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ status: 'success', data: { session_id: 'sess-ga', visitor_id: 'v-ga' } }),
     } as any);
+    // loadSessionMessages
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: 'success', data: { messages: [] } }),
+    } as any);
     global.fetch = fetchMock;
 
-    render(<EmbedClient {...baseProps} />);
+    render(<EmbedClient {...baseProps} parentOrigin={window.location.origin} />);
     await waitFor(() => expect(screen.getByTestId('embed-shell')).toBeInTheDocument(), { timeout: 5000 });
 
     expect(postMessageSpy).toHaveBeenCalledWith(
@@ -439,9 +457,15 @@ describe('EmbedClient component', () => {
         data: { id: 'cfg1', widget_type: 'chat', hide_on_mobile: true },
       }),
     } as any);
-    fetchMock.mockResolvedValue({
+    // createSession
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ status: 'success', data: { session_id: 'sess-m', visitor_id: 'v-m' } }),
+    } as any);
+    // loadSessionMessages
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: 'success', data: { messages: [] } }),
     } as any);
     global.fetch = fetchMock;
 

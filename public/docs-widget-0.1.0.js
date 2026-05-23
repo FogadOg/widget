@@ -292,8 +292,12 @@
         // dialog as soon as it's ready.
         const pendingPosts = [];
         function postToIframe(message) {
-          if (iframeLoaded && iframe.contentWindow) {
-            iframe.contentWindow.postMessage(message, targetOrigin);
+          if (iframeLoaded) {
+            if (iframe.contentWindow) {
+              iframe.contentWindow.postMessage(message, targetOrigin);
+            } else {
+              throw new Error('iframe contentWindow is unavailable');
+            }
           } else {
             pendingPosts.push(message);
           }

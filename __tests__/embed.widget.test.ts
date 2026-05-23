@@ -110,9 +110,12 @@ describe('bootstrap — valid attributes', () => {
     expect(iframe!.src).toContain('widget.companin.tech');
   });
 
-  it('appends data-custom-css to iframe URL params', () => {
+  it('logs deprecation warning when data-custom-css is used (no longer forwarded via URL)', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const { iframe } = loadWidget({ ...VALID, 'data-custom-css': '.btn{}' });
-    expect(iframe!.src).toContain('customCss=');
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('data-custom-css is deprecated'));
+    expect(iframe!.src).not.toContain('customCss=');
+    warnSpy.mockRestore();
   });
 
   it('uses explicit data-instance-id as registry key', () => {
@@ -147,8 +150,13 @@ describe('bootstrap — valid attributes', () => {
 
   it('deduplicates duplicate instances (appends -2 suffix)', () => {
     loadWidget(VALID);
-    // Second load reuses same window registry (NOT cleared in beforeEach between
-    // the two loadWidget calls). jest.resetModules() forces the IIFE to re-run.
+    // Add a second unbound script with the same attributes so the re-run IIFE
+    // finds it, triggers the dedup logic, and creates a -2 suffixed instance.
+    const stub2 = document.createElement('script');
+    stub2.id = 'companin-widget-script-2';
+    for (const [k, v] of Object.entries(VALID)) stub2.setAttribute(k, v);
+    document.body.appendChild(stub2);
+
     jest.resetModules();
     require(FILE);
     expect((window as any).CompaninWidgets.list().length).toBeGreaterThan(1);

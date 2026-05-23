@@ -25,6 +25,9 @@ describe('scripts/build-embed.js', () => {
     fs.writeFileSync(path.join(tmp, 'src', 'embed', 'widget.js'), widgetContent, 'utf8');
     // ensure output dir exists (script does not create it)
     fs.mkdirSync(path.join(tmp, 'public'), { recursive: true });
+    // the idempotency run requires the temp copy of build-embed.js which resolves
+    // package.json relative to its own __dirname, so we need a copy in tmp
+    fs.copyFileSync(path.join(ROOT, 'package.json'), path.join(tmp, 'package.json'));
 
     // Run build script by requiring the repo script in-process so Jest collects
     // coverage for the original `scripts/build-embed.js`. We mock `fs` so the
@@ -64,9 +67,12 @@ describe('scripts/build-embed.js', () => {
     expect(outDocs.startsWith('// =============================================================================')).toBe(true);
     expect(outWidget.startsWith('// =============================================================================')).toBe(true);
 
-    // output should end with original source content (header + stripped)
-    expect(outDocs.endsWith(docsContent)).toBe(true);
-    expect(outWidget.endsWith(widgetContent)).toBe(true);
+    // output should end with source content after build-time token substitution
+    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+    const VERSION = String(pkg.version || '0.0.0');
+    const applyVersionToken = (s: string) => s.replace(/['"]__WIDGET_VERSION__['"]/g, JSON.stringify(VERSION));
+    expect(outDocs.endsWith(applyVersionToken(docsContent))).toBe(true);
+    expect(outWidget.endsWith(applyVersionToken(widgetContent))).toBe(true);
 
     // Idempotency: run again and ensure files unchanged
     const beforeDocs = outDocs;
@@ -81,7 +87,8 @@ describe('scripts/build-embed.js', () => {
     expect(afterWidget).toBe(beforeWidget);
 
     // Now simulate source already containing a generated header and ensure no duplicate headers
-    const header = `// =============================================================================\n// AUTO-GENERATED FILE — DO NOT EDIT DIRECTLY\n// Source: src/embed/docs-widget.js\n// Regenerate: npm run build:embed\n// =============================================================================\n`;
+    // Header format mirrors what build-embed.js actually writes (includes Version line)
+    const header = `// =============================================================================\n// AUTO-GENERATED FILE — DO NOT EDIT DIRECTLY\n// Source: src/embed/docs-widget.js\n// Version: ${VERSION}\n// Regenerate: npm run build:embed\n// =============================================================================\n`;
     fs.writeFileSync(path.join(tmp, 'src', 'embed', 'docs-widget.js'), header + docsContent, 'utf8');
     // write header to source and require again
     jest.resetModules();
