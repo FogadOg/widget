@@ -14,6 +14,10 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    env:
+      # Required by next.config.js in production builds to avoid open framing.
+      # CI uses a non-production placeholder origin for validation builds.
+      EMBED_ALLOWLIST: https://example.com
 
     steps:
     - uses: actions/checkout@v4

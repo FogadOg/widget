@@ -12,6 +12,9 @@ jobs:
   size-limit:
     name: Size budget check
     runs-on: ubuntu-latest
+    env:
+      # Required by next.config.js in production builds; placeholder for CI only.
+      EMBED_ALLOWLIST: https://example.com
     steps:
       - name: Checkout
         uses: actions/checkout@v4
