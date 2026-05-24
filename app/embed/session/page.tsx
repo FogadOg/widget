@@ -1,7 +1,7 @@
 import EmbedClient from './EmbedClient';
 import ErrorBoundary from '../../../components/ErrorBoundary';
 import { getLocaleDirection, getTranslations } from '../../../lib/i18n';
-import { shouldEnforceEmbedTokenValidation, verifyEmbedToken } from '../../../lib/embedToken';
+import { getEmbedTokenSecretsFromEnv, shouldEnforceEmbedTokenValidation, verifyEmbedToken } from '../../../lib/embedToken';
 
 type Props = {
   searchParams: Promise<{
@@ -22,8 +22,29 @@ function renderEmbedErrorCard(
   locale: string,
   title: string,
   message: React.ReactNode,
+  options?: {
+    errorType?: string;
+    logMessage?: string;
+    context?: Record<string, unknown>;
+  },
 ) {
   const dir = getLocaleDirection(locale);
+  const consoleMessage = options?.logMessage || title;
+  const errorType = options?.errorType || 'embed_error';
+  const payload = {
+    title,
+    message: consoleMessage,
+    errorType,
+    ...(options?.context || {}),
+  };
+  const reporterScript = `(function(){var payload=${JSON.stringify(payload).replace(/</g, '\\u003c')};try{console.error('[Companin Widget Embed Error]',payload);}catch(_e){}try{if(window.parent&&window.parent!==window){window.parent.postMessage({type:'WIDGET_ERROR',data:payload},'*');window.parent.postMessage({type:'WIDGET_SHOW',data:{source:'embed-error',errorType:payload.errorType}},'*');}}catch(error){try{console.error('[Companin Widget Embed Error] Failed to notify parent window',error);}catch(_e){}}})();`;
+
+  console.error('[Companin Widget Embed Error]', {
+    errorType,
+    title,
+    message: consoleMessage,
+    ...(options?.context || {}),
+  });
 
   return (
     <div
@@ -53,6 +74,7 @@ function renderEmbedErrorCard(
         }}>
           {title}
         </h3>
+        <script dangerouslySetInnerHTML={{ __html: reporterScript }} />
         {message}
       </div>
     </div>
@@ -89,15 +111,20 @@ export default async function EmbedPage({ searchParams }: Props) {
           }}>
             Need help? Visit <a href="https://companin.tech/docs" style={{ color: '#2563eb', textDecoration: 'none' }}>{t.widgetConfigOurDocumentation as string}</a>
           </p>
-        </>
+        </>,
+        {
+          errorType: 'missing_params',
+          logMessage: 'Missing required embed parameters.',
+          context: { locale, hasClientId: !!clientId, hasAssistantId: !!assistantId, hasConfigId: !!configId },
+        }
       )
     );
   }
 
   const shouldVerifyToken = shouldEnforceEmbedTokenValidation();
   if (shouldVerifyToken) {
-    const secret = process.env.WIDGET_EMBED_TOKEN_SECRET;
-    if (!secret) {
+    const secrets = getEmbedTokenSecretsFromEnv();
+    if (secrets.length === 0) {
       // Fail closed when JWT enforcement is enabled but secret is missing.
       return (
         renderEmbedErrorCard(
@@ -105,12 +132,17 @@ export default async function EmbedPage({ searchParams }: Props) {
           t.widgetConfigError as string,
           <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
             Widget token verification is enabled but not configured correctly.
-          </p>
+          </p>,
+          {
+            errorType: 'token_config_error',
+            logMessage: 'JWT enforcement is enabled but no widget embed token secret is configured.',
+            context: { locale, assistantId, hasCurrentSecret: !!process.env.WIDGET_EMBED_TOKEN_SECRET },
+          }
         )
       );
     }
 
-    const claims = verifyEmbedToken(clientId, secret, {
+    const claims = verifyEmbedToken(clientId, secrets, {
       requiredAudience: process.env.WIDGET_EMBED_TOKEN_AUDIENCE,
       requiredIssuer: process.env.WIDGET_EMBED_TOKEN_ISSUER,
       assistantId,
@@ -123,7 +155,18 @@ export default async function EmbedPage({ searchParams }: Props) {
           'Unauthorized widget request',
           <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
             The embed token is invalid or expired. Please regenerate your widget snippet.
-          </p>
+          </p>,
+          {
+            errorType: 'invalid_token',
+            logMessage: 'Embed token verification failed. The token is invalid, expired, or signed with an unexpected secret.',
+            context: {
+              locale,
+              assistantId,
+              hasAudience: !!process.env.WIDGET_EMBED_TOKEN_AUDIENCE,
+              hasIssuer: !!process.env.WIDGET_EMBED_TOKEN_ISSUER,
+              acceptedSecretCount: secrets.length,
+            },
+          }
         )
       );
     }

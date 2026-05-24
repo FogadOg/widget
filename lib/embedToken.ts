@@ -16,6 +16,12 @@ type VerifyOptions = {
   nowSeconds?: number;
 };
 
+const EMBED_TOKEN_SECRET_ENV_KEYS = [
+  'WIDGET_EMBED_TOKEN_SECRET',
+  'WIDGET_EMBED_TOKEN_SECRET_PREVIOUS',
+  'WIDGET_EMBED_TOKEN_SECRET_NEXT',
+] as const;
+
 function toBase64Url(input: Buffer): string {
   return input
     .toString('base64')
@@ -52,7 +58,25 @@ function readAssistantClaim(claims: EmbedTokenClaims): string | undefined {
   return undefined;
 }
 
-export function verifyEmbedToken(token: string, secret: string, options?: VerifyOptions): EmbedTokenClaims | null {
+export function getEmbedTokenSecretsFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): string[] {
+  const seen = new Set<string>();
+
+  return EMBED_TOKEN_SECRET_ENV_KEYS
+    .map((key) => (env[key] || '').trim())
+    .filter((secret) => {
+      if (!secret || seen.has(secret)) return false;
+      seen.add(secret);
+      return true;
+    });
+}
+
+function verifyEmbedTokenWithSecret(
+  token: string,
+  secret: string,
+  options?: VerifyOptions,
+): EmbedTokenClaims | null {
   if (!token || !secret) return null;
 
   const parts = token.split('.');
@@ -90,6 +114,21 @@ export function verifyEmbedToken(token: string, secret: string, options?: Verify
   }
 
   return payload;
+}
+
+export function verifyEmbedToken(
+  token: string,
+  secret: string | string[],
+  options?: VerifyOptions,
+): EmbedTokenClaims | null {
+  const secrets = Array.isArray(secret) ? secret : [secret];
+
+  for (const candidate of secrets) {
+    const claims = verifyEmbedTokenWithSecret(token, candidate, options);
+    if (claims) return claims;
+  }
+
+  return null;
 }
 
 export function shouldEnforceEmbedTokenValidation(): boolean {

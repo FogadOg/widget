@@ -68,6 +68,7 @@ describe('Docs page server component', () => {
   test('renders unauthorized UI when JWT enforcement is enabled and token is invalid', async () => {
     process.env.WIDGET_EMBED_ENFORCE_JWT = 'true';
     process.env.WIDGET_EMBED_TOKEN_SECRET = 'test-secret';
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     const element = await (DocsPage as any)({
       searchParams: Promise.resolve({
@@ -82,5 +83,13 @@ describe('Docs page server component', () => {
     expect(html).toContain('Unauthorized widget request');
     expect(html).not.toContain('<html');
     expect(html).not.toContain('data-props=');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[Companin Docs Embed Error]',
+      expect.objectContaining({
+        errorType: 'invalid_token',
+      }),
+    );
+
+    consoleErrorSpy.mockRestore();
   });
 });

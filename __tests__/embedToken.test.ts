@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { shouldEnforceEmbedTokenValidation, verifyEmbedToken } from '../lib/embedToken';
+import { getEmbedTokenSecretsFromEnv, shouldEnforceEmbedTokenValidation, verifyEmbedToken } from '../lib/embedToken';
 
 function toBase64Url(input: Buffer): string {
   return input
@@ -102,6 +102,27 @@ describe('embed token verification', () => {
       nowSeconds,
     });
     expect(claims).not.toBeNull();
+  });
+
+  test('accepts token signed with a fallback secret during rotation', () => {
+    const token = createToken({ exp: nowSeconds + 600, assistantId: 'assistant-1' }, 'old-secret');
+
+    const claims = verifyEmbedToken(token, ['new-secret', 'old-secret'], {
+      assistantId: 'assistant-1',
+      nowSeconds,
+    });
+
+    expect(claims).not.toBeNull();
+  });
+
+  test('collects unique embed token secrets from environment in priority order', () => {
+    const secrets = getEmbedTokenSecretsFromEnv({
+      WIDGET_EMBED_TOKEN_SECRET: 'current-secret',
+      WIDGET_EMBED_TOKEN_SECRET_PREVIOUS: 'previous-secret',
+      WIDGET_EMBED_TOKEN_SECRET_NEXT: 'current-secret',
+    });
+
+    expect(secrets).toEqual(['current-secret', 'previous-secret']);
   });
 
   test('enforcement flag parser supports true/1 and defaults false', () => {

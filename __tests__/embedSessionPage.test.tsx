@@ -1,5 +1,23 @@
 import React from 'react';
+import { createHmac } from 'node:crypto';
 import { renderToStaticMarkup } from 'react-dom/server';
+
+function toBase64Url(input: Buffer): string {
+  return input
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}
+
+function createToken(payload: Record<string, unknown>, secret: string): string {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const headerB64 = toBase64Url(Buffer.from(JSON.stringify(header), 'utf8'));
+  const payloadB64 = toBase64Url(Buffer.from(JSON.stringify(payload), 'utf8'));
+  const signingInput = `${headerB64}.${payloadB64}`;
+  const sig = toBase64Url(createHmac('sha256', secret).update(signingInput).digest());
+  return `${signingInput}.${sig}`;
+}
 
 describe('Embed session page', () => {
   const originalEnv = { ...process.env };
@@ -98,6 +116,7 @@ describe('Embed session page', () => {
   test('returns unauthorized UI when JWT enforcement is enabled and token is invalid', async () => {
     process.env.WIDGET_EMBED_ENFORCE_JWT = 'true';
     process.env.WIDGET_EMBED_TOKEN_SECRET = 'test-secret';
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     const embedClientPath = require.resolve('../app/embed/session/EmbedClient');
     const errorBoundaryPath = require.resolve('../components/ErrorBoundary');
@@ -137,5 +156,56 @@ describe('Embed session page', () => {
     expect(html).toContain('Unauthorized widget request');
     expect(html).not.toContain('<html');
     expect(html).not.toContain('data-embed-client="1"');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[Companin Widget Embed Error]',
+      expect.objectContaining({
+        errorType: 'invalid_token',
+      }),
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  test('accepts token signed with previous secret during rotation', async () => {
+    process.env.WIDGET_EMBED_ENFORCE_JWT = 'true';
+    process.env.WIDGET_EMBED_TOKEN_SECRET = 'new-secret';
+    process.env.WIDGET_EMBED_TOKEN_SECRET_PREVIOUS = 'old-secret';
+
+    const embedClientPath = require.resolve('../app/embed/session/EmbedClient');
+    const errorBoundaryPath = require.resolve('../components/ErrorBoundary');
+    const i18nPath = require.resolve('../lib/i18n');
+
+    jest.doMock(embedClientPath, () => ({
+      __esModule: true,
+      default: (props: any) => React.createElement('div', { 'data-embed-client': '1', 'data-props': JSON.stringify(props) })
+    }));
+
+    jest.doMock(errorBoundaryPath, () => ({
+      __esModule: true,
+      default: ({ children }: any) => React.createElement('div', { 'data-error-boundary': '1' }, children)
+    }));
+
+    jest.doMock(i18nPath, () => ({
+      getLocaleDirection: () => 'ltr',
+      getTranslations: () => ({
+        widgetConfigError: 'Widget Configuration Error',
+        widgetConfigMissingParams: 'Missing required parameters. Please ensure your widget script includes:',
+        widgetConfigOurDocumentation: 'our documentation',
+      }),
+    }));
+
+    const token = createToken({ exp: 4_102_444_800, assistantId: 'assistant-1' }, 'old-secret');
+    const page = require('../app/embed/session/page').default;
+    const element = await page({
+      searchParams: Promise.resolve({
+        clientId: token,
+        assistantId: 'assistant-1',
+        configId: 'config-1',
+        locale: 'en',
+      }),
+    });
+    const html = renderToStaticMarkup(element as any);
+
+    expect(html).toContain('data-embed-client="1"');
   });
 });
