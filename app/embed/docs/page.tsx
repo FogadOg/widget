@@ -1,6 +1,6 @@
 import DocsClient from "./DocsClient";
 import { getLocaleDirection, getTranslations } from '../../../lib/i18n';
-import { getEmbedTokenSecretsFromEnv, shouldEnforceEmbedTokenValidation, verifyEmbedToken } from '../../../lib/embedToken';
+import { getEmbedTokenSecretsFromEnv, isJwtLikeClientId, shouldEnforceEmbedTokenValidation, verifyEmbedToken } from '../../../lib/embedToken';
 
 type Props = {
   searchParams: Promise<{
@@ -120,6 +120,9 @@ export default async function DocsPage({ searchParams }: Props) {
 
   const shouldVerifyToken = shouldEnforceEmbedTokenValidation();
   if (shouldVerifyToken) {
+    if (!isJwtLikeClientId(clientId)) {
+      console.info('[Companin Docs Embed] Skipping JWT verification for legacy clientId format.');
+    } else {
     const secrets = getEmbedTokenSecretsFromEnv();
     if (secrets.length === 0) {
       return (
@@ -138,33 +141,34 @@ export default async function DocsPage({ searchParams }: Props) {
       );
     }
 
-    const claims = verifyEmbedToken(clientId, secrets, {
-      requiredAudience: process.env.WIDGET_EMBED_TOKEN_AUDIENCE,
-      requiredIssuer: process.env.WIDGET_EMBED_TOKEN_ISSUER,
-      assistantId,
-    });
+      const claims = verifyEmbedToken(clientId, secrets, {
+        requiredAudience: process.env.WIDGET_EMBED_TOKEN_AUDIENCE,
+        requiredIssuer: process.env.WIDGET_EMBED_TOKEN_ISSUER,
+        assistantId,
+      });
 
-    if (!claims) {
-      return (
-        renderEmbedErrorCard(
-          locale,
-          'Unauthorized widget request',
-          <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
-            The embed token is invalid or expired. Please regenerate your widget snippet.
-          </p>,
-          {
-            errorType: 'invalid_token',
-            logMessage: 'Docs widget embed token verification failed. The token is invalid, expired, or signed with an unexpected secret.',
-            context: {
-              locale,
-              assistantId,
-              hasAudience: !!process.env.WIDGET_EMBED_TOKEN_AUDIENCE,
-              hasIssuer: !!process.env.WIDGET_EMBED_TOKEN_ISSUER,
-              acceptedSecretCount: secrets.length,
-            },
-          }
-        )
-      );
+      if (!claims) {
+        return (
+          renderEmbedErrorCard(
+            locale,
+            'Unauthorized widget request',
+            <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
+              The embed token is invalid or expired. Please regenerate your widget snippet.
+            </p>,
+            {
+              errorType: 'invalid_token',
+              logMessage: 'Docs widget embed token verification failed. The token is invalid, expired, or signed with an unexpected secret.',
+              context: {
+                locale,
+                assistantId,
+                hasAudience: !!process.env.WIDGET_EMBED_TOKEN_AUDIENCE,
+                hasIssuer: !!process.env.WIDGET_EMBED_TOKEN_ISSUER,
+                acceptedSecretCount: secrets.length,
+              },
+            }
+          )
+        );
+      }
     }
   }
 

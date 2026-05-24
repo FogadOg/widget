@@ -140,3 +140,9 @@ export function shouldEnforceEmbedTokenValidation(): boolean {
   if (raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on') return true;
   return process.env.NODE_ENV === 'production';
 }
+
+export function isJwtLikeClientId(clientId: string): boolean {
+  if (!clientId || typeof clientId !== 'string') return false;
+  const parts = clientId.split('.');
+  return parts.length === 3 && parts.every((part) => part.length > 0);
+}

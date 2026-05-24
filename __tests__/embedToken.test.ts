@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { getEmbedTokenSecretsFromEnv, shouldEnforceEmbedTokenValidation, verifyEmbedToken } from '../lib/embedToken';
+import { getEmbedTokenSecretsFromEnv, isJwtLikeClientId, shouldEnforceEmbedTokenValidation, verifyEmbedToken } from '../lib/embedToken';
 
 function toBase64Url(input: Buffer): string {
   return input
@@ -123,6 +123,12 @@ describe('embed token verification', () => {
     });
 
     expect(secrets).toEqual(['current-secret', 'previous-secret']);
+  });
+
+  test('detects JWT-like and legacy client IDs', () => {
+    expect(isJwtLikeClientId('aaa.bbb.ccc')).toBe(true);
+    expect(isJwtLikeClientId('FNmmyrtzakdIrBkfwkl09QpxwdOpq7nbzP02ik_EXdM')).toBe(false);
+    expect(isJwtLikeClientId('')).toBe(false);
   });
 
   test('enforcement flag parser supports true/1 and defaults false', () => {
