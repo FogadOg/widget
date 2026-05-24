@@ -114,9 +114,11 @@
       return;
     }
 
-    // Determine the base URL with fallback
+    // Determine the base URL with fallback. Treat `data-dev=true` as local-only
+    // so production pages do not try to load loopback resources.
     const isDev = script.getAttribute("data-dev") === "true";
-    const baseUrl = isDev
+    const isLocalPage = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1|::1)$/i.test(window.location.hostname);
+    const baseUrl = isDev && isLocalPage
       ? "http://localhost:3001"
       : BASE_WIDGET_HOST;
 
