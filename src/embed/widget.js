@@ -546,8 +546,9 @@
 
           const now = Date.now();
           const state = debounceState[name] || { lastEmittedAt: 0, timer: null, pendingData: null, pendingRawType: null };
+          const elapsedSinceLast = now - state.lastEmittedAt;
 
-          if ((now - state.lastEmittedAt) > debounceMs) {
+          if (elapsedSinceLast > debounceMs) {
             state.lastEmittedAt = now;
             debounceState[name] = state;
             return emitNow(name, data, options.rawType);
@@ -556,13 +557,14 @@
           state.pendingData = data;
           state.pendingRawType = options.rawType;
           if (state.timer) clearTimeout(state.timer);
+          const trailingDelay = Math.max(0, debounceMs - elapsedSinceLast);
           state.timer = setTimeout(() => {
             state.lastEmittedAt = Date.now();
             emitNow(name, state.pendingData, state.pendingRawType);
             state.pendingData = null;
             state.pendingRawType = null;
             state.timer = null;
-          }, debounceMs);
+          }, trailingDelay);
           debounceState[name] = state;
           return null;
         }

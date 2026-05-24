@@ -93,7 +93,10 @@ export async function trackEvent(
   clientId?: string,
   authToken?: string
 ): Promise<void> {
-  const BASE = getApiBaseUrl() || 'http://127.0.0.1:8000';
+  const BASE = getApiBaseUrl();
+  if (!BASE) {
+    return;
+  }
   const endpoint = `${BASE.replace(/\/+$/, '')}/telemetry/events/`;
 
   const payload: TelemetryPayload = { event_type: eventType };

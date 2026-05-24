@@ -125,9 +125,6 @@ export default async function EmbedPage({ searchParams }: Props) {
 
   const shouldVerifyToken = shouldEnforceEmbedTokenValidation();
   if (shouldVerifyToken) {
-    if (!isJwtLikeClientId(clientId)) {
-      console.info('[Companin Widget Embed] Skipping JWT verification for legacy clientId format.');
-    } else {
     const secrets = getEmbedTokenSecretsFromEnv();
     if (secrets.length === 0) {
       // Fail closed when JWT enforcement is enabled but secret is missing.
@@ -147,6 +144,28 @@ export default async function EmbedPage({ searchParams }: Props) {
       );
     }
 
+    if (!isJwtLikeClientId(clientId)) {
+      return (
+        renderEmbedErrorCard(
+          locale,
+          'Unauthorized widget request',
+          <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
+            The embed token is invalid or expired. Please regenerate your widget snippet.
+          </p>,
+          {
+            errorType: 'invalid_token',
+            logMessage: 'Embed token verification failed. clientId is not in JWT format while enforcement is enabled.',
+            context: {
+              locale,
+              assistantId,
+              hasAudience: !!process.env.WIDGET_EMBED_TOKEN_AUDIENCE,
+              hasIssuer: !!process.env.WIDGET_EMBED_TOKEN_ISSUER,
+              acceptedSecretCount: secrets.length,
+            },
+          }
+        )
+      );
+    } else {
       const claims = verifyEmbedToken(clientId, secrets, {
         requiredAudience: process.env.WIDGET_EMBED_TOKEN_AUDIENCE,
         requiredIssuer: process.env.WIDGET_EMBED_TOKEN_ISSUER,

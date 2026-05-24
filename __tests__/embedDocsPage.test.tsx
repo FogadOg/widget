@@ -1,5 +1,23 @@
 import React from 'react';
+import { createHmac } from 'node:crypto';
 import { renderToStaticMarkup } from 'react-dom/server';
+
+function toBase64Url(input: Buffer): string {
+  return input
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}
+
+function createToken(payload: Record<string, unknown>, secret: string): string {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const headerB64 = toBase64Url(Buffer.from(JSON.stringify(header), 'utf8'));
+  const payloadB64 = toBase64Url(Buffer.from(JSON.stringify(payload), 'utf8'));
+  const signingInput = `${headerB64}.${payloadB64}`;
+  const sig = toBase64Url(createHmac('sha256', secret).update(signingInput).digest());
+  return `${signingInput}.${sig}`;
+}
 
 jest.mock('../app/embed/docs/DocsClient', () => {
   return function MockDocsClient(props: any) {
@@ -91,5 +109,62 @@ describe('Docs page server component', () => {
     );
 
     consoleErrorSpy.mockRestore();
+  });
+
+  test('renders config error when JWT enforcement is enabled but token secret is missing', async () => {
+    process.env.WIDGET_EMBED_ENFORCE_JWT = 'true';
+    delete process.env.WIDGET_EMBED_TOKEN_SECRET;
+    delete process.env.WIDGET_EMBED_TOKEN_SECRET_PREVIOUS;
+    delete process.env.WIDGET_EMBED_TOKEN_SECRET_NEXT;
+
+    const element = await (DocsPage as any)({
+      searchParams: Promise.resolve({
+        clientId: 'header.payload.signature',
+        assistantId: 'a1',
+        configId: 'cfg',
+        locale: 'en',
+      }),
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain('Docs Assistant Configuration Error');
+    expect(html).toContain('Widget token verification is enabled but not configured correctly.');
+  });
+
+  test('renders unauthorized UI for JWT-like token with invalid signature', async () => {
+    process.env.WIDGET_EMBED_ENFORCE_JWT = 'true';
+    process.env.WIDGET_EMBED_TOKEN_SECRET = 'test-secret';
+
+    const element = await (DocsPage as any)({
+      searchParams: Promise.resolve({
+        clientId: 'header.payload.signature',
+        assistantId: 'a1',
+        configId: 'cfg',
+        locale: 'en',
+      }),
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain('Unauthorized widget request');
+    expect(html).not.toContain('data-props=');
+  });
+
+  test('renders DocsClient for valid JWT when enforcement is enabled', async () => {
+    process.env.WIDGET_EMBED_ENFORCE_JWT = 'true';
+    process.env.WIDGET_EMBED_TOKEN_SECRET = 'test-secret';
+
+    const token = createToken({ exp: 4_102_444_800, assistantId: 'a1' }, 'test-secret');
+    const element = await (DocsPage as any)({
+      searchParams: Promise.resolve({
+        clientId: token,
+        assistantId: 'a1',
+        configId: 'cfg',
+        locale: 'en',
+      }),
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain('data-props=');
+    expect(html).not.toContain('Unauthorized widget request');
   });
 });

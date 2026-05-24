@@ -69,4 +69,14 @@ describe('telemetry helper', () => {
     const call = (global.fetch as jest.Mock).mock.calls[0][1];
     expect(call.headers).not.toHaveProperty('Authorization');
   });
+
+  it('does not attempt telemetry when API base URL is missing', async () => {
+    process.env.NEXT_PUBLIC_API_BASE_URL = '';
+    jest.resetModules();
+    trackEvent = require('../lib/api').trackEvent;
+
+    await trackEvent('widget_open', undefined, {}, 'clientA');
+
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
 });

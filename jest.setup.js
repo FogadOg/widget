@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom'
 import { MessageChannel } from 'worker_threads'
 import { TextEncoder, TextDecoder } from 'util'
+import React from 'react'
 
 // ---------------------------------------------------------------------------
 // Polyfill Web Fetch API globals (Request, Response, Headers, fetch)
@@ -81,6 +82,13 @@ console.warn = (...args) => {
 // we still mock the module so any runtime access is safe
 jest.mock('baseline-browser-mapping', () => ({
   // empty stub
+}));
+
+jest.mock('next/script', () => ({
+  __esModule: true,
+  default: (props) => {
+    return React.createElement('script', props);
+  },
 }));
 
 // NODE_ENV=test is guaranteed by jest.env.js (a setupFiles entry that runs
