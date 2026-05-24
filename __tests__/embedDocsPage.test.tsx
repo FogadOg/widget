@@ -35,6 +35,7 @@ jest.mock('../lib/i18n', () => ({
 }));
 
 import DocsPage from '../app/embed/docs/page';
+import { renderDocsEmbedErrorCard } from '../app/embed/docs/renderEmbedErrorCard';
 
 describe('Docs page server component', () => {
   const originalEnv = { ...process.env };
@@ -52,6 +53,26 @@ describe('Docs page server component', () => {
     expect(html).toContain('data-client-id');
     expect(html).toContain('data-assistant-id');
     expect(html).toContain('data-config-id');
+  });
+
+  test('renderEmbedErrorCard falls back to default error metadata when options are omitted', () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const element = renderDocsEmbedErrorCard('en', 'Default Error Title', React.createElement('p', null, 'body'));
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain('Default Error Title');
+    expect(html).toContain('/embed-error-reporter.js');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[Companin Docs Embed Error]',
+      expect.objectContaining({
+        errorType: 'embed_error',
+        title: 'Default Error Title',
+        message: 'Default Error Title',
+      }),
+    );
+
+    consoleErrorSpy.mockRestore();
   });
 
   test('renders DocsClient with correct props when params provided', async () => {
@@ -81,6 +102,31 @@ describe('Docs page server component', () => {
     expect(props.startOpen).toBe(true);
     expect(props.suggestions).toBeUndefined();
     expect(props.pagePath).toBe('/doc');
+  });
+
+  test('applies default locale and false startOpen when optional params are omitted', async () => {
+    const params = {
+      clientId: 'c-default',
+      assistantId: 'a-default',
+      configId: 'cfg-default',
+    };
+
+    const element = await (DocsPage as any)({ searchParams: Promise.resolve(params) });
+    const html = renderToStaticMarkup(element);
+
+    const m = html.match(/data-props="([^"]*)"/);
+    expect(m).toBeTruthy();
+    const raw = m ? m[1] : '';
+    const decoded = raw.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+    const props = JSON.parse(decoded);
+
+    expect(props.clientId).toBe('c-default');
+    expect(props.assistantId).toBe('a-default');
+    expect(props.configId).toBe('cfg-default');
+    expect(props.locale).toBe('en');
+    expect(props.startOpen).toBe(false);
+    expect(props.pagePath).toBeUndefined();
+    expect(props.parentOrigin).toBeUndefined();
   });
 
   test('renders unauthorized UI when JWT enforcement is enabled and token is invalid', async () => {

@@ -66,6 +66,50 @@ describe('Embed session page', () => {
     expect(html).toContain('data-config-id');
   });
 
+  test('renderEmbedErrorCard falls back to default error metadata when options are omitted', () => {
+    const embedClientPath = require.resolve('../app/embed/session/EmbedClient');
+    const errorBoundaryPath = require.resolve('../components/ErrorBoundary');
+    const i18nPath = require.resolve('../lib/i18n');
+
+    jest.doMock(embedClientPath, () => ({
+      __esModule: true,
+      default: (props: any) => React.createElement('div', { 'data-embed-client': '1', 'data-props': JSON.stringify(props) })
+    }));
+
+    jest.doMock(errorBoundaryPath, () => ({
+      __esModule: true,
+      default: ({ children }: any) => React.createElement('div', { 'data-error-boundary': '1' }, children)
+    }));
+
+    jest.doMock(i18nPath, () => ({
+      getLocaleDirection: () => 'ltr',
+      getTranslations: () => ({
+        widgetConfigError: 'Widget Configuration Error',
+        widgetConfigMissingParams: 'Missing required parameters. Please ensure your widget script includes:',
+        widgetConfigOurDocumentation: 'our documentation',
+      }),
+    }));
+
+    const helperModule = require('../app/embed/session/renderEmbedErrorCard');
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const element = helperModule.renderSessionEmbedErrorCard('en', 'Default Session Error', React.createElement('p', null, 'body'));
+    const html = renderToStaticMarkup(element as any);
+
+    expect(html).toContain('Default Session Error');
+    expect(html).toContain('/embed-error-reporter.js');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[Companin Widget Embed Error]',
+      expect.objectContaining({
+        errorType: 'embed_error',
+        title: 'Default Session Error',
+        message: 'Default Session Error',
+      }),
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
   test('renders EmbedClient when required params provided', async () => {
     const embedClientPath = require.resolve('../app/embed/session/EmbedClient');
     const errorBoundaryPath = require.resolve('../components/ErrorBoundary');
@@ -111,6 +155,55 @@ describe('Embed session page', () => {
     expect(html).toContain('client-1');
     expect(html).toContain('assistant-1');
     expect(html).toContain('config-1');
+  });
+
+  test('parses startOpen, strictOrigin, and consentRequired flags from query params', async () => {
+    const embedClientPath = require.resolve('../app/embed/session/EmbedClient');
+    const errorBoundaryPath = require.resolve('../components/ErrorBoundary');
+    const i18nPath = require.resolve('../lib/i18n');
+
+    jest.doMock(embedClientPath, () => ({
+      __esModule: true,
+      default: (props: any) => React.createElement('div', { 'data-embed-client': '1', 'data-props': JSON.stringify(props) })
+    }));
+
+    jest.doMock(errorBoundaryPath, () => ({
+      __esModule: true,
+      default: ({ children }: any) => React.createElement('div', { 'data-error-boundary': '1' }, children)
+    }));
+
+    jest.doMock(i18nPath, () => ({
+      getLocaleDirection: () => 'ltr',
+      getTranslations: () => ({
+        widgetConfigError: 'Widget Configuration Error',
+        widgetConfigMissingParams: 'Missing required parameters. Please ensure your widget script includes:',
+        widgetConfigOurDocumentation: 'our documentation',
+      }),
+    }));
+
+    const page = require('../app/embed/session/page').default;
+
+    const element = await page({
+      searchParams: Promise.resolve({
+        clientId: 'client-flags',
+        assistantId: 'assistant-flags',
+        configId: 'config-flags',
+        startOpen: 'false',
+        strictOrigin: 'true',
+        consentRequired: 'true',
+      }),
+    });
+    const html = renderToStaticMarkup(element as any);
+
+    const m = html.match(/data-props="([^"]*)"/);
+    expect(m).toBeTruthy();
+    const raw = m ? m[1] : '';
+    const decoded = raw.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+    const props = JSON.parse(decoded);
+
+    expect(props.startOpen).toBe(false);
+    expect(props.strictOrigin).toBe(true);
+    expect(props.consentRequired).toBe(true);
   });
 
   test('returns unauthorized UI when JWT enforcement is enabled and token is invalid', async () => {
