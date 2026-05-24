@@ -12,7 +12,7 @@
 
     try {
       console.error('[Companin ' + scope + ' Embed Error]', payload);
-    } catch (_err) {}
+    } catch {}
 
     if (window.parent && window.parent !== window) {
       window.parent.postMessage({ type: 'WIDGET_ERROR', data: payload }, '*');
@@ -27,6 +27,6 @@
   } catch (err) {
     try {
       console.error('[Companin Embed Error] Reporter failed', err);
-    } catch (_err) {}
+    } catch {}
   }
 })();

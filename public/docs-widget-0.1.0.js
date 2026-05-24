@@ -13,7 +13,7 @@
   let POWERED_BY_TEXT = (typeof window !== 'undefined' && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`] && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`].poweredBy) || 'Powered by ';
   const BASE_WIDGET_HOST = 'https://widget.companin.tech';
   const WIDGET_VERSION = "0.1.0";
-  try { window.__COMPANIN_WIDGET_VERSION__ = WIDGET_VERSION; } catch (e) {}
+  try { window.__COMPANIN_WIDGET_VERSION__ = WIDGET_VERSION; } catch {}
 
   // Strict origin parser: substring matching on 'companin.tech' would also accept
   // hosts like evil-companin.tech.attacker.com, so we require either an exact host
@@ -31,7 +31,7 @@
         if (host === s || host.endsWith('.' + s)) return true;
       }
       return false;
-    } catch (e) { return false; }
+    } catch { return false; }
   };
   const DOCS_REGISTRY_KEY = `__${COMPANY_NAME.toUpperCase()}_DOCS_WIDGET_INSTANCES__`;
   const sanitizeInstanceId = (value) => String(value || 'default').replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -63,7 +63,7 @@
   if (!script) {
     try {
       script = document.getElementById('companin-docs-widget-script') || script;
-    } catch (_e) {}
+    } catch {}
   }
   if (!script) {
     try {
@@ -71,18 +71,18 @@
       script = scripts.find(function (s) {
         try {
           if (s.getAttribute && s.getAttribute('data-companin-docs-widget-bound') === 'true') return false;
-        } catch (_e) {}
+        } catch {}
         try {
           return s && s.getAttribute && (
             !!s.getAttribute('data-client-id') ||
             !!s.getAttribute('data-assistant-id') ||
             (s.src && /docs-widget(\.|\/)/i.test(s.src))
           );
-        } catch (_e) {
+        } catch {
           return false;
         }
       }) || script;
-    } catch (_e) {}
+    } catch {}
   }
 
     // Get attributes with validation
@@ -152,7 +152,7 @@
         try {
           const prior = registry[instanceId];
           if (prior && typeof prior.destroy === 'function') prior.destroy();
-        } catch (_e) {}
+        } catch {}
         delete registry[instanceId];
       } else {
         let copyIndex = 2;
@@ -599,7 +599,7 @@
               }
               try {
                 delete registry[instanceId];
-              } catch (_e) {}
+              } catch {}
               try {
                 const remainingIds = Object.keys(registry);
                 if (window.CompaninDocsWidget === docsWidgetApi) {
@@ -639,7 +639,7 @@
             try {
               const _u = new URL(event.origin);
               isDevOrigin = _u.hostname === 'localhost' || _u.hostname === '127.0.0.1';
-            } catch (e) {}
+            } catch {}
             if (isDev) {
               if (!validOrigins.has(event.origin) && !isDevOrigin && !isTrustedWidgetOrigin(event.origin, true)) return;
             } else if (!validOrigins.has(event.origin) && !isTrustedWidgetOrigin(event.origin, false)) {

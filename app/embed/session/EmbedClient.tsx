@@ -706,13 +706,6 @@ export default function EmbedClient({
     return () => {
       cancelled = true;
     };
-    // t.failedToLoadWidget intentionally excluded from deps below — when the
-    // translation provider rebuilds its t object every render, including it
-    // in the dep array causes the bootstrap to re-fire on every keystroke and
-    // re-mint widget tokens against the rate-limited /auth/widget-token
-    // endpoint. The string is only read once on error and never changes for
-    // a given locale, so static reference is safe.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getAuthToken, initialAssistantId, initialClientId, initialConfigId, initialParentOrigin, sessionStorageKey]);
 
   // --- Streaming sendMessage handler ---

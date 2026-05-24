@@ -1,4 +1,5 @@
 import DocsClient from "./DocsClient";
+import Script from 'next/script';
 import { getLocaleDirection, getTranslations } from '../../../lib/i18n';
 import { getEmbedTokenSecretsFromEnv, isJwtLikeClientId, shouldEnforceEmbedTokenValidation, verifyEmbedToken } from '../../../lib/embedToken';
 
@@ -71,7 +72,7 @@ function renderEmbedErrorCard(
         }}>
           {title}
         </h3>
-        <script src="/embed-error-reporter.js" data-error-payload={encodedPayload} />
+        <Script src="/embed-error-reporter.js" data-error-payload={encodedPayload} strategy="afterInteractive" />
         {message}
       </div>
     </div>
