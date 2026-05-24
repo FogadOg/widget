@@ -392,6 +392,7 @@
         // Handle iframe load errors
         // Use a longer timeout in dev mode since Next.js cold compilation can exceed 15s
         let iframeLoaded = false;
+        let visibilityFallbackTimeout = null;
         const loadTimeout = setTimeout(() => {
           if (!iframeLoaded) {
             logError("Widget iframe failed to load (timeout)", { src: iframe.src });
@@ -405,6 +406,11 @@
       iframe.onload = () => {
         iframeLoaded = true;
         clearTimeout(loadTimeout);
+        visibilityFallbackTimeout = setTimeout(() => {
+          if (container.style.display === 'none') {
+            container.style.display = 'block';
+          }
+        }, 1200);
         try {
           // If the host page provided an inline ChatWidgetConfig, forward it into the iframe
           let iframeWindow = null;
@@ -426,6 +432,9 @@
 
       iframe.onerror = (error) => {
         clearTimeout(loadTimeout);
+        if (visibilityFallbackTimeout) {
+          clearTimeout(visibilityFallbackTimeout);
+        }
         logError("Widget iframe failed to load", { error, src: iframe.src });
         showErrorInContainer(
           container,
@@ -885,6 +894,10 @@
                 break;
 
               case "WIDGET_SHOW":
+                if (visibilityFallbackTimeout) {
+                  clearTimeout(visibilityFallbackTimeout);
+                  visibilityFallbackTimeout = null;
+                }
                 allowDisplay = true;
                 container.style.display = "block";
                 emitEvent('open', data, { rawType: type });

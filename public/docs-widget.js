@@ -304,6 +304,7 @@
             pendingPosts.push(message);
           }
         }
+        let visibilityFallbackTimeout = null;
         const loadTimeout = setTimeout(() => {
           if (!iframeLoaded) {
             logError("Docs widget iframe failed to load (timeout)", { src: iframe.src });
@@ -317,6 +318,11 @@
         iframe.onload = () => {
           iframeLoaded = true;
           clearTimeout(loadTimeout);
+          visibilityFallbackTimeout = setTimeout(() => {
+            if (container.style.display === 'none') {
+              container.style.display = 'block';
+            }
+          }, 1200);
           while (pendingPosts.length && iframe.contentWindow) {
             try {
               iframe.contentWindow.postMessage(pendingPosts.shift(), targetOrigin);
@@ -328,6 +334,9 @@
 
         iframe.onerror = (error) => {
           clearTimeout(loadTimeout);
+          if (visibilityFallbackTimeout) {
+            clearTimeout(visibilityFallbackTimeout);
+          }
           logError("Docs widget iframe failed to load", { error, src: iframe.src });
           showErrorInContainer(
             container,
@@ -690,6 +699,10 @@
                 break;
 
               case "WIDGET_SHOW":
+                if (visibilityFallbackTimeout) {
+                  clearTimeout(visibilityFallbackTimeout);
+                  visibilityFallbackTimeout = null;
+                }
                 container.style.display = "block";
                 emitEvent("open", data || { source: "widget" }, { rawType: type });
                 _gaTrack('widget_open', { assistant_id: assistantId });

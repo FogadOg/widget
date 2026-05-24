@@ -30,6 +30,7 @@ describe('Docs page server component', () => {
     const html = renderToStaticMarkup(element);
 
     expect(html).toContain('Docs Assistant Configuration Error');
+    expect(html).not.toContain('<html');
     expect(html).toContain('data-client-id');
     expect(html).toContain('data-assistant-id');
     expect(html).toContain('data-config-id');
@@ -79,6 +80,7 @@ describe('Docs page server component', () => {
     const html = renderToStaticMarkup(element);
 
     expect(html).toContain('Unauthorized widget request');
+    expect(html).not.toContain('<html');
     expect(html).not.toContain('data-props=');
   });
 });

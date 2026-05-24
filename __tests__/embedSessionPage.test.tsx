@@ -42,6 +42,7 @@ describe('Embed session page', () => {
     const html = renderToStaticMarkup(element as any);
 
     expect(html).toContain('Widget Configuration Error');
+    expect(html).not.toContain('<html');
     expect(html).toContain('data-client-id');
     expect(html).toContain('data-assistant-id');
     expect(html).toContain('data-config-id');
@@ -134,6 +135,7 @@ describe('Embed session page', () => {
     const html = renderToStaticMarkup(element as any);
 
     expect(html).toContain('Unauthorized widget request');
+    expect(html).not.toContain('<html');
     expect(html).not.toContain('data-embed-client="1"');
   });
 });
