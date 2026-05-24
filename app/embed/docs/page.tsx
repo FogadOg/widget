@@ -31,9 +31,10 @@ function renderEmbedErrorCard(
     title,
     message: consoleMessage,
     errorType,
+    scope: 'docs',
     ...(options?.context || {}),
   };
-  const reporterScript = `(function(){var payload=${JSON.stringify(payload).replace(/</g, '\\u003c')};try{console.error('[Companin Docs Embed Error]',payload);}catch(_e){}try{if(window.parent&&window.parent!==window){window.parent.postMessage({type:'WIDGET_ERROR',data:payload},'*');window.parent.postMessage({type:'WIDGET_SHOW',data:{source:'embed-error',errorType:payload.errorType}},'*');}}catch(error){try{console.error('[Companin Docs Embed Error] Failed to notify parent window',error);}catch(_e){}}})();`;
+  const encodedPayload = encodeURIComponent(JSON.stringify(payload));
 
   console.error('[Companin Docs Embed Error]', {
     errorType,
@@ -70,7 +71,7 @@ function renderEmbedErrorCard(
         }}>
           {title}
         </h3>
-        <script dangerouslySetInnerHTML={{ __html: reporterScript }} />
+        <script src="/embed-error-reporter.js" data-error-payload={encodedPayload} />
         {message}
       </div>
     </div>
