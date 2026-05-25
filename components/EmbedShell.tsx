@@ -51,6 +51,7 @@ type Props = {
   isPersistent?: boolean;
   sessionExpiredBanner?: boolean;
   onDismissSessionExpiredBanner?: () => void;
+  isOffline?: boolean;
 };
 
 
@@ -98,6 +99,7 @@ export default function EmbedShell({
   locale: localeProp,
   sessionExpiredBanner = false,
   onDismissSessionExpiredBanner,
+  isOffline = false,
 }: Props) {
   const { translations: t, locale: hookLocale } = useWidgetTranslation();
   const locale = localeProp || hookLocale;
@@ -406,6 +408,15 @@ export default function EmbedShell({
                 </div>
               )}
 
+              {isOffline && (
+                <div role="status" aria-live="polite" className="flex items-center gap-2 mx-3 mt-3 px-3 py-2 rounded text-xs" style={{ background: '#f0f9ff', border: '1px solid #7dd3fc', color: '#0c4a6e' }}>
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6zm-1 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                  <span><strong className="mr-1">You&apos;re offline.</strong>Messages will be sent when your connection is restored.</span>
+                </div>
+              )}
+
               {sessionExpiredBanner && (
                 <div role="status" aria-live="polite" className="flex items-center justify-between gap-2 mx-3 mt-3 px-3 py-2 rounded text-xs" style={{ background: '#fef3c7', border: '1px solid #fcd34d', color: '#78350f' }}>
                   <span><strong className="mr-1">{translate(locale, 'sessionExpiredTitle')}</strong>{translate(locale, 'sessionExpiredBody')}</span>
@@ -691,6 +702,15 @@ export default function EmbedShell({
                 {error && (
                   <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mx-3 mt-3 rounded" role="alert">
                     <p className="text-sm">{error}</p>
+                  </div>
+                )}
+
+                {isOffline && (
+                  <div role="status" aria-live="polite" className="flex items-center gap-2 mx-3 mt-3 px-3 py-2 rounded text-xs" style={{ background: '#f0f9ff', border: '1px solid #7dd3fc', color: '#0c4a6e' }}>
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6zm-1 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    </svg>
+                    <span><strong className="mr-1">You&apos;re offline.</strong>Messages will be sent when your connection is restored.</span>
                   </div>
                 )}
 

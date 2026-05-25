@@ -432,6 +432,9 @@ export default function EmbedClient({
   }, [messages, sessionId]);
   const authTokenRef = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(() =>
+    typeof navigator !== 'undefined' ? !navigator.onLine : false
+  );
   const [isEmbedded, setIsEmbedded] = useState(false);
   const [assistantName, setAssistantName] = useState<string>('');
   const [widgetConfig, setWidgetConfig] = useState<WidgetConfig | null>(null);
@@ -491,6 +494,17 @@ export default function EmbedClient({
   useEffect(() => {
     authTokenRef.current = authToken ?? null;
   }, [authToken]);
+
+  useEffect(() => {
+    const onOnline = () => setIsOffline(false);
+    const onOffline = () => setIsOffline(true);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -721,56 +735,127 @@ export default function EmbedClient({
   }, [getAuthToken, initialAssistantId, initialClientId, initialConfigId, initialParentOrigin, sessionStorageKey]);
 
   // --- Streaming sendMessage handler ---
-  // This replaces the normal message send logic if the API supports streaming
+  // Supports SSE with: AbortController timeout, up to 2 retries with backoff,
+  // SSE reconnect via Last-Event-ID, and a graceful assistant fallback on failure.
   const sendMessageWithStreaming = async (userMessage: string) => {
     if (!sessionId || !authToken) return;
     setIsTyping(true);
     setStreamingMessage('');
-    try {
-      const response = await fetch(API.sessionMessages(sessionId), {
-        method: 'POST',
-        headers: {
+
+    let lastEventId: string | null = null;
+    let accumulatedText = '';
+
+    const attemptStream = async (): Promise<void> => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+      try {
+        const headers: Record<string, string> = {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`,
           'Accept': 'text/event-stream, application/json',
-        },
-        body: JSON.stringify({ content: userMessage, stream: true }),
-      });
-      // If the response is a stream (SSE or ReadableStream)
-      if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
-        const reader = response.body.getReader();
-        let fullText = '';
-        let done = false;
-        while (!done) {
-          const { value, done: doneReading } = await reader.read();
-          done = doneReading;
-          if (value) {
-            const chunk = textDecoder ? textDecoder.decode(value) : new TextDecoder().decode(value);
-            // For SSE, split on newlines and parse data: lines
-            chunk.split(/\n/).forEach(line => {
-              if (line.startsWith('data:')) {
-                const data = line.replace(/^data:/, '').trim();
-                if (data === '[DONE]') return;
-                fullText += data;
-                setStreamingMessage(fullText);
-              }
-            });
+          ...embedOriginHeader(initialParentOrigin),
+        };
+        // Resume SSE stream from where it left off on reconnect
+        if (lastEventId) {
+          headers['Last-Event-ID'] = lastEventId;
+        }
+
+        const response = await fetch(API.sessionMessages(sessionId ?? undefined), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ content: userMessage, stream: true }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          if (response.status === 429) {
+            const retryAfterSec = response.headers.get('Retry-After');
+            const waitSec = retryAfterSec ? parseInt(retryAfterSec, 10) : 0;
+            const msg = waitSec > 0
+              ? `Too many messages. Please wait ${waitSec} second${waitSec !== 1 ? 's' : ''}.`
+              : 'Too many messages. Please wait a moment.';
+            const err = createNetworkError(msg, WidgetErrorCode.NETWORK_RATE_LIMITED);
+            err.retryable = false;
+            err.userMessage = msg;
+            throw err;
           }
+          throw createNetworkError(`Server error: ${response.status}`, WidgetErrorCode.NETWORK_SERVER_ERROR);
         }
-        // Add the final message to the chat
-        setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, text: fullText, from: 'assistant', timestamp: Date.now() }]);
-        setStreamingMessage(null);
-      } else {
-        // Fallback: not a stream, parse as JSON
-        const data = await response.json();
-        if (data.status === 'success' && data.data?.message) {
-          setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, text: data.data.message, from: 'assistant', timestamp: Date.now() }]);
+
+        if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
+          const reader = response.body.getReader();
+          let done = false;
+          while (!done) {
+            const { value, done: doneReading } = await reader.read();
+            done = doneReading;
+            if (value) {
+              const chunk = textDecoder ? textDecoder.decode(value) : new TextDecoder().decode(value);
+              chunk.split(/\n/).forEach(line => {
+                if (line.startsWith('id:')) {
+                  // Track SSE event ID so we can resume on reconnect
+                  lastEventId = line.replace(/^id:/, '').trim();
+                } else if (line.startsWith('data:')) {
+                  const data = line.replace(/^data:/, '').trim();
+                  if (data === '[DONE]') return;
+                  accumulatedText += data;
+                  setStreamingMessage(accumulatedText);
+                }
+              });
+            }
+          }
+          setMessages(prev => [...prev, {
+            id: `assistant-${Date.now()}`,
+            text: accumulatedText,
+            from: 'assistant',
+            timestamp: Date.now(),
+          }]);
+          setStreamingMessage(null);
+        } else {
+          // Non-streaming fallback: parse as JSON
+          const data = await response.json();
+          if (data.status === 'success' && data.data?.message) {
+            setMessages(prev => [...prev, {
+              id: `assistant-${Date.now()}`,
+              text: data.data.message,
+              from: 'assistant',
+              timestamp: Date.now(),
+            }]);
+          }
+          setStreamingMessage(null);
         }
-        setStreamingMessage(null);
+      } catch (err: unknown) {
+        clearTimeout(timeoutId);
+        const e = err as { name?: string };
+        if (e.name === 'AbortError') {
+          throw createNetworkError('Response timed out', WidgetErrorCode.NETWORK_TIMEOUT);
+        }
+        throw err;
       }
+    };
+
+    try {
+      await retryWithBackoff(attemptStream, {
+        maxRetries: 2,
+        initialDelay: 1500,
+        maxDelay: 8000,
+        onRetry: (attempt, err) => {
+          logError(err as Error, { action: 'sendMessageWithStreaming', attempt });
+        },
+      });
     } catch (err) {
       setStreamingMessage(null);
-      setError('Failed to stream response.');
+      // Show a graceful assistant message rather than a raw error string
+      const fallbackText = String(t.failedToSendMessage) || "I'm having trouble responding right now. Please try again in a moment.";
+      setMessages(prev => [...prev, {
+        id: `assistant-err-${Date.now()}`,
+        text: fallbackText,
+        from: 'assistant' as const,
+        timestamp: Date.now(),
+      }]);
+      logError(err as Error, { action: 'sendMessageWithStreaming' });
     } finally {
       setIsTyping(false);
     }
@@ -2043,6 +2128,18 @@ export default function EmbedClient({
                 );
               }
 
+              if (response.status === 429) {
+                const retryAfterSec = response.headers.get('Retry-After');
+                const waitSec = retryAfterSec ? parseInt(retryAfterSec, 10) : 0;
+                const rateLimitMsg = waitSec > 0
+                  ? `Too many messages. Please wait ${waitSec} second${waitSec !== 1 ? 's' : ''} before trying again.`
+                  : 'Too many messages. Please wait a moment before trying again.';
+                const rateLimitErr = createNetworkError(rateLimitMsg, WidgetErrorCode.NETWORK_RATE_LIMITED);
+                rateLimitErr.retryable = false;
+                rateLimitErr.userMessage = rateLimitMsg;
+                throw rateLimitErr;
+              }
+
               if (response.status >= 500) {
                 throw createNetworkError(
                   errorMessage,
@@ -2579,6 +2676,7 @@ export default function EmbedClient({
         unreadCount={unreadCount}
         sessionExpiredBanner={sessionExpiredBanner}
         onDismissSessionExpiredBanner={() => setSessionExpiredBanner(false)}
+        isOffline={isOffline}
         feedbackDialog={
           ((showFeedbackDialogOverride !== undefined ? showFeedbackDialogOverride : showFeedbackDialog) && (showFeedbackDialogOverride !== undefined ? true : (sessionId && authToken))) ? (
             <FeedbackDialog
