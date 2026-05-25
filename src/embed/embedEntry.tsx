@@ -40,10 +40,9 @@ export function EmbedEntry({ allowedOrigins = [] }: EmbedEntryProps) {
           .map((o) => o.trim())
           .filter(Boolean);
 
-    // Fall back to '*' allowed — in production always set NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS
-    if (origins.length === 0) {
-      console.warn('[EmbedEntry] No allowed origins configured. This is insecure in production.');
-    }
+    // In dynamic mode (EMBED_ALLOWLIST_MODE=dynamic, the default) no origin list is
+    // configured here — any HTTPS site can embed the widget and per-customer
+    // authorization is enforced by the JWT token at the API layer instead.
 
     const hs = createHandshake({ allowedOrigins: origins });
 

@@ -49,6 +49,9 @@
     return window[REGISTRY_KEY];
   };
 
+  // UUID format used to detect swapped IDs in attribute validation
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   // Error tracking
   const errors = [];
   const logError = (message, context) => {
@@ -174,19 +177,43 @@
     // calls window.CompaninWidget.grantConsent(). Required for GDPR-strict deploys.
     const consentRequired = script.getAttribute("data-consent-required") === "true";
     if (!clientId || !assistantId || !configId) {
-      const missing = [];
-      if (!clientId) missing.push("data-client-id");
-      if (!assistantId) missing.push("data-assistant-id");
-      if (!configId) missing.push("data-config-id");
+      const issues = [];
+      if (!clientId) issues.push('data-client-id is missing  →  copy your Client ID from the Companin dashboard: Settings → API Keys');
+      if (!assistantId) issues.push('data-assistant-id is missing  →  copy the UUID from the Companin dashboard: Assistants');
+      if (!configId) issues.push('data-config-id is missing  →  copy the UUID from the Companin dashboard: Widget Configs');
 
-      logError("Missing required attributes", { missing });
-
-      // Show user-friendly error in widget space
+      logError('Widget not configured', { issues });
       showErrorWidget(
-        "Configuration Error",
-        `Missing required attributes: ${missing.join(", ")}. Please check your widget installation.`
+        'Widget not configured',
+        issues.join('\n'),
+        'Each attribute must be set on the <script> tag. See the integration guide for a copy-paste snippet.'
       );
       return;
+    }
+
+    // Warn when IDs look like they have been swapped — these don't block
+    // load since the server will reject them with a clear API error anyway.
+    if (UUID_PATTERN.test(clientId)) {
+      console.warn(
+        '[Companin Widget] data-client-id "' + clientId.slice(0, 8) + '..." looks like a UUID.\n' +
+        'The Client ID is an alphanumeric string (e.g. "FNmmyrtz..."), not a UUID.\n' +
+        'Did you accidentally put data-assistant-id or data-config-id here?\n' +
+        'Fix: copy the Client ID from your Companin dashboard → Settings → API Keys.'
+      );
+    }
+    if (assistantId && !UUID_PATTERN.test(assistantId)) {
+      console.warn(
+        '[Companin Widget] data-assistant-id "' + assistantId.slice(0, 8) + '..." is not a valid UUID.\n' +
+        'Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\n' +
+        'Fix: copy the UUID from your Companin dashboard → Assistants.'
+      );
+    }
+    if (configId && !UUID_PATTERN.test(configId)) {
+      console.warn(
+        '[Companin Widget] data-config-id "' + configId.slice(0, 8) + '..." is not a valid UUID.\n' +
+        'Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\n' +
+        'Fix: copy the UUID from your Companin dashboard → Widget Configs.'
+      );
     }
 
     // Determine the base URL with fallback. Treat `data-dev=true` as local-only
@@ -196,6 +223,14 @@
     const baseUrl = isDev && isLocalPage
       ? "http://localhost:3001"
       : BASE_WIDGET_HOST;
+
+    if (isDev && !isLocalPage) {
+      console.warn(
+        '[Companin Widget] data-dev="true" is set but this page is not running on localhost.\n' +
+        'In production, remove data-dev="true" (or set it to "false") from the <script> tag.\n' +
+        'Keeping it set enables the DevOverlay debug panel for all your visitors.'
+      );
+    }
 
     // Allow the host page to explicitly set the postMessage target origin.
     // This is useful when the widget is hosted on a different / custom domain.
@@ -463,7 +498,8 @@
             logError("Widget iframe failed to load (timeout)", { src: iframe.src });
             showErrorInContainer(
               container,
-              "Failed to load widget. Please refresh the page."
+              "Widget failed to load.",
+              "Possible causes: a Content Security Policy on your page blocks the iframe (add frame-src https://widget.companin.tech to your CSP), a network error, or an invalid data-config-id / data-assistant-id."
             );
           }
         }, isDev ? 60000 : 15000); // 60s in dev (Next.js cold start), 15s in prod
@@ -508,7 +544,8 @@
         logError("Widget iframe failed to load", { error, src: iframe.src });
         showErrorInContainer(
           container,
-          "Failed to load widget. Please check your connection."
+          "Widget failed to load.",
+          "Check your internet connection. If the problem persists, verify that data-config-id and data-assistant-id are correct in your <script> tag."
         );
       };
 
@@ -754,6 +791,24 @@
             }
           },
           getErrors: () => errors,
+          enableDebug: () => {
+            try {
+              if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'WIDGET_DEBUG_ENABLE' }, targetOrigin);
+              }
+            } catch (err) {
+              logError('Failed to enable debug mode', { error: err && err.message });
+            }
+          },
+          disableDebug: () => {
+            try {
+              if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'WIDGET_DEBUG_DISABLE' }, targetOrigin);
+              }
+            } catch (err) {
+              logError('Failed to disable debug mode', { error: err && err.message });
+            }
+          },
           // Storage-consent API (LAUNCH-READINESS #16). The host page calls
           // grantConsent() once the visitor accepts the cookie banner;
           // revokeConsent() purges widget-prefixed localStorage entries.
@@ -1100,7 +1155,9 @@
   // Helper function to show error in a styled widget. Uses textContent for the
   // dynamic title/message values so callers can't introduce HTML injection if
   // they ever pass untrusted input.
-  function showErrorWidget(title, message) {
+  // hint is an optional plain-text string shown below the message in a
+  // lighter style — use it for actionable fix instructions.
+  function showErrorWidget(title, message, hint) {
     try {
       const errorContainer = document.createElement("div");
       errorContainer.id = WIDGET_SCRIPT_ID + '-error';
@@ -1108,7 +1165,7 @@
         position: fixed;
         bottom: calc(20px + env(safe-area-inset-bottom, 0px));
         right: calc(20px + env(safe-area-inset-right, 0px));
-        width: 320px;
+        width: 340px;
         background: #fef2f2;
         border: 1px solid #dc2626;
         border-radius: 8px;
@@ -1130,15 +1187,32 @@
         + '</svg>';
 
       const body = document.createElement('div');
-      body.style.cssText = 'flex: 1;';
+      body.style.cssText = 'flex: 1; min-width: 0;';
+
       const h4 = document.createElement('h4');
-      h4.style.cssText = 'margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #dc2626;';
+      h4.style.cssText = 'margin: 0 0 6px 0; font-size: 14px; font-weight: 600; color: #dc2626;';
       h4.textContent = String(title || '');
-      const p = document.createElement('p');
-      p.style.cssText = 'margin: 0; font-size: 13px; color: #6b7280; line-height: 1.5;';
-      p.textContent = String(message || '');
       body.appendChild(h4);
-      body.appendChild(p);
+
+      // Render each line of the message as its own paragraph so multi-line
+      // issues (one per attribute) are easy to scan.
+      var lines = String(message || '').split('\n');
+      for (var li = 0; li < lines.length; li++) {
+        var lp = document.createElement('p');
+        lp.style.cssText = 'margin: 0 0 4px 0; font-size: 12px; color: #374151; line-height: 1.5; font-family: monospace;';
+        lp.textContent = lines[li];
+        body.appendChild(lp);
+      }
+
+      if (hint) {
+        const hintBox = document.createElement('div');
+        hintBox.style.cssText = 'margin-top: 10px; padding: 8px 10px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 6px;';
+        const hintP = document.createElement('p');
+        hintP.style.cssText = 'margin: 0; font-size: 12px; color: #92400e; line-height: 1.5;';
+        hintP.textContent = String(hint);
+        hintBox.appendChild(hintP);
+        body.appendChild(hintBox);
+      }
 
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';
@@ -1167,26 +1241,36 @@
 
   // Helper to show error in existing container. Same defense as above: any
   // dynamic string goes through textContent.
-  function showErrorInContainer(container, message) {
+  function showErrorInContainer(container, message, hint) {
     try {
       while (container.firstChild) container.removeChild(container.firstChild);
 
       const card = document.createElement('div');
-      card.style.cssText = 'background: #fef2f2; border: 1px solid #dc2626; border-radius: 8px; padding: 16px; font-family: system-ui, -apple-system, sans-serif; max-width: 320px;';
+      card.style.cssText = 'background: #fef2f2; border: 1px solid #dc2626; border-radius: 8px; padding: 16px; font-family: system-ui, -apple-system, sans-serif; max-width: 340px;';
 
       const p = document.createElement('p');
-      p.style.cssText = 'margin: 0; font-size: 14px; color: #dc2626;';
+      p.style.cssText = 'margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #dc2626;';
       p.textContent = String(message || '');
+      card.appendChild(p);
+
+      if (hint) {
+        const hintBox = document.createElement('div');
+        hintBox.style.cssText = 'margin-bottom: 10px; padding: 8px 10px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 6px;';
+        const hintP = document.createElement('p');
+        hintP.style.cssText = 'margin: 0; font-size: 12px; color: #92400e; line-height: 1.5;';
+        hintP.textContent = String(hint);
+        hintBox.appendChild(hintP);
+        card.appendChild(hintBox);
+      }
 
       const reload = document.createElement('button');
       reload.type = 'button';
-      reload.style.cssText = 'margin-top: 12px; background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer;';
+      reload.style.cssText = 'margin-top: 4px; background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer;';
       reload.textContent = 'Reload Page';
       reload.addEventListener('click', function () {
         try { window.location.reload(); } catch (e) {}
       });
 
-      card.appendChild(p);
       card.appendChild(reload);
       card.appendChild(buildPoweredByFooter());
       container.appendChild(card);

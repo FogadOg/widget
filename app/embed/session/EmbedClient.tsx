@@ -32,6 +32,7 @@ import { getQueuedMessages, removeQueuedMessage, queueMessage, incrementAttempt 
 import { onInitConfig } from './events';
 import { sanitizeCss } from '../../../lib/cssValidator';
 import { validateConfig } from '../../../lib/validateConfig';
+import { enableDebug, disableDebug } from '../../../src/components/DevOverlay';
 import {
   registerInstance,
   deregisterInstance,
@@ -274,6 +275,17 @@ export default function EmbedClient({
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
   }, [initialConsentRequired]);
+
+  // Allow the host page to toggle debug mode via postMessage.
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      const t = event?.data?.type;
+      if (t === 'WIDGET_DEBUG_ENABLE') enableDebug();
+      else if (t === 'WIDGET_DEBUG_DISABLE') disableDebug();
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
 
   // debug and perform custom css/js injection on mount
   useEffect(() => {
