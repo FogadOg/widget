@@ -206,7 +206,7 @@ describe('Embed session page', () => {
     expect(props.consentRequired).toBe(true);
   });
 
-  test('returns unauthorized UI when JWT enforcement is enabled and token is invalid', async () => {
+  test('allows legacy opaque clientId when JWT enforcement is enabled', async () => {
     process.env.WIDGET_EMBED_ENFORCE_JWT = 'true';
     process.env.WIDGET_EMBED_TOKEN_SECRET = 'test-secret';
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -246,15 +246,9 @@ describe('Embed session page', () => {
     const element = await page({ searchParams: Promise.resolve(params) });
     const html = renderToStaticMarkup(element as any);
 
-    expect(html).toContain('Unauthorized widget request');
-    expect(html).not.toContain('<html');
-    expect(html).not.toContain('data-embed-client="1"');
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      '[Companin Widget Embed Error]',
-      expect.objectContaining({
-        errorType: 'invalid_token',
-      }),
-    );
+    expect(html).not.toContain('Unauthorized widget request');
+    expect(html).toContain('data-embed-client="1"');
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
 
     consoleErrorSpy.mockRestore();
   });
