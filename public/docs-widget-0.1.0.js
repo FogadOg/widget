@@ -13,7 +13,7 @@
   let POWERED_BY_TEXT = (typeof window !== 'undefined' && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`] && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`].poweredBy) || 'Powered by ';
   const BASE_WIDGET_HOST = 'https://widget.companin.tech';
   const WIDGET_VERSION = "0.1.0";
-  try { window.__COMPANIN_WIDGET_VERSION__ = WIDGET_VERSION; } catch {}
+  try { window.__COMPANIN_WIDGET_VERSION__ = WIDGET_VERSION; } catch (e) {}
 
   // Strict origin parser: substring matching on 'companin.tech' would also accept
   // hosts like evil-companin.tech.attacker.com, so we require either an exact host
@@ -31,7 +31,7 @@
         if (host === s || host.endsWith('.' + s)) return true;
       }
       return false;
-    } catch { return false; }
+    } catch (e) { return false; }
   };
   const DOCS_REGISTRY_KEY = `__${COMPANY_NAME.toUpperCase()}_DOCS_WIDGET_INSTANCES__`;
   const sanitizeInstanceId = (value) => String(value || 'default').replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -63,7 +63,7 @@
   if (!script) {
     try {
       script = document.getElementById('companin-docs-widget-script') || script;
-    } catch {}
+    } catch (_e) {}
   }
   if (!script) {
     try {
@@ -71,18 +71,18 @@
       script = scripts.find(function (s) {
         try {
           if (s.getAttribute && s.getAttribute('data-companin-docs-widget-bound') === 'true') return false;
-        } catch {}
+        } catch (_e) {}
         try {
           return s && s.getAttribute && (
             !!s.getAttribute('data-client-id') ||
             !!s.getAttribute('data-assistant-id') ||
             (s.src && /docs-widget(\.|\/)/i.test(s.src))
           );
-        } catch {
+        } catch (_e) {
           return false;
         }
       }) || script;
-    } catch {}
+    } catch (_e) {}
   }
 
     // Get attributes with validation
@@ -152,7 +152,7 @@
         try {
           const prior = registry[instanceId];
           if (prior && typeof prior.destroy === 'function') prior.destroy();
-        } catch {}
+        } catch (_e) {}
         delete registry[instanceId];
       } else {
         let copyIndex = 2;
@@ -223,6 +223,56 @@
         width <= COMPACT_BUTTON_MAX_SIZE &&
         height <= COMPACT_BUTTON_MAX_SIZE;
       return isCompact ? COMPACT_BUTTON_OUTER_PADDING : 0;
+    };
+    const isCompactContainer = () => {
+      const currentWidth = parsePixelValue(container.style.width) || 0;
+      const currentHeight = parsePixelValue(container.style.height) || 0;
+      const compactThreshold = COMPACT_BUTTON_MAX_SIZE + (COMPACT_BUTTON_OUTER_PADDING * 2);
+      return currentWidth > 0 && currentHeight > 0 && currentWidth <= compactThreshold && currentHeight <= compactThreshold;
+    };
+    const applyErrorContainerLayout = (errorData) => {
+      const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
+      const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
+      const requestedWidth = parsePixelValue(errorData && errorData.width);
+      const requestedHeight = parsePixelValue(errorData && errorData.height);
+      const errorWidth = requestedWidth || 420;
+      const errorHeight = requestedHeight || 280;
+
+      container.style.display = 'block';
+      container.style.padding = '0';
+      container.style.top = '';
+      container.style.left = '';
+      container.style.maxWidth = '';
+      container.style.maxHeight = '';
+      container.style.bottom = '20px';
+      container.style.right = '20px';
+
+      if (viewportWidth > 0 && viewportWidth <= 480) {
+        const horizontalMargin = 12;
+        const verticalMargin = 12;
+        container.style.left = `${horizontalMargin}px`;
+        container.style.right = `${horizontalMargin}px`;
+        container.style.bottom = `${verticalMargin}px`;
+        container.style.width = `${Math.max(0, viewportWidth - (horizontalMargin * 2))}px`;
+        container.style.height = `${Math.min(errorHeight, Math.max(180, viewportHeight - (verticalMargin * 2)))}px`;
+        container.style.maxWidth = container.style.width;
+        container.style.maxHeight = `${Math.max(180, viewportHeight - (verticalMargin * 2))}px`;
+        return;
+      }
+
+      if (viewportWidth > 0) {
+        container.style.width = `${Math.min(errorWidth, Math.max(280, viewportWidth - 40))}px`;
+        container.style.maxWidth = `${Math.max(280, viewportWidth - 40)}px`;
+      } else {
+        container.style.width = `${errorWidth}px`;
+      }
+
+      if (viewportHeight > 0) {
+        container.style.height = `${Math.min(errorHeight, Math.max(180, viewportHeight - 40))}px`;
+        container.style.maxHeight = `${Math.max(180, viewportHeight - 40)}px`;
+      } else {
+        container.style.height = `${errorHeight}px`;
+      }
     };
     container.style.cssText = `
       position: fixed;
@@ -304,6 +354,7 @@
             pendingPosts.push(message);
           }
         }
+        let visibilityFallbackTimeout = null;
         const loadTimeout = setTimeout(() => {
           if (!iframeLoaded) {
             logError("Docs widget iframe failed to load (timeout)", { src: iframe.src });
@@ -317,6 +368,16 @@
         iframe.onload = () => {
           iframeLoaded = true;
           clearTimeout(loadTimeout);
+          visibilityFallbackTimeout = setTimeout(() => {
+            if (container.style.display === 'none') {
+              applyErrorContainerLayout({
+                source: 'load-fallback',
+                errorType: 'missing_resize_signal',
+                width: 420,
+                height: 280,
+              });
+            }
+          }, 1200);
           while (pendingPosts.length && iframe.contentWindow) {
             try {
               iframe.contentWindow.postMessage(pendingPosts.shift(), targetOrigin);
@@ -328,6 +389,9 @@
 
         iframe.onerror = (error) => {
           clearTimeout(loadTimeout);
+          if (visibilityFallbackTimeout) {
+            clearTimeout(visibilityFallbackTimeout);
+          }
           logError("Docs widget iframe failed to load", { error, src: iframe.src });
           showErrorInContainer(
             container,
@@ -599,7 +663,7 @@
               }
               try {
                 delete registry[instanceId];
-              } catch {}
+              } catch (_e) {}
               try {
                 const remainingIds = Object.keys(registry);
                 if (window.CompaninDocsWidget === docsWidgetApi) {
@@ -639,7 +703,7 @@
             try {
               const _u = new URL(event.origin);
               isDevOrigin = _u.hostname === 'localhost' || _u.hostname === '127.0.0.1';
-            } catch {}
+            } catch (e) {}
             if (isDev) {
               if (!validOrigins.has(event.origin) && !isDevOrigin && !isTrustedWidgetOrigin(event.origin, true)) return;
             } else if (!validOrigins.has(event.origin) && !isTrustedWidgetOrigin(event.origin, false)) {
@@ -690,7 +754,15 @@
                 break;
 
               case "WIDGET_SHOW":
-                container.style.display = "block";
+                if (visibilityFallbackTimeout) {
+                  clearTimeout(visibilityFallbackTimeout);
+                  visibilityFallbackTimeout = null;
+                }
+                if (data && data.source === 'embed-error') {
+                  applyErrorContainerLayout(data);
+                } else {
+                  container.style.display = "block";
+                }
                 emitEvent("open", data || { source: "widget" }, { rawType: type });
                 _gaTrack('widget_open', { assistant_id: assistantId });
                 break;
@@ -712,6 +784,9 @@
 
               case "WIDGET_ERROR":
                 logError("Docs widget reported an error", data);
+                if ((data && data.source === 'embed-error') || isCompactContainer()) {
+                  applyErrorContainerLayout(data);
+                }
                 emitEvent("error", data, { rawType: type });
                 _gaTrack('widget_error', { assistant_id: assistantId, error_type: data && data.errorType });
                 break;

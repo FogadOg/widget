@@ -19,7 +19,12 @@
       window.parent.postMessage(
         {
           type: 'WIDGET_SHOW',
-          data: { source: 'embed-error', errorType: payload.errorType || 'embed_error' },
+          data: {
+            source: 'embed-error',
+            errorType: payload.errorType || 'embed_error',
+            width: 420,
+            height: 280,
+          },
         },
         '*'
       );

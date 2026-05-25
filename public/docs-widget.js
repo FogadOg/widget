@@ -224,6 +224,56 @@
         height <= COMPACT_BUTTON_MAX_SIZE;
       return isCompact ? COMPACT_BUTTON_OUTER_PADDING : 0;
     };
+    const isCompactContainer = () => {
+      const currentWidth = parsePixelValue(container.style.width) || 0;
+      const currentHeight = parsePixelValue(container.style.height) || 0;
+      const compactThreshold = COMPACT_BUTTON_MAX_SIZE + (COMPACT_BUTTON_OUTER_PADDING * 2);
+      return currentWidth > 0 && currentHeight > 0 && currentWidth <= compactThreshold && currentHeight <= compactThreshold;
+    };
+    const applyErrorContainerLayout = (errorData) => {
+      const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
+      const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
+      const requestedWidth = parsePixelValue(errorData && errorData.width);
+      const requestedHeight = parsePixelValue(errorData && errorData.height);
+      const errorWidth = requestedWidth || 420;
+      const errorHeight = requestedHeight || 280;
+
+      container.style.display = 'block';
+      container.style.padding = '0';
+      container.style.top = '';
+      container.style.left = '';
+      container.style.maxWidth = '';
+      container.style.maxHeight = '';
+      container.style.bottom = '20px';
+      container.style.right = '20px';
+
+      if (viewportWidth > 0 && viewportWidth <= 480) {
+        const horizontalMargin = 12;
+        const verticalMargin = 12;
+        container.style.left = `${horizontalMargin}px`;
+        container.style.right = `${horizontalMargin}px`;
+        container.style.bottom = `${verticalMargin}px`;
+        container.style.width = `${Math.max(0, viewportWidth - (horizontalMargin * 2))}px`;
+        container.style.height = `${Math.min(errorHeight, Math.max(180, viewportHeight - (verticalMargin * 2)))}px`;
+        container.style.maxWidth = container.style.width;
+        container.style.maxHeight = `${Math.max(180, viewportHeight - (verticalMargin * 2))}px`;
+        return;
+      }
+
+      if (viewportWidth > 0) {
+        container.style.width = `${Math.min(errorWidth, Math.max(280, viewportWidth - 40))}px`;
+        container.style.maxWidth = `${Math.max(280, viewportWidth - 40)}px`;
+      } else {
+        container.style.width = `${errorWidth}px`;
+      }
+
+      if (viewportHeight > 0) {
+        container.style.height = `${Math.min(errorHeight, Math.max(180, viewportHeight - 40))}px`;
+        container.style.maxHeight = `${Math.max(180, viewportHeight - 40)}px`;
+      } else {
+        container.style.height = `${errorHeight}px`;
+      }
+    };
     container.style.cssText = `
       position: fixed;
       top: 0;
@@ -320,7 +370,12 @@
           clearTimeout(loadTimeout);
           visibilityFallbackTimeout = setTimeout(() => {
             if (container.style.display === 'none') {
-              container.style.display = 'block';
+              applyErrorContainerLayout({
+                source: 'load-fallback',
+                errorType: 'missing_resize_signal',
+                width: 420,
+                height: 280,
+              });
             }
           }, 1200);
           while (pendingPosts.length && iframe.contentWindow) {
@@ -703,7 +758,11 @@
                   clearTimeout(visibilityFallbackTimeout);
                   visibilityFallbackTimeout = null;
                 }
-                container.style.display = "block";
+                if (data && data.source === 'embed-error') {
+                  applyErrorContainerLayout(data);
+                } else {
+                  container.style.display = "block";
+                }
                 emitEvent("open", data || { source: "widget" }, { rawType: type });
                 _gaTrack('widget_open', { assistant_id: assistantId });
                 break;
@@ -725,6 +784,9 @@
 
               case "WIDGET_ERROR":
                 logError("Docs widget reported an error", data);
+                if ((data && data.source === 'embed-error') || isCompactContainer()) {
+                  applyErrorContainerLayout(data);
+                }
                 emitEvent("error", data, { rawType: type });
                 _gaTrack('widget_error', { assistant_id: assistantId, error_type: data && data.errorType });
                 break;
