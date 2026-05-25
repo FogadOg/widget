@@ -2555,50 +2555,6 @@ export default function EmbedClient({
 
   return (
     <div ref={containerRef} data-widget-instance={instanceId} style={{ position: 'relative' }}>
-      {/* Localized session-expired banner (LAUNCH-READINESS #22). Auto-dismisses
-          when the user starts a fresh session or clicks Dismiss. */}
-      {sessionExpiredBanner && (
-        <div
-          role="status"
-          aria-live="polite"
-          style={{
-            position: 'absolute',
-            top: 8,
-            left: 8,
-            right: 8,
-            zIndex: 1000,
-            background: '#fef3c7',
-            border: '1px solid #fcd34d',
-            color: '#78350f',
-            borderRadius: 6,
-            padding: '8px 12px',
-            fontSize: 13,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-          }}
-        >
-          <div>
-            <strong style={{ marginRight: 6 }}>{t.sessionExpiredTitle as string}</strong>
-            <span>{t.sessionExpiredBody as string}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSessionExpiredBanner(false)}
-            aria-label={t.sessionExpiredDismiss as string}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#78350f',
-              cursor: 'pointer',
-              fontSize: 16,
-              lineHeight: 1,
-              padding: 4,
-            }}
-          >×</button>
-        </div>
-      )}
       {/* A/B variant debug badge removed to avoid rendering variant text in the host page */}
       <EmbedShell
         isEmbedded={isEmbedded}
@@ -2621,6 +2577,8 @@ export default function EmbedClient({
         messageFeedbackSubmitted={messageFeedbackSubmitted}
         onSubmitMessageFeedback={handleSubmitMessageFeedback}
         unreadCount={unreadCount}
+        sessionExpiredBanner={sessionExpiredBanner}
+        onDismissSessionExpiredBanner={() => setSessionExpiredBanner(false)}
         feedbackDialog={
           ((showFeedbackDialogOverride !== undefined ? showFeedbackDialogOverride : showFeedbackDialog) && (showFeedbackDialogOverride !== undefined ? true : (sessionId && authToken))) ? (
             <FeedbackDialog

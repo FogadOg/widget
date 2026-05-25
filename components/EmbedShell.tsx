@@ -49,6 +49,8 @@ type Props = {
   locale?: string;
   hideCloseButton?: boolean;
   isPersistent?: boolean;
+  sessionExpiredBanner?: boolean;
+  onDismissSessionExpiredBanner?: () => void;
 };
 
 
@@ -94,6 +96,8 @@ export default function EmbedShell({
   hideCloseButton = false,
   isPersistent = false,
   locale: localeProp,
+  sessionExpiredBanner = false,
+  onDismissSessionExpiredBanner,
 }: Props) {
   const { translations: t, locale: hookLocale } = useWidgetTranslation();
   const locale = localeProp || hookLocale;
@@ -402,6 +406,15 @@ export default function EmbedShell({
                 </div>
               )}
 
+              {sessionExpiredBanner && (
+                <div role="status" aria-live="polite" className="flex items-center justify-between gap-2 mx-3 mt-3 px-3 py-2 rounded text-xs" style={{ background: '#fef3c7', border: '1px solid #fcd34d', color: '#78350f' }}>
+                  <span><strong className="mr-1">{translate(locale, 'sessionExpiredTitle')}</strong>{translate(locale, 'sessionExpiredBody')}</span>
+                  {onDismissSessionExpiredBanner && (
+                    <button type="button" onClick={onDismissSessionExpiredBanner} aria-label={translate(locale, 'sessionExpiredDismiss')} style={{ background: 'transparent', border: 'none', color: '#78350f', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
+                  )}
+                </div>
+              )}
+
               <div
                 ref={scrollContainerRef}
                 className="flex-1 overflow-y-auto p-3 space-y-3"
@@ -678,6 +691,15 @@ export default function EmbedShell({
                 {error && (
                   <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mx-3 mt-3 rounded" role="alert">
                     <p className="text-sm">{error}</p>
+                  </div>
+                )}
+
+                {sessionExpiredBanner && (
+                  <div role="status" aria-live="polite" className="flex items-center justify-between gap-2 mx-3 mt-3 px-3 py-2 rounded text-xs" style={{ background: '#fef3c7', border: '1px solid #fcd34d', color: '#78350f' }}>
+                    <span><strong className="mr-1">{translate(locale, 'sessionExpiredTitle')}</strong>{translate(locale, 'sessionExpiredBody')}</span>
+                    {onDismissSessionExpiredBanner && (
+                      <button type="button" onClick={onDismissSessionExpiredBanner} aria-label={translate(locale, 'sessionExpiredDismiss')} style={{ background: 'transparent', border: 'none', color: '#78350f', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
+                    )}
                   </div>
                 )}
 
