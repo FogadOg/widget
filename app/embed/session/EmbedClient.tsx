@@ -1149,7 +1149,7 @@ export default function EmbedClient({
       if (isCollapsed) {
         // Send button size when collapsed
         const buttonSize = getButtonPixelSize(widgetConfig.button_size || 'md');
-        const hoverSafePadding = 8;
+        const hoverSafePadding = 24; // shadow-lg extends ~22px, badge overhangs 4px
         const collapsedViewportSize = buttonSize + (hoverSafePadding * 2);
         safePostToParent({
           type: EMBED_EVENTS.RESIZE,
