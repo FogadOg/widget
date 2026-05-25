@@ -31,6 +31,8 @@ jest.mock('../lib/errorHandling', () => ({
   WidgetErrorCode: {
     INVALID_CLIENT: 1001,
     AUTH_TOKEN_FAILED: 1002,
+    AUTH_EXPIRED: 1003,
+    ORIGIN_NOT_ALLOWED: 1004,
     NETWORK_TIMEOUT: 3001,
     NETWORK_SERVER_ERROR: 3003,
   },
@@ -943,6 +945,69 @@ describe('useWidgetAuth', () => {
 
       // The error should be re-thrown and caught by the outer handler
       expect(result.current.authError).toBeTruthy();
+    });
+
+    it('maps origin_not_allowed code to origin-specific user message', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ detail: 'Origin not allowed for this client_id', code: 'origin_not_allowed' }),
+      });
+
+      const { result } = renderHook(() => useWidgetAuth());
+
+      await act(async () => {
+        await result.current.getAuthToken('test-client-id');
+      });
+
+      expect(result.current.authError).toBe('This website origin is not allowed for this widget. Ask your admin to add this site to allowed origins.');
+      expect(result.current.authToken).toBeNull();
+      expect(result.current.isLoading).toBe(false);
+      expect(createAuthError).toHaveBeenCalledWith(
+        expect.any(String),
+        1004
+      );
+    });
+
+    it('maps missing_origin_header code to origin-specific user message', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ detail: 'Missing Origin header for restricted client_id', code: 'missing_origin_header' }),
+      });
+
+      const { result } = renderHook(() => useWidgetAuth());
+
+      await act(async () => {
+        await result.current.getAuthToken('test-client-id');
+      });
+
+      expect(result.current.authError).toBe('This website origin is not allowed for this widget. Ask your admin to add this site to allowed origins.');
+      expect(result.current.authToken).toBeNull();
+      expect(result.current.isLoading).toBe(false);
+      expect(createAuthError).toHaveBeenCalledWith(
+        expect.any(String),
+        1004
+      );
+    });
+
+    it('uses fallback behavior for other 400 errors without origin codes', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ message: 'Bad request' }),
+      });
+
+      const { result } = renderHook(() => useWidgetAuth());
+
+      await act(async () => {
+        await result.current.getAuthToken('test-client-id');
+      });
+
+      expect(result.current.authError).toBe('Bad request');
+      expect(result.current.authToken).toBeNull();
+      expect(result.current.isLoading).toBe(false);
+      expect(createAuthError).toHaveBeenCalledWith('Bad request', 1002);
     });
   });
 });

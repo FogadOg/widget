@@ -100,6 +100,22 @@ export function useWidgetAuth() {
             // Check response status
             if (!response.ok) {
               const errorMessage = parseApiError(data, 'Authentication failed');
+              const backendCode = typeof data?.code === 'string' ? data.code : null;
+
+              // Origin restriction errors are deterministic config issues — show
+              // a specific message and never retry.
+              if (response.status === 400 && (backendCode === 'origin_not_allowed' || backendCode === 'missing_origin_header')) {
+                const originMessage = 'This website origin is not allowed for this widget. Ask your admin to add this site to allowed origins.';
+                console.error('[Widget] Origin auth failure:', {
+                  code: backendCode,
+                  origin: typeof window !== 'undefined' ? window.location.origin : 'unknown',
+                  clientId: normalizedClientId.slice(0, 8) + '...',
+                });
+                const err = createAuthError(errorMessage, WidgetErrorCode.ORIGIN_NOT_ALLOWED);
+                err.userMessage = originMessage;
+                err.retryable = false;
+                throw err;
+              }
 
               // Check for specific error codes
               if (response.status === 401 || response.status === 403) {

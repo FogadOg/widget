@@ -15,6 +15,7 @@ export enum WidgetErrorCode {
   INVALID_CLIENT = 1001,
   AUTH_TOKEN_FAILED = 1002,
   AUTH_EXPIRED = 1003,
+  ORIGIN_NOT_ALLOWED = 1004,
 
   // Session errors (2xxx)
   SESSION_CREATE_FAILED = 2001,
