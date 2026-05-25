@@ -507,25 +507,45 @@
       };
 
       container.appendChild(iframe);
-      document.body.appendChild(container);
 
-      // Ensure any hardcoded right positioning is removed (defensive):
+      // Wrap the container in a closed Shadow DOM so host-page CSS (including
+      // !important rules) cannot reach the container or its children. The iframe
+      // is already isolated by the browser; Shadow DOM extends that protection to
+      // the host-side container element and any error UI rendered inside it.
+      let _shadowHost = null;
       try {
-        const _c = document.getElementById(containerId);
-        if (_c) {
-          // also sanitize raw style attribute if present
-          const s = _c.getAttribute && _c.getAttribute('style');
-          if (s && /right:\s*20px/.test(s)) {
-            _c.setAttribute('style', s.replace(/right:\s*20px;?/g, ''));
-          }
-          // also sanitize any immediate child nodes that may carry inline right:20px
-          Array.from(_c.querySelectorAll('[style]')).forEach((el) => {
-            const ss = el.getAttribute('style');
-            if (ss && /right:\s*20px/.test(ss)) {
-              el.setAttribute('style', ss.replace(/right:\s*20px;?/g, ''));
-            }
-          });
+        if (typeof Element !== 'undefined' && typeof Element.prototype.attachShadow === 'function') {
+          _shadowHost = document.createElement('div');
+          _shadowHost.setAttribute('aria-hidden', 'true');
+          const _shadow = _shadowHost.attachShadow({ mode: 'closed' });
+          const _resetStyle = document.createElement('style');
+          // Reset box-model inside shadow; font/color inherit is intentionally
+          // left alone since the container only contains an opaque iframe.
+          _resetStyle.textContent = '*, *::before, *::after { box-sizing: border-box; }';
+          _shadow.appendChild(_resetStyle);
+          _shadow.appendChild(container);
+          document.body.appendChild(_shadowHost);
         }
+      } catch (e) {
+        _shadowHost = null;
+      }
+      if (!_shadowHost) {
+        document.body.appendChild(container);
+      }
+
+      // Defensive: sanitize right:20px from container inline styles.
+      // Use the direct reference — document.getElementById can't reach into shadow DOM.
+      try {
+        const s = container.getAttribute && container.getAttribute('style');
+        if (s && /right:\s*20px/.test(s)) {
+          container.setAttribute('style', s.replace(/right:\s*20px;?/g, ''));
+        }
+        Array.from(container.querySelectorAll('[style]')).forEach((el) => {
+          const ss = el.getAttribute('style');
+          if (ss && /right:\s*20px/.test(ss)) {
+            el.setAttribute('style', ss.replace(/right:\s*20px;?/g, ''));
+          }
+        });
       } catch (e) {
         logError('Failed sanitizing inline right spacing', { error: e && e.message });
       }
@@ -782,8 +802,11 @@
                 const state = debounceState[eventName];
                 if (state && state.timer) clearTimeout(state.timer);
               });
-              if (container.parentNode) {
-                container.parentNode.removeChild(container);
+              // Remove whichever element is actually in the document —
+              // the shadow host when Shadow DOM is active, otherwise the container itself.
+              const _mount = _shadowHost || container;
+              if (_mount.parentNode) {
+                _mount.parentNode.removeChild(_mount);
               }
               try {
                 delete registry[instanceId];
@@ -1096,8 +1119,31 @@
   // they ever pass untrusted input.
   function showErrorWidget(title, message) {
     try {
-      const errorContainer = document.createElement("div");
-      errorContainer.id = WIDGET_SCRIPT_ID + '-error';
+      // Isolate error UI from host-page CSS via Shadow DOM. Falls back to a
+      // plain element (with inline styles) when Shadow DOM is unavailable.
+      let _errShadowHost = null;
+      let errorContainer = null;
+      try {
+        if (typeof Element !== 'undefined' && typeof Element.prototype.attachShadow === 'function') {
+          _errShadowHost = document.createElement('div');
+          _errShadowHost.setAttribute('aria-hidden', 'true');
+          const _shadow = _errShadowHost.attachShadow({ mode: 'closed' });
+          const _style = document.createElement('style');
+          // Reset inherited properties so host font/color rules don't leak in.
+          _style.textContent = ':host { all: initial; } *, *::before, *::after { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }';
+          _shadow.appendChild(_style);
+          errorContainer = document.createElement('div');
+          _shadow.appendChild(errorContainer);
+        }
+      } catch (e) {
+        _errShadowHost = null;
+        errorContainer = null;
+      }
+      if (!errorContainer) {
+        errorContainer = document.createElement("div");
+        errorContainer.id = WIDGET_SCRIPT_ID + '-error';
+        _errShadowHost = null;
+      }
       errorContainer.style.cssText = `
         position: fixed;
         bottom: calc(20px + env(safe-area-inset-bottom, 0px));
@@ -1139,7 +1185,10 @@
       closeBtn.setAttribute('aria-label', 'Close');
       closeBtn.style.cssText = 'flex-shrink: 0; background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 20px; line-height: 1; padding: 0;';
       closeBtn.textContent = '×';
-      closeBtn.addEventListener('click', function () { errorContainer.remove(); });
+      closeBtn.addEventListener('click', function () {
+        // Remove the shadow host when present, otherwise the container itself.
+        (_errShadowHost || errorContainer).remove();
+      });
 
       row.appendChild(iconWrap);
       row.appendChild(body);
@@ -1147,11 +1196,12 @@
       errorContainer.appendChild(row);
       errorContainer.appendChild(buildPoweredByFooter());
 
+      const _errMount = _errShadowHost || errorContainer;
       if (document.body) {
-        document.body.appendChild(errorContainer);
+        document.body.appendChild(_errMount);
       } else {
         document.addEventListener("DOMContentLoaded", () => {
-          document.body.appendChild(errorContainer);
+          document.body.appendChild(_errMount);
         });
       }
     } catch (err) {
