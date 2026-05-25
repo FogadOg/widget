@@ -23,7 +23,7 @@ const nextConfig = {
   // Ensure Turbopack uses this project as the root to avoid
   // warnings when multiple lockfiles exist in the mono-repo.
   turbopack: {
-    root: '.',
+    root: __dirname,
   },
   webpack(config, { isServer }) {
     if (!isServer) {

@@ -2,27 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { nanoid } from 'nanoid';
 
 /**
- * Per-request nonce middleware.
+ * Per-request nonce proxy.
  *
  * Generates a cryptographically-unique nonce for every request and injects it
  * into both the `Content-Security-Policy` response header and the
  * `x-nonce` request header so that downstream RSC / server components can
  * read it via `headers()`.
- *
- * The CSP covers:
- *  - script-src   – only 'self' + the per-request nonce (no unsafe-inline)
- *  - style-src    – 'self' + 'unsafe-inline' (required for Tailwind runtime)
- *  - connect-src  – 'self' + the configured API origin
- *  - img-src      – 'self' data: https:
- *  - font-src     – 'self' data:
- *  - object-src   – 'none'  (no plugins)
- *  - base-uri     – 'self'
- *  - form-action  – 'self'
- *  - frame-ancestors – 'none' by default (overridden for /embed/* routes)
- *
- * Violation reports are sent to /api/security/csp-report.
  */
-
 function buildCsp(nonce: string, pathname: string): string {
   // Collect extra API origins to allow in connect-src. Check all relevant
   // env var names so local dev (.env.local) and production deployments both work.
@@ -67,7 +53,7 @@ function buildCsp(nonce: string, pathname: string): string {
     .join('; ');
 }
 
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
   const nonce = nanoid(32);
   const pathname = request.nextUrl.pathname;
   const isEmbedRoute = pathname.startsWith('/embed/');

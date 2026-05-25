@@ -1,7 +1,6 @@
-const CACHE_NAME = 'companin-static-v1';
-const PRECACHE_URLS = [
-  '/',
-];
+const CACHE_NAME = 'companin-static-v2';
+const CACHE_PREFIX = 'companin-static-';
+const PRECACHE_URLS = [];
 
 self.addEventListener('install', (evt) => {
   evt.waitUntil(
@@ -11,12 +10,23 @@ self.addEventListener('install', (evt) => {
 });
 
 self.addEventListener('activate', (evt) => {
-  evt.waitUntil(self.clients.claim());
+  evt.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      )
+    ).then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', (evt) => {
   // Cache-first strategy for same-origin requests
   if (evt.request.method !== 'GET') return;
+  // Do not intercept requests that are not allowed to follow redirects.
+  // Returning a redirected response for these requests causes browser errors.
+  if (evt.request.redirect && evt.request.redirect !== 'follow') return;
   // Guard against empty or non-parseable URLs (e.g. data:, blob:, or empty
   // synthetic requests) that would throw inside new URL().
   let url;
@@ -27,8 +37,25 @@ self.addEventListener('fetch', (evt) => {
     return;
   }
   if (url.origin === self.location.origin) {
+    // Navigation/doc requests should always go to network to avoid serving a
+    // stale cached redirect for '/'.
+    if (evt.request.mode === 'navigate' || evt.request.destination === 'document') {
+      evt.respondWith(fetch(evt.request));
+      return;
+    }
+
     evt.respondWith(
-      caches.match(evt.request).then((cached) => cached || fetch(evt.request))
+      caches.match(evt.request).then((cached) => {
+        if (cached && !cached.redirected) return cached;
+        return fetch(evt.request).then((response) => {
+          if (response && response.ok && !response.redirected) {
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(evt.request, response.clone());
+            });
+          }
+          return response;
+        });
+      })
     );
   }
 });

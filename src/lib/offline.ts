@@ -105,6 +105,22 @@ export async function flushQueue(sendFn: (item: any) => Promise<void>) {
 // Service worker registration helper
 export function registerServiceWorker(swPath = "/sw.js") {
   if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+    const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV === 'development';
+    const enableSwInDev = (process && (process.env as any)?.NEXT_PUBLIC_ENABLE_SW_DEV) === 'true';
+
+    // In local development we disable SW by default to avoid stale cache/
+    // redirect handling issues (especially around localhost route changes).
+    if (isDev && !enableSwInDev) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          registration.unregister();
+        });
+      }).catch(() => {
+        // ignore cleanup failures
+      });
+      return;
+    }
+
     navigator.serviceWorker
       .register(swPath)
       .then((registration) => {

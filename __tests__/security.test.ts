@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  *
- * Security header & CSP middleware tests.
+ * Security header & CSP proxy tests.
  *
  * Verifies that:
  *  1. The middleware attaches a Content-Security-Policy header to every response.
@@ -27,7 +27,7 @@ jest.mock('nanoid', () => ({
 }));
 
 import { NextRequest } from 'next/server';
-import { middleware } from '../middleware';
+import { proxy } from '../proxy';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -45,18 +45,18 @@ function getHeaderValue(resp: Response, name: string): string | null {
 // Middleware tests
 // ---------------------------------------------------------------------------
 
-describe('CSP nonce middleware', () => {
+describe('CSP nonce proxy', () => {
   it('sets a Content-Security-Policy header', async () => {
     const req = makeRequest('/');
-    const resp = middleware(req);
+    const resp = proxy(req);
     expect(getHeaderValue(resp, 'Content-Security-Policy')).toBeTruthy();
   });
 
   it('includes a unique nonce in the script-src directive', async () => {
     const req1 = makeRequest('/page-a');
     const req2 = makeRequest('/page-b');
-    const resp1 = middleware(req1);
-    const resp2 = middleware(req2);
+    const resp1 = proxy(req1);
+    const resp2 = proxy(req2);
 
     const csp1 = getHeaderValue(resp1, 'Content-Security-Policy') ?? '';
     const csp2 = getHeaderValue(resp2, 'Content-Security-Policy') ?? '';
@@ -73,7 +73,7 @@ describe('CSP nonce middleware', () => {
   });
 
   it('sets script-src without unsafe-inline', () => {
-    const resp = middleware(makeRequest('/'));
+    const resp = proxy(makeRequest('/'));
     const csp = getHeaderValue(resp, 'Content-Security-Policy') ?? '';
     // Extract only the script-src directive so we don't accidentally match
     // 'unsafe-inline' that may appear in style-src or other directives.
@@ -83,41 +83,41 @@ describe('CSP nonce middleware', () => {
   });
 
   it('forbids objects with object-src none', () => {
-    const resp = middleware(makeRequest('/'));
+    const resp = proxy(makeRequest('/'));
     const csp = getHeaderValue(resp, 'Content-Security-Policy') ?? '';
     expect(csp).toContain("object-src 'none'");
   });
 
   it('includes a report-uri directive', () => {
-    const resp = middleware(makeRequest('/'));
+    const resp = proxy(makeRequest('/'));
     const csp = getHeaderValue(resp, 'Content-Security-Policy') ?? '';
     expect(csp).toContain('report-uri /api/security/csp-report');
   });
 
   it('sets X-Content-Type-Options: nosniff', () => {
-    const resp = middleware(makeRequest('/'));
+    const resp = proxy(makeRequest('/'));
     expect(getHeaderValue(resp, 'X-Content-Type-Options')).toBe('nosniff');
   });
 
   it('sets X-Frame-Options: DENY', () => {
-    const resp = middleware(makeRequest('/'));
+    const resp = proxy(makeRequest('/'));
     expect(getHeaderValue(resp, 'X-Frame-Options')).toBe('DENY');
   });
 
   it('sets Referrer-Policy', () => {
-    const resp = middleware(makeRequest('/'));
+    const resp = proxy(makeRequest('/'));
     expect(getHeaderValue(resp, 'Referrer-Policy')).toBeTruthy();
   });
 
   it('sets Permissions-Policy', () => {
-    const resp = middleware(makeRequest('/'));
+    const resp = proxy(makeRequest('/'));
     const pp = getHeaderValue(resp, 'Permissions-Policy') ?? '';
     expect(pp).toContain('camera=()');
     expect(pp).toContain('microphone=()');
   });
 
   it('injects x-nonce into request headers', () => {
-    const resp = middleware(makeRequest('/'));
+    const resp = proxy(makeRequest('/'));
     // NextResponse.next() with modified request headers doesn't expose them
     // directly on the response, but we can verify the CSP nonce is set.
     const csp = getHeaderValue(resp, 'Content-Security-Policy') ?? '';
@@ -127,7 +127,7 @@ describe('CSP nonce middleware', () => {
   it('does not apply to static assets', () => {
     // Static paths are excluded by the matcher — the middleware should not
     // be called for them in production. We verify the matcher pattern.
-    const { config } = require('../middleware');
+    const { config } = require('../proxy');
     expect(config.matcher).toBeDefined();
     const matcher = config.matcher[0];
     // The matcher should exclude _next/static

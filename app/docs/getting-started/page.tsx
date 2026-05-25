@@ -1,15 +1,9 @@
 import Link from 'next/link';
-import { headers } from 'next/headers';
 import FrameworkTabs from './FrameworkTabs';
-import { getTranslations, resolveLocaleCandidates } from '../../../lib/i18n';
+import { getTranslations } from '../../../lib/i18n';
 
 export default async function GettingStartedPage() {
-  const headersList = await headers();
-  const acceptLanguage = headersList.get('accept-language');
-  const candidates = (acceptLanguage ?? '')
-    .split(',')
-    .map((s) => s.split(';')[0].trim());
-  const locale = resolveLocaleCandidates(candidates);
+  const locale = 'en';
   const t = getTranslations(locale) as Record<string, string>;
 
   return (

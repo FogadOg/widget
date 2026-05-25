@@ -38,12 +38,14 @@ export function useWidgetAuth() {
     };
   }, []);
     const getAuthToken = useCallback(async (clientId: string, parentOrigin?: string): Promise<string | null> => {
+    const normalizedClientId = typeof clientId === 'string' ? clientId.trim() : '';
     // Validate input
-    if (!clientId || typeof clientId !== 'string' || clientId.trim().length === 0) {
+    if (!normalizedClientId) {
       const error = createAuthError(
         'Invalid client ID provided',
         WidgetErrorCode.INVALID_CLIENT
       );
+      error.retryable = false;
       setAuthError(error.userMessage);
       logError(error, { clientId });
       return null;
@@ -78,7 +80,7 @@ export function useWidgetAuth() {
                 'Content-Type': 'application/json',
                 ...embedOriginHeader(parentOrigin),
               },
-              body: JSON.stringify({ client_id: clientId }),
+              body: JSON.stringify({ client_id: normalizedClientId }),
               signal: controller.signal,
             });
 
@@ -101,10 +103,20 @@ export function useWidgetAuth() {
 
               // Check for specific error codes
               if (response.status === 401 || response.status === 403) {
-                throw createAuthError(
+                const err = createAuthError(
                   errorMessage,
                   WidgetErrorCode.INVALID_CLIENT
                 );
+                err.retryable = false;
+                throw err;
+              }
+
+              // Client-side request issues (invalid payload/id/etc.) are
+              // not transient and should not be retried.
+              if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+                const err = createAuthError(errorMessage, WidgetErrorCode.AUTH_TOKEN_FAILED);
+                err.retryable = false;
+                throw err;
               }
 
               // 429 means the server told us to back off. Retrying just
