@@ -622,21 +622,40 @@ export default function EmbedClient({
   // sees a brief acknowledgment instead of a silent restart.
   const [sessionExpiredBanner, setSessionExpiredBanner] = useState(false);
 
-  // Periodic check for expired sessions
+  // Track an in-flight silent refresh so the periodic check doesn't fire
+  // multiple concurrent createSession() calls when an expiry is detected.
+  const sessionRefreshInFlightRef = useRef(false);
+
+  // Periodic check for expired sessions. When the local TTL has lapsed we
+  // silently provision a new session in the background rather than showing
+  // an "expired" banner — the existing chat UI is preserved and the user can
+  // keep typing as if nothing happened.
   useEffect(() => {
-    const checkSessionExpiry = () => {
+    const checkSessionExpiry = async () => {
       const stored = helpers.getStoredSession(sessionStorageKey);
-      if (!stored && sessionId) {
-        // Session expired — clear the session ID so the next message triggers
-        // a new session, but keep messages visible so the chat history remains.
-        setSessionId(null);
-        setSessionExpiredBanner(true);
+      if (stored || !sessionId || sessionRefreshInFlightRef.current) return;
+
+      sessionRefreshInFlightRef.current = true;
+      setSessionId(null);
+      sessionIdRef.current = null;
+      try {
+        const token = authTokenRef.current;
+        if (token) {
+          // skipMessageLoad=true preserves the in-memory chat history so the
+          // empty new session doesn't blank out what the user has been seeing.
+          await createSession(initialAssistantId, token, undefined, true);
+        }
+      } catch {
+        // Silent refresh failed; the next user message will re-attempt
+        // recovery via the inline handler in handleSubmit.
+      } finally {
+        sessionRefreshInFlightRef.current = false;
       }
     };
 
     const interval = setInterval(checkSessionExpiry, 60000);
     return () => clearInterval(interval);
-  }, [sessionId, sessionStorageKey]);
+  }, [sessionId, sessionStorageKey, initialAssistantId]);
 
 
   useEffect(() => {
@@ -2114,14 +2133,30 @@ export default function EmbedClient({
             if (!response.ok) {
               const errorMessage = parseApiError(data, 'Failed to send message');
 
-              // Check if session expired (410 is the explicit server signal;
-              // 401/404 and "expired" string fallback for older API responses).
+              // Session expired server-side (410 is the explicit signal;
+              // 401/404 / "expired" / "not found" cover older API responses).
+              // Instead of surfacing an "expired" banner, silently refresh
+              // the session and throw a retryable SESSION_EXPIRED so the
+              // wrapper re-runs this fetch with the new sessionIdRef.
               if (response.status === 410 || response.status === 401 || response.status === 404 ||
                   errorMessage.toLowerCase().includes('expired') ||
                   errorMessage.toLowerCase().includes('not found')) {
                 localStorage.removeItem(sessionStorageKey);
-                setSessionExpiredBanner(true);
+                sessionIdRef.current = null;
                 setSessionId(null);
+                if (!sessionRefreshInFlightRef.current) {
+                  sessionRefreshInFlightRef.current = true;
+                  try {
+                    if (useToken) {
+                      await createSession(initialAssistantId, useToken, undefined, true);
+                    }
+                  } catch {
+                    // Refresh failed — fall through, the retry will surface
+                    // a real error if it also fails.
+                  } finally {
+                    sessionRefreshInFlightRef.current = false;
+                  }
+                }
                 throw createSessionError(
                   errorMessage,
                   WidgetErrorCode.SESSION_EXPIRED
