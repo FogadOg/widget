@@ -1,6 +1,7 @@
 /* global jest, describe, test, expect, beforeEach, afterEach */
 describe('docs-widget edge cases', () => {
   beforeEach(() => {
+    jest.useRealTimers();
     jest.resetModules();
     // clean DOM and restore common document properties
     document.documentElement.innerHTML = '<head></head><body></body>';

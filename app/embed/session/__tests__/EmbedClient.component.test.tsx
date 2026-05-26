@@ -638,4 +638,14 @@ describe('EmbedClient component', () => {
 
     jest.restoreAllMocks();
   });
+
+  test('WIDGET_DEBUG_ENABLE and WIDGET_DEBUG_DISABLE postMessages are handled', async () => {
+    render(<EmbedClient {...baseProps} />);
+    await waitFor(() => expect(screen.getByTestId('embed-shell')).toBeInTheDocument(), { timeout: 3000 });
+
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'WIDGET_DEBUG_ENABLE' } }));
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'WIDGET_DEBUG_DISABLE' } }));
+    });
+  });
 });

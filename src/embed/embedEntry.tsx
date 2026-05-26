@@ -43,6 +43,9 @@ export function EmbedEntry({ allowedOrigins = [] }: EmbedEntryProps) {
     // In dynamic mode (EMBED_ALLOWLIST_MODE=dynamic, the default) no origin list is
     // configured here — any HTTPS site can embed the widget and per-customer
     // authorization is enforced by the JWT token at the API layer instead.
+    if (origins.length === 0) {
+      console.warn('[EmbedEntry] No allowed origins configured. All origins are permitted in dynamic mode.');
+    }
 
     const hs = createHandshake({ allowedOrigins: origins });
 

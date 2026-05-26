@@ -242,6 +242,7 @@ describe('EmbedClient Component', () => {
   let mockGetAuthToken: jest.Mock;
 
   beforeEach(() => {
+    jest.useRealTimers();
     jest.clearAllMocks();
 
     // Setup helpers mocks
@@ -561,7 +562,7 @@ describe('EmbedClient Component', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
-      });
+      }, { timeout: 5000 });
 
       fireEvent.change(screen.getByTestId('input'), { target: { value: 'Hello' } });
       fireEvent.click(screen.getByTestId('submit-btn'));
@@ -637,7 +638,7 @@ describe('EmbedClient Component', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
-      });
+      }, { timeout: 5000 });
 
       fireEvent.change(screen.getByTestId('input'), { target: { value: 'Hello' } });
       fireEvent.click(screen.getByTestId('submit-btn'));

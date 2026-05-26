@@ -59,11 +59,7 @@ const safeGet = (key: string): string | null => {
   if (!isStorageConsentGranted()) {
     return memoryFallback.get(key) ?? null;
   }
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return memoryFallback.get(key) ?? null;
-  }
+  return localStorage.getItem(key);
 };
 
 const safeSet = (key: string, value: string): void => {

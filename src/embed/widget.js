@@ -508,30 +508,7 @@
 
       container.appendChild(iframe);
 
-      // Wrap the container in a closed Shadow DOM so host-page CSS (including
-      // !important rules) cannot reach the container or its children. The iframe
-      // is already isolated by the browser; Shadow DOM extends that protection to
-      // the host-side container element and any error UI rendered inside it.
-      let _shadowHost = null;
-      try {
-        if (typeof Element !== 'undefined' && typeof Element.prototype.attachShadow === 'function') {
-          _shadowHost = document.createElement('div');
-          _shadowHost.setAttribute('aria-hidden', 'true');
-          const _shadow = _shadowHost.attachShadow({ mode: 'closed' });
-          const _resetStyle = document.createElement('style');
-          // Reset box-model inside shadow; font/color inherit is intentionally
-          // left alone since the container only contains an opaque iframe.
-          _resetStyle.textContent = '*, *::before, *::after { box-sizing: border-box; }';
-          _shadow.appendChild(_resetStyle);
-          _shadow.appendChild(container);
-          document.body.appendChild(_shadowHost);
-        }
-      } catch (e) {
-        _shadowHost = null;
-      }
-      if (!_shadowHost) {
-        document.body.appendChild(container);
-      }
+      document.body.appendChild(container);
 
       // Defensive: sanitize right:20px from container inline styles.
       // Use the direct reference — document.getElementById can't reach into shadow DOM.
@@ -802,9 +779,7 @@
                 const state = debounceState[eventName];
                 if (state && state.timer) clearTimeout(state.timer);
               });
-              // Remove whichever element is actually in the document —
-              // the shadow host when Shadow DOM is active, otherwise the container itself.
-              const _mount = _shadowHost || container;
+              const _mount = container;
               if (_mount.parentNode) {
                 _mount.parentNode.removeChild(_mount);
               }
@@ -1119,31 +1094,9 @@
   // they ever pass untrusted input.
   function showErrorWidget(title, message) {
     try {
-      // Isolate error UI from host-page CSS via Shadow DOM. Falls back to a
-      // plain element (with inline styles) when Shadow DOM is unavailable.
-      let _errShadowHost = null;
-      let errorContainer = null;
-      try {
-        if (typeof Element !== 'undefined' && typeof Element.prototype.attachShadow === 'function') {
-          _errShadowHost = document.createElement('div');
-          _errShadowHost.setAttribute('aria-hidden', 'true');
-          const _shadow = _errShadowHost.attachShadow({ mode: 'closed' });
-          const _style = document.createElement('style');
-          // Reset inherited properties so host font/color rules don't leak in.
-          _style.textContent = ':host { all: initial; } *, *::before, *::after { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }';
-          _shadow.appendChild(_style);
-          errorContainer = document.createElement('div');
-          _shadow.appendChild(errorContainer);
-        }
-      } catch (e) {
-        _errShadowHost = null;
-        errorContainer = null;
-      }
-      if (!errorContainer) {
-        errorContainer = document.createElement("div");
-        errorContainer.id = WIDGET_SCRIPT_ID + '-error';
-        _errShadowHost = null;
-      }
+      const _errShadowHost = null;
+      const errorContainer = document.createElement("div");
+      errorContainer.id = WIDGET_SCRIPT_ID + '-error';
       errorContainer.style.cssText = `
         position: fixed;
         bottom: calc(20px + env(safe-area-inset-bottom, 0px));
