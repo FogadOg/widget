@@ -1,3 +1,12 @@
+jest.mock('next/server', () => ({
+  NextResponse: {
+    json: (body: unknown, init?: { status?: number }) => ({
+      json: async () => body,
+      status: init?.status ?? 200,
+    }),
+  },
+}));
+
 import { GET } from '../app/api/health/route';
 
 describe('GET /api/health', () => {
