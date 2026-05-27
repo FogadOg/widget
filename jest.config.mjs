@@ -53,7 +53,7 @@ const config = {
     '!**/*.test.{js,jsx,ts,tsx}',
     '!**/*.spec.{js,jsx,ts,tsx}',
     '!**/.next/**',
-    '!**/coverage/**'
+    '!**/coverage/**',
   ],
   coverageReporters: ['text', 'json', 'lcov', 'text-summary'],
   coverageThreshold: {
