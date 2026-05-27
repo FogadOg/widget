@@ -60,41 +60,46 @@ describe('scripts/build-embed.js', () => {
       require(path.join(ROOT, 'scripts', 'build-embed.js'));
     });
 
-    const outDocs = fs.readFileSync(path.join(tmp, 'public', 'docs-widget.js'), 'utf8');
-    const outWidget = fs.readFileSync(path.join(tmp, 'public', 'widget.js'), 'utf8');
+    // Resolve package version first — needed to locate the versioned output files.
+    // The build script writes the real bundle to public/docs-widget-{VERSION}.js and
+    // only a small stub loader to public/docs-widget.js, so content checks must target
+    // the versioned file.
+    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+    const VERSION = String(pkg.version || '0.0.0');
+    const applyVersionToken = (s: string) => s.replace(/['"]__WIDGET_VERSION__['"]/g, JSON.stringify(VERSION));
+
+    const outDocs = fs.readFileSync(path.join(tmp, 'public', `docs-widget-${VERSION}.js`), 'utf8');
+    const outWidget = fs.readFileSync(path.join(tmp, 'public', `widget-${VERSION}.js`), 'utf8');
 
     // header should be present at start
     expect(outDocs.startsWith('// =============================================================================')).toBe(true);
     expect(outWidget.startsWith('// =============================================================================')).toBe(true);
 
     // output should end with source content after build-time token substitution
-    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-    const VERSION = String(pkg.version || '0.0.0');
-    const applyVersionToken = (s: string) => s.replace(/['"]__WIDGET_VERSION__['"]/g, JSON.stringify(VERSION));
     expect(outDocs.endsWith(applyVersionToken(docsContent))).toBe(true);
     expect(outWidget.endsWith(applyVersionToken(widgetContent))).toBe(true);
 
-    // Idempotency: run again and ensure files unchanged
+    // Idempotency: run again and ensure versioned files unchanged
     const beforeDocs = outDocs;
     const beforeWidget = outWidget;
     jest.resetModules();
     // clear cached module then require again to simulate re-run
     delete require.cache[require.resolve(path.join(tmp, 'scripts', 'build-embed.js'))];
     require(path.join(tmp, 'scripts', 'build-embed.js'));
-    const afterDocs = fs.readFileSync(path.join(tmp, 'public', 'docs-widget.js'), 'utf8');
-    const afterWidget = fs.readFileSync(path.join(tmp, 'public', 'widget.js'), 'utf8');
+    const afterDocs = fs.readFileSync(path.join(tmp, 'public', `docs-widget-${VERSION}.js`), 'utf8');
+    const afterWidget = fs.readFileSync(path.join(tmp, 'public', `widget-${VERSION}.js`), 'utf8');
     expect(afterDocs).toBe(beforeDocs);
     expect(afterWidget).toBe(beforeWidget);
 
-    // Now simulate source already containing a generated header and ensure no duplicate headers
-    // Header format mirrors what build-embed.js actually writes (includes Version line)
+    // Now simulate source already containing a generated header and ensure no duplicate headers.
+    // Check the versioned output (which strips the existing header before prepending).
     const header = `// =============================================================================\n// AUTO-GENERATED FILE — DO NOT EDIT DIRECTLY\n// Source: src/embed/docs-widget.js\n// Version: ${VERSION}\n// Regenerate: npm run build:embed\n// =============================================================================\n`;
     fs.writeFileSync(path.join(tmp, 'src', 'embed', 'docs-widget.js'), header + docsContent, 'utf8');
     // write header to source and require again
     jest.resetModules();
     delete require.cache[require.resolve(path.join(tmp, 'scripts', 'build-embed.js'))];
     require(path.join(tmp, 'scripts', 'build-embed.js'));
-    const singleHeaderOut = fs.readFileSync(path.join(tmp, 'public', 'docs-widget.js'), 'utf8');
+    const singleHeaderOut = fs.readFileSync(path.join(tmp, 'public', `docs-widget-${VERSION}.js`), 'utf8');
     // header should appear exactly once at start
     expect(singleHeaderOut.indexOf(header)).toBe(0);
     expect(singleHeaderOut.substr(header.length).startsWith(header)).toBe(false);

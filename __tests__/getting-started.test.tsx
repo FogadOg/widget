@@ -21,6 +21,14 @@ jest.mock('shiki', () => ({
   codeToHtml: jest.fn().mockRejectedValue(new Error('shiki not available in tests')),
 }))
 
+// Mock embedManifest so tests don't depend on a manifest file on disk
+jest.mock('../lib/embedManifest', () => ({
+  getEmbedSrc: jest.fn().mockImplementation((key: string) => ({
+    src: `https://widget.companin.tech/${key === 'docs-widget' ? 'docs-widget' : 'widget'}.js`,
+    integrityAttr: '',
+  })),
+}))
+
 // Mock clipboard API
 Object.defineProperty(navigator, 'clipboard', {
   configurable: true,
@@ -29,6 +37,7 @@ Object.defineProperty(navigator, 'clipboard', {
 
 import FrameworkTabs from '../app/docs/getting-started/FrameworkTabs'
 import GettingStartedPage from '../app/docs/getting-started/page'
+import { getEmbedSrc } from '../lib/embedManifest'
 
 // ─── FrameworkTabs ───────────────────────────────────────────────────────────
 
@@ -157,4 +166,26 @@ describe('GettingStartedPage', () => {
     render(jsx)
     expect(screen.getAllByText(/YOUR_CONFIG_ID/).length).toBeGreaterThan(0)
   })
+})
+
+describe('GettingStartedPage – docsIntegrityAttr truthy branch', () => {
+  afterEach(() => {
+    (getEmbedSrc as jest.Mock).mockImplementation((key: string) => ({
+      src: `https://widget.companin.tech/${key === 'docs-widget' ? 'docs-widget' : 'widget'}.js`,
+      integrityAttr: '',
+    }));
+  });
+
+  it('includes integrity attr in the docs-widget HTML snippet when docsIntegrityAttr is set', async () => {
+    (getEmbedSrc as jest.Mock).mockImplementation((key: string) => {
+      if (key === 'docs-widget') {
+        return { src: 'https://widget.companin.tech/docs-widget-1.0.0.js', integrityAttr: 'integrity="sha384-testHash" crossorigin="anonymous"' };
+      }
+      return { src: 'https://widget.companin.tech/widget.js', integrityAttr: '' };
+    });
+
+    const jsx = await (GettingStartedPage as any)();
+    render(jsx);
+    expect(document.body.textContent).toContain('sha384-testHash');
+  });
 })

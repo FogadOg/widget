@@ -107,7 +107,7 @@ export type ContextTriggerProps = ComponentProps<typeof Button>;
 export const ContextTrigger = ({ children, ...props }: ContextTriggerProps) => {
   const { usedTokens, maxTokens } = useContextValue();
   const usedPercent = usedTokens / maxTokens;
-  const renderedPercent = new Intl.NumberFormat("en-US", {
+  const renderedPercent = new Intl.NumberFormat(undefined, {
     style: "percent",
     maximumFractionDigits: 1,
   }).format(usedPercent);
@@ -147,14 +147,14 @@ export const ContextContentHeader = ({
 }: ContextContentHeaderProps) => {
   const { usedTokens, maxTokens } = useContextValue();
   const usedPercent = usedTokens / maxTokens;
-  const displayPct = new Intl.NumberFormat("en-US", {
+  const displayPct = new Intl.NumberFormat(undefined, {
     style: "percent",
     maximumFractionDigits: 1,
   }).format(usedPercent);
-  const used = new Intl.NumberFormat("en-US", {
+  const used = new Intl.NumberFormat(undefined, {
     notation: "compact",
   }).format(usedTokens);
-  const total = new Intl.NumberFormat("en-US", {
+  const total = new Intl.NumberFormat(undefined, {
     notation: "compact",
   }).format(maxTokens);
 

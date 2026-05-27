@@ -97,7 +97,7 @@ const LANGUAGES: Record<TabKey, string> = {
   'Vue': 'vue',
 };
 
-const TABS = Object.keys(SNIPPETS) as TabKey[];
+const TABS = Object.keys(LANGUAGES) as TabKey[];
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);

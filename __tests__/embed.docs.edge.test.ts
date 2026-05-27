@@ -88,7 +88,9 @@ describe('docs-widget edge cases', () => {
     widget.sendMessage({ x: 2 });
 
     // after debounce window the queued message should fire
-    await new Promise((r) => setTimeout(r, 200));
+    // 500ms gives a wide buffer: 120ms debounce + invokeCallbackSafely's setTimeout(0) hop
+    // + any timer drift on loaded CI machines
+    await new Promise((r) => setTimeout(r, 500));
 
     expect(handler).toHaveBeenCalledTimes(2);
   });

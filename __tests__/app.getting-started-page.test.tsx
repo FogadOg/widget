@@ -13,6 +13,13 @@ jest.mock('../app/components/LanguageSwitcher', () => ({
     React.createElement('div', { 'data-testid': 'language-switcher', 'data-locale': locale }),
 }));
 
+jest.mock('../lib/embedManifest', () => ({
+  getEmbedSrc: jest.fn().mockImplementation((key: string) => ({
+    src: `https://widget.companin.tech/${key === 'docs-widget' ? 'docs-widget' : 'widget'}.js`,
+    integrityAttr: '',
+  })),
+}));
+
 jest.mock('../lib/i18n', () => ({
   getTranslations: (locale: string) => ({
     gettingStartedBack: `← Back (${locale})`,
@@ -39,6 +46,7 @@ jest.mock('../lib/i18n', () => ({
 }));
 
 import GettingStartedPage from '../app/[locale]/docs/getting-started/page';
+import { getEmbedSrc } from '../lib/embedManifest';
 
 describe('app/[locale]/docs/getting-started/page.tsx', () => {
   it('renders page title and sections', async () => {
@@ -100,5 +108,26 @@ describe('app/[locale]/docs/getting-started/page.tsx', () => {
     expect(html).toContain('Call');
     expect(html).toContain('window.CompaninDocsWidget.open()');
     expect(html).toContain('to open programmatically');
+  });
+
+  it('covers the truthy docsIntegrityAttr branch when integrity is set', async () => {
+    (getEmbedSrc as jest.Mock).mockImplementation((key: string) => {
+      if (key === 'docs-widget') {
+        return { src: 'https://widget.companin.tech/docs-widget-1.0.0.js', integrityAttr: 'integrity="sha384-branchHash" crossorigin="anonymous"' };
+      }
+      return { src: 'https://widget.companin.tech/widget.js', integrityAttr: '' };
+    });
+
+    const element = await GettingStartedPage({ params: Promise.resolve({ locale: 'en' }) });
+    const html = renderToStaticMarkup(element as React.ReactElement);
+
+    // page rendered successfully; the truthy branch was exercised
+    expect(html).toContain('Getting Started');
+
+    // reset mock to default
+    (getEmbedSrc as jest.Mock).mockImplementation((key: string) => ({
+      src: `https://widget.companin.tech/${key === 'docs-widget' ? 'docs-widget' : 'widget'}.js`,
+      integrityAttr: '',
+    }));
   });
 });

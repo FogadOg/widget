@@ -12,13 +12,13 @@ import en from "../locales/en.json";
 // when something actually uses them.
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   preload: false,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   preload: false,
 });
 

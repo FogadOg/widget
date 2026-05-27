@@ -253,6 +253,15 @@ export default function EmbedClient({
   const [messages, setMessages] = useState<Message[]>([]);
   const [flowResponses, setFlowResponses] = useState<FlowResponse[]>([]);
 
+  // Keep <html lang> and <html dir> in sync with the widget's locale so that
+  // screen readers, browser spell-check, and RTL CSS all use the correct language.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const dir = getLocaleDirection(initialLocale);
+    document.documentElement.lang = initialLocale;
+    document.documentElement.dir = dir;
+  }, [initialLocale]);
+
   // Install the consent gate before any storage helper runs (LAUNCH-READINESS #16).
   // Until the host page postMessages WIDGET_CONSENT_GRANT, visitor IDs and
   // session IDs are kept in-memory only.
@@ -2801,7 +2810,7 @@ type UnsureMessagesModalProps = {
 };
 
 function UnsureMessagesModal({ messages, onClose, primaryColor, backgroundColor, textColor, borderRadius }: UnsureMessagesModalProps) {
-  const { translations: t } = useWidgetTranslation();
+  const { translations: t, locale } = useWidgetTranslation();
   return (
     <div
       className="rounded-lg shadow-lg max-h-[80vh] overflow-hidden"
@@ -2841,7 +2850,7 @@ function UnsureMessagesModal({ messages, onClose, primaryColor, backgroundColor,
                   <p className="text-sm mt-1 italic">{msg.assistantMessage}</p>
                 </div>
                 <div className="text-xs text-gray-400 mt-2">
-                  {new Date(msg.timestamp).toLocaleString()}
+                  {new Date(msg.timestamp).toLocaleString(locale)}
                 </div>
               </div>
             ))}
