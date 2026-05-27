@@ -1,10 +1,13 @@
 import Link from 'next/link';
 import FrameworkTabs from './FrameworkTabs';
 import { getTranslations } from '../../../lib/i18n';
+import { getEmbedSrc } from '../../../lib/embedManifest';
 
 export default async function GettingStartedPage() {
   const locale = 'en';
   const t = getTranslations(locale) as Record<string, string>;
+  const { src: widgetSrc, integrityAttr } = getEmbedSrc('widget');
+  const { src: docsWidgetSrc, integrityAttr: docsIntegrityAttr } = getEmbedSrc('docs-widget');
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-zinc-950">
@@ -77,7 +80,7 @@ export default async function GettingStartedPage() {
             <code className="font-mono text-sm bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">YOUR_CONFIG_ID</code>
             {t.gettingStartedStep2Desc.split('{configId}')[1]}
           </p>
-          <FrameworkTabs />
+          <FrameworkTabs widgetSrc={widgetSrc} integrityAttr={integrityAttr} />
         </section>
 
         {/* Step 3 */}
@@ -112,14 +115,7 @@ export default async function GettingStartedPage() {
           {/* Code snippets — same tabs as the main widget example */}
           <FrameworkTabs snippets={{
             'HTML / JS':
-`<script
-  src="https://widget.companin.tech/docs-widget.js"
-  data-client-id="YOUR_CLIENT_ID"
-  data-assistant-id="YOUR_ASSISTANT_ID"
-  data-config-id="YOUR_CONFIG_ID"
-  data-instance-id="docs-help"
-  data-locale="en">
-</script>
+`<script\n  src="${docsWidgetSrc}"${docsIntegrityAttr ? `\n  ${docsIntegrityAttr}` : ''}\n  data-client-id="YOUR_CLIENT_ID"\n  data-assistant-id="YOUR_ASSISTANT_ID"\n  data-config-id="YOUR_CONFIG_ID"\n  data-instance-id="docs-help"\n  data-locale="en"\n  async>\n</script>
 
 <button onclick="window.CompaninDocsWidget.open()">
   Ask the assistant
@@ -133,7 +129,7 @@ import { useEffect } from 'react';
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const script = document.createElement('script');
-    script.src = 'https://widget.companin.tech/docs-widget.js';
+    script.src = '${docsWidgetSrc}';
     script.dataset.clientId = 'YOUR_CLIENT_ID';
     script.dataset.assistantId = 'YOUR_ASSISTANT_ID';
     script.dataset.configId = 'YOUR_CONFIG_ID';
@@ -152,7 +148,7 @@ import { useEffect } from 'react';
 export default function App() {
   useEffect(() => {
     const script = document.createElement('script');
-    script.src = 'https://widget.companin.tech/docs-widget.js';
+    script.src = '${docsWidgetSrc}';
     script.dataset.clientId = 'YOUR_CLIENT_ID';
     script.dataset.assistantId = 'YOUR_ASSISTANT_ID';
     script.dataset.configId = 'YOUR_CONFIG_ID';
@@ -178,7 +174,7 @@ import { Component, OnInit } from '@angular/core';
 export class AppComponent implements OnInit {
   ngOnInit(): void {
     const script = document.createElement('script');
-    script.src = 'https://widget.companin.tech/docs-widget.js';
+    script.src = '${docsWidgetSrc}';
     script.dataset['clientId'] = 'YOUR_CLIENT_ID';
     script.dataset['assistantId'] = 'YOUR_ASSISTANT_ID';
     script.dataset['configId'] = 'YOUR_CONFIG_ID';
@@ -198,7 +194,7 @@ import { onMounted } from 'vue';
 
 onMounted(() => {
   const script = document.createElement('script');
-  script.src = 'https://widget.companin.tech/docs-widget.js';
+  script.src = '${docsWidgetSrc}';
   script.dataset.clientId = 'YOUR_CLIENT_ID';
   script.dataset.assistantId = 'YOUR_ASSISTANT_ID';
   script.dataset.configId = 'YOUR_CONFIG_ID';

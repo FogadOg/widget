@@ -5,6 +5,83 @@ import { useWidgetTranslation } from '../../../../hooks/useWidgetTranslation';
 
 type TabKey = 'HTML / JS' | 'Next.js' | 'React' | 'Angular' | 'Vue';
 
+const FALLBACK_SRC = 'https://widget.companin.tech/widget.js';
+
+function buildSnippets(src: string, integrityAttr: string): Record<TabKey, string> {
+  const integrityLine = integrityAttr ? `\n  ${integrityAttr}` : '';
+  return {
+  'HTML / JS': `<script\n  src="${src}"${integrityLine}\n  data-client-id="YOUR_CLIENT_ID"\n  data-assistant-id="YOUR_ASSISTANT_ID"\n  data-config-id="YOUR_CONFIG_ID"\n  data-locale="en"\n  async>\n<\/script>`,
+
+  'Next.js': `// app/layout.tsx
+'use client';
+import { useEffect } from 'react';
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = '${src}';
+    script.dataset.clientId = 'YOUR_CLIENT_ID';
+    script.dataset.assistantId = 'YOUR_ASSISTANT_ID';
+    script.dataset.configId = 'YOUR_CONFIG_ID';
+    script.dataset.locale = 'en';
+    script.async = true;
+    document.head.appendChild(script);
+    return () => { script.remove(); };
+  }, []);
+  return <html><body>{children}</body></html>;
+}`,
+
+  'React': `// src/App.tsx
+import { useEffect } from 'react';
+export default function App() {
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = '${src}';
+    script.dataset.clientId = 'YOUR_CLIENT_ID';
+    script.dataset.assistantId = 'YOUR_ASSISTANT_ID';
+    script.dataset.configId = 'YOUR_CONFIG_ID';
+    script.dataset.locale = 'en';
+    script.async = true;
+    document.head.appendChild(script);
+    return () => { script.remove(); };
+  }, []);
+  return <div>{/* your app */}</div>;
+}`,
+
+  'Angular': `// src/app/app.component.ts
+import { Component, OnInit } from '@angular/core';
+@Component({ selector: 'app-root', templateUrl: './app.component.html' })
+export class AppComponent implements OnInit {
+  ngOnInit(): void {
+    const script = document.createElement('script');
+    script.src = '${src}';
+    script.dataset['clientId'] = 'YOUR_CLIENT_ID';
+    script.dataset['assistantId'] = 'YOUR_ASSISTANT_ID';
+    script.dataset['configId'] = 'YOUR_CONFIG_ID';
+    script.dataset['locale'] = 'en';
+    document.head.appendChild(script);
+  }
+}`,
+
+  'Vue': `<!-- src/App.vue -->
+<script setup lang="ts">
+import { onMounted } from 'vue';
+onMounted(() => {
+  const script = document.createElement('script');
+  script.src = '${src}';
+  script.dataset.clientId = 'YOUR_CLIENT_ID';
+  script.dataset.assistantId = 'YOUR_ASSISTANT_ID';
+  script.dataset.configId = 'YOUR_CONFIG_ID';
+  script.dataset.locale = 'en';
+  document.head.appendChild(script);
+});
+<\/script>
+<template>
+  <div><!-- your app --></div>
+</template>`,
+  };
+}
+
+// kept for compatibility — not used now that buildSnippets is dynamic
 const SNIPPETS: Record<TabKey, string> = {
   'HTML / JS': `<script
   src="https://widget.companin.tech/widget.js"
@@ -187,10 +264,12 @@ function HighlightedCode({ code, language }: { code: string; language: string })
 
 interface FrameworkTabsProps {
   snippets?: Partial<Record<TabKey, string>>;
+  widgetSrc?: string;
+  integrityAttr?: string;
 }
 
-export default function FrameworkTabs({ snippets }: FrameworkTabsProps = {}) {
-  const merged = { ...SNIPPETS, ...snippets };
+export default function FrameworkTabs({ snippets, widgetSrc, integrityAttr }: FrameworkTabsProps = {}) {
+  const merged = { ...buildSnippets(widgetSrc || FALLBACK_SRC, integrityAttr || ''), ...snippets };
   const [active, setActive] = useState<TabKey>(TABS[0]);
   const snippet = merged[active];
   const language = LANGUAGES[active];

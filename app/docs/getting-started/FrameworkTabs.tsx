@@ -5,23 +5,14 @@ import { useWidgetTranslation } from '../../../hooks/useWidgetTranslation';
 
 type TabKey = 'HTML / JS' | 'Next.js' | 'React' | 'Angular' | 'Vue';
 
-const SNIPPETS: Record<TabKey, string> = {
-  'HTML / JS': `<script
-  src="https://widget.companin.tech/widget.js"
-  data-client-id="YOUR_CLIENT_ID"
-  data-assistant-id="YOUR_ASSISTANT_ID"
-  data-config-id="YOUR_CONFIG_ID"
-  data-locale="en">
-<\/script>
-<script>
-  window.ChatWidgetConfig = {
-    primaryColor: '#6366f1',
-    position: 'bottom-right',
-    greetingMessage: 'Hi! How can I help you today?',
-  };
-<\/script>`,
+const FALLBACK_SRC = 'https://widget.companin.tech/widget.js';
 
-  'Next.js': `// app/layout.tsx (or pages/_app.tsx)
+function buildSnippets(src: string, integrityAttr: string): Record<TabKey, string> {
+  const integrityLine = integrityAttr ? `\n  ${integrityAttr}` : '';
+  return {
+    'HTML / JS': `<script\n  src="${src}"${integrityLine}\n  data-client-id="YOUR_CLIENT_ID"\n  data-assistant-id="YOUR_ASSISTANT_ID"\n  data-config-id="YOUR_CONFIG_ID"\n  data-locale="en"\n  async>\n<\/script>\n<script>\n  window.ChatWidgetConfig = {\n    primaryColor: '#6366f1',\n    position: 'bottom-right',\n    greetingMessage: 'Hi! How can I help you today?',\n  };\n<\/script>`,
+
+    'Next.js': `// app/layout.tsx (or pages/_app.tsx)
 'use client';
 
 import { useEffect } from 'react';
@@ -29,11 +20,12 @@ import { useEffect } from 'react';
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const script = document.createElement('script');
-    script.src = 'https://widget.companin.tech/widget.js';
+    script.src = '${src}';
     script.dataset.clientId = 'YOUR_CLIENT_ID';
     script.dataset.assistantId = 'YOUR_ASSISTANT_ID';
     script.dataset.configId = 'YOUR_CONFIG_ID';
     script.dataset.locale = 'en';
+    script.async = true;
     document.head.appendChild(script);
     return () => { script.remove(); };
   }, []);
@@ -41,17 +33,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return <html><body>{children}</body></html>;
 }`,
 
-  'React': `// src/App.tsx
+    'React': `// src/App.tsx
 import { useEffect } from 'react';
 
 export default function App() {
   useEffect(() => {
     const script = document.createElement('script');
-    script.src = 'https://widget.companin.tech/widget.js';
+    script.src = '${src}';
     script.dataset.clientId = 'YOUR_CLIENT_ID';
     script.dataset.assistantId = 'YOUR_ASSISTANT_ID';
     script.dataset.configId = 'YOUR_CONFIG_ID';
     script.dataset.locale = 'en';
+    script.async = true;
     document.head.appendChild(script);
     return () => { script.remove(); };
   }, []);
@@ -59,14 +52,14 @@ export default function App() {
   return <div>{/* your app */}</div>;
 }`,
 
-  'Angular': `// src/app/app.component.ts
+    'Angular': `// src/app/app.component.ts
 import { Component, OnInit } from '@angular/core';
 
 @Component({ selector: 'app-root', templateUrl: './app.component.html' })
 export class AppComponent implements OnInit {
   ngOnInit(): void {
     const script = document.createElement('script');
-    script.src = 'https://widget.companin.tech/widget.js';
+    script.src = '${src}';
     script.dataset['clientId'] = 'YOUR_CLIENT_ID';
     script.dataset['assistantId'] = 'YOUR_ASSISTANT_ID';
     script.dataset['configId'] = 'YOUR_CONFIG_ID';
@@ -75,13 +68,13 @@ export class AppComponent implements OnInit {
   }
 }`,
 
-  'Vue': `<!-- src/App.vue -->
+    'Vue': `<!-- src/App.vue -->
 <script setup lang="ts">
 import { onMounted } from 'vue';
 
 onMounted(() => {
   const script = document.createElement('script');
-  script.src = 'https://widget.companin.tech/widget.js';
+  script.src = '${src}';
   script.dataset.clientId = 'YOUR_CLIENT_ID';
   script.dataset.assistantId = 'YOUR_ASSISTANT_ID';
   script.dataset.configId = 'YOUR_CONFIG_ID';
@@ -93,7 +86,8 @@ onMounted(() => {
 <template>
   <div><!-- your app --></div>
 </template>`,
-};
+  };
+}
 
 const LANGUAGES: Record<TabKey, string> = {
   'HTML / JS': 'html',
@@ -187,10 +181,12 @@ function HighlightedCode({ code, language }: { code: string; language: string })
 
 interface FrameworkTabsProps {
   snippets?: Partial<Record<TabKey, string>>;
+  widgetSrc?: string;
+  integrityAttr?: string;
 }
 
-export default function FrameworkTabs({ snippets }: FrameworkTabsProps = {}) {
-  const merged = { ...SNIPPETS, ...snippets };
+export default function FrameworkTabs({ snippets, widgetSrc, integrityAttr }: FrameworkTabsProps = {}) {
+  const merged = { ...buildSnippets(widgetSrc || FALLBACK_SRC, integrityAttr || ''), ...snippets };
   const [active, setActive] = useState<TabKey>(TABS[0]);
   const snippet = merged[active];
   const language = LANGUAGES[active];
