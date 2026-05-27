@@ -139,15 +139,20 @@ export async function trackEvent(
  *   widget.js (window.location.origin on the host page). When provided this is
  *   always used. Falls back to window.location.origin for non-iframe usage.
  */
-export const embedOriginHeader = (explicitOrigin?: string): Record<string, string> => {
+export const embedOriginHeader = (explicitOrigin?: string, loaderVersion?: string): Record<string, string> => {
+  const headers: Record<string, string> = {};
+
   if (explicitOrigin) {
-    return { 'X-Embed-Origin': explicitOrigin };
+    headers['X-Embed-Origin'] = explicitOrigin;
+  } else if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    headers['X-Embed-Origin'] = window.location.origin;
   }
 
-  if (typeof window !== 'undefined' && window.location && window.location.origin) {
-    return { 'X-Embed-Origin': window.location.origin };
+  if (loaderVersion) {
+    headers['X-Widget-Loader-Version'] = loaderVersion;
   }
-  return {};
+
+  return headers;
 };
 
 /**

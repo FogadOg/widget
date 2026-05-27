@@ -227,6 +227,7 @@
             startOpen: startOpen.toString(),
             pagePath: window.location.pathname,
             parentOrigin: window.location.origin,
+            loaderVersion: WIDGET_VERSION,
           });
           pf.href = `${baseUrl}/embed/session?${pfParams.toString()}`;
           pf.crossOrigin = 'anonymous';
@@ -405,6 +406,7 @@
           startOpen: startOpen.toString(),
           pagePath: window.location.pathname,
           parentOrigin: window.location.origin,
+          loaderVersion: WIDGET_VERSION,
         });
 
         // Custom CSS is no longer forwarded via the URL query (LAUNCH-READINESS #20).

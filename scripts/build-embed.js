@@ -65,11 +65,48 @@ function buildEmbedFile(entry) {
   stripped = stripped.replace(/['"]__WIDGET_VERSION__['"]/g, JSON.stringify(VERSION));
 
   const output = header + stripped;
-  fs.writeFileSync(dstPath, output, 'utf8');
+
+  // The versioned file (e.g. widget-0.1.0.js) is the real bundle — immutable.
   fs.writeFileSync(versionedDstPath, output, 'utf8');
 
+  // The unversioned alias (widget.js) is a tiny stub that dynamically loads the
+  // pinned versioned file. This prevents a breaking v2 deploy from silently
+  // upgrading customers who reference the unversioned URL: they stay on the
+  // version that was current when they installed the widget until the stub
+  // is explicitly advanced (by bumping package.json version and redeploying).
+  const versionedPublicPath = '/' + entry.versionedDst(VERSION).replace(/^public\//, '');
+  const stub = `${header}// Stable-channel loader: pins to the versioned release built alongside this file.
+// Customers on this URL stay on v${VERSION} until this stub is redeployed.
+// To advance the stable channel, bump the version in package.json and redeploy.
+(function () {
+  'use strict';
+  var cur = document.currentScript;
+  var host = 'https://widget.companin.tech';
+  if (cur && cur.src) {
+    try { host = new URL(cur.src, window.location.href).origin; } catch (e) {}
+  }
+  var s = document.createElement('script');
+  // Copy all data-* attributes (client-id, assistant-id, etc.) to the versioned tag
+  // so the widget loader can read them from document.currentScript as normal.
+  if (cur) {
+    var a = cur.attributes;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].name !== 'src' && a[i].name !== 'integrity') {
+        try { s.setAttribute(a[i].name, a[i].value); } catch (e) {}
+      }
+    }
+  }
+  s.src = host + ${JSON.stringify(versionedPublicPath)};
+  s.async = true;
+  s.crossOrigin = 'anonymous';
+  (document.head || document.documentElement).appendChild(s);
+})();
+`;
+  fs.writeFileSync(dstPath, stub, 'utf8');
+
   const integrity = sha384(Buffer.from(output, 'utf8'));
-  console.log(`build:embed  ${entry.src} → ${entry.dst} + ${entry.versionedDst(VERSION)} (v${VERSION}) ${integrity}`);
+  console.log(`build:embed  ${entry.src} → ${entry.versionedDst(VERSION)} (v${VERSION}) ${integrity}`);
+  console.log(`build:embed  stub        → ${entry.dst} (pins to v${VERSION})`);
   return { manifestKey: entry.manifestKey, version: VERSION, integrity, file: entry.versionedDst(VERSION) };
 }
 

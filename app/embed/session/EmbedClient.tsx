@@ -219,6 +219,9 @@ type EmbedClientProps = {
   consentRequired?: boolean;
   /** When true, the widget is embedded inline (persistent mode) — hides the close/collapse button. */
   persistent?: boolean;
+  /** Version of the embed loader script (e.g. "0.1.0"). Absent on pre-versioning installs.
+   *  Use this to gate behavior changes so old loaders keep working after a breaking deploy. */
+  loaderVersion?: string;
   /**
    * test-only: forcibly display the feedback dialog regardless of timer state
    */
@@ -236,8 +239,17 @@ export default function EmbedClient({
   forceVariantId: initialForceVariantId,
   consentRequired: initialConsentRequired = false,
   persistent: isPersistent = false,
+  loaderVersion,
   showFeedbackDialogOverride,
 }: EmbedClientProps) {
+  // Stable header bag forwarded on every API request. The X-Widget-Loader-Version
+  // header lets the backend gate behaviour changes so old loaders keep working
+  // after a breaking deploy (absent = pre-versioning install, treat as legacy).
+  const embedHeaders = useMemo(
+    () => embedOriginHeader(initialParentOrigin, loaderVersion),
+    [initialParentOrigin, loaderVersion],
+  );
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [flowResponses, setFlowResponses] = useState<FlowResponse[]>([]);
 
@@ -773,7 +785,7 @@ export default function EmbedClient({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`,
           'Accept': 'text/event-stream, application/json',
-          ...embedOriginHeader(initialParentOrigin),
+          ...embedHeaders,
         };
         // Resume SSE stream from where it left off on reconnect
         if (lastEventId) {
@@ -973,7 +985,7 @@ export default function EmbedClient({
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,
-              ...embedOriginHeader(initialParentOrigin),
+              ...embedHeaders,
             },
             body: JSON.stringify({ content: item.text, locale: activeLocale, page_context: helpers.getPageContext() }),
             signal: controller.signal,
@@ -1052,7 +1064,7 @@ export default function EmbedClient({
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,
-              ...embedOriginHeader(initialParentOrigin),
+              ...embedHeaders,
             },
             body: JSON.stringify({ content: item.text, locale: activeLocale, page_context: helpers.getPageContext() }),
             signal: controller.signal,
@@ -1305,7 +1317,7 @@ export default function EmbedClient({
       const fetchFn = (tok: string | null) => fetch(API.sessionMessages(sessionId), {
         headers: tok ? {
           'Authorization': `Bearer ${tok}`,
-          ...embedOriginHeader(initialParentOrigin),
+          ...embedHeaders,
         } : {},
       });
       let response;
@@ -1452,7 +1464,7 @@ export default function EmbedClient({
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
-                ...embedOriginHeader(initialParentOrigin),
+                ...embedHeaders,
               },
               body: JSON.stringify({
                   assistant_id: assistant,
@@ -1572,7 +1584,7 @@ export default function EmbedClient({
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
-          ...embedOriginHeader(initialParentOrigin),
+          ...embedHeaders,
         },
       });
 
@@ -1614,7 +1626,7 @@ export default function EmbedClient({
                 headers: {
                   'Authorization': `Bearer ${token}`,
                   'Content-Type': 'application/json',
-                  ...embedOriginHeader(initialParentOrigin),
+                  ...embedHeaders,
                 },
                 body: JSON.stringify({ metadata: patchMeta }),
               });
@@ -1785,7 +1797,7 @@ export default function EmbedClient({
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
-          ...embedOriginHeader(initialParentOrigin),
+          ...embedHeaders,
         },
       });
 
@@ -1822,7 +1834,7 @@ export default function EmbedClient({
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
-          ...embedOriginHeader(initialParentOrigin),
+          ...embedHeaders,
         },
       });
 
@@ -1867,7 +1879,7 @@ export default function EmbedClient({
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
-          ...embedOriginHeader(initialParentOrigin),
+          ...embedHeaders,
         },
       });
 
@@ -1930,7 +1942,7 @@ export default function EmbedClient({
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`,
-          ...embedOriginHeader(initialParentOrigin),
+          ...embedHeaders,
         },
         body: JSON.stringify({
           feedback_type: feedbackType,
@@ -2111,7 +2123,7 @@ export default function EmbedClient({
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${useToken}`,
-                ...embedOriginHeader(initialParentOrigin),
+                ...embedHeaders,
               },
               body: JSON.stringify({
                 content: message,
@@ -2393,7 +2405,7 @@ export default function EmbedClient({
               const headers = {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${tok}`,
-                ...embedOriginHeader(initialParentOrigin),
+                ...embedHeaders,
               };
               await fetch(API.sessionMessages(sid), {
                 method: 'POST',
@@ -2468,7 +2480,7 @@ export default function EmbedClient({
             const headers = {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${tok}`,
-              ...embedOriginHeader(initialParentOrigin),
+              ...embedHeaders,
             };
             await fetch(API.sessionMessages(sid), {
               method: 'POST',

@@ -127,16 +127,37 @@ const nextConfig = {
         ],
       },
       // ── Widget bootstrap and static assets: allow cross-origin loading ──
+      // Versioned loaders (e.g. widget-0.1.0.js) are content-addressed — safe
+      // to cache forever. Browsers and CDNs will never revalidate these URLs, so
+      // a new deploy cannot silently replace a version a customer already has.
       {
-        // widget.js / docs-widget.js are often served from a separate dev server (eg. localhost:3001)
+        source: '/widget-:version.js',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+        ],
+      },
+      {
+        source: '/docs-widget-:version.js',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+        ],
+      },
+      // Unversioned aliases: short TTL so the stable-channel pointer can be
+      // updated quickly after a deploy without stranding customers on a broken
+      // version indefinitely.
+      {
         source: '/widget.js',
         headers: [
+          { key: 'Cache-Control', value: 'public, max-age=300' },
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
         ],
       },
       {
         source: '/docs-widget.js',
         headers: [
+          { key: 'Cache-Control', value: 'public, max-age=300' },
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
         ],
       },

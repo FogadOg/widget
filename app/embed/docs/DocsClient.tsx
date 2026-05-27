@@ -136,6 +136,7 @@ type Props = {
   startOpen: boolean;
   pagePath?: string;
   parentOrigin?: string;
+  loaderVersion?: string;
 };
 
 type MessageType = {
@@ -166,7 +167,9 @@ const initialMessages: MessageType[] = [
 ];
 
 
-export default function DocsClient({ clientId, assistantId, configId, locale: initialLocale, startOpen, pagePath, parentOrigin: initialParentOrigin }: Props) {
+export default function DocsClient({ clientId, assistantId, configId, locale: initialLocale, startOpen, pagePath, parentOrigin: initialParentOrigin, loaderVersion }: Props) {
+  const embedHeaders = embedOriginHeader(initialParentOrigin, loaderVersion);
+
   const [open, setOpen] = useState(startOpen);
   const [text, setText] = useState<string>("");
   const [status, setStatus] = useState<
@@ -300,7 +303,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          ...embedOriginHeader(initialParentOrigin),
+          ...embedHeaders,
         },
         body: JSON.stringify(requestBody),
       });
@@ -339,7 +342,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
-          ...embedOriginHeader(initialParentOrigin),
+          ...embedHeaders,
         },
       });
 
@@ -394,7 +397,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
-          ...embedOriginHeader(initialParentOrigin),
+          ...embedHeaders,
         },
       });
 
@@ -435,7 +438,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
-          ...embedOriginHeader(initialParentOrigin),
+          ...embedHeaders,
         },
       });
 
@@ -479,7 +482,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`,
-          ...embedOriginHeader(initialParentOrigin),
+          ...embedHeaders,
         },
         body: JSON.stringify({
           content: content,
@@ -518,7 +521,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`,
-          ...embedOriginHeader(initialParentOrigin),
+          ...embedHeaders,
         },
         body: JSON.stringify({
           feedback_type: feedbackType,

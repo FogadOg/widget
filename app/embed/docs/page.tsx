@@ -12,12 +12,13 @@ type Props = {
     startOpen?: string;
     pagePath?: string;
     parentOrigin?: string;
+    loaderVersion?: string;
   }>;
 };
 
 export default async function DocsPage({ searchParams }: Props) {
   const params = await searchParams;
-  const { clientId, assistantId, configId, locale = "en", startOpen = "false", pagePath, parentOrigin } = params;
+  const { clientId, assistantId, configId, locale = "en", startOpen = "false", pagePath, parentOrigin, loaderVersion } = params;
 
   const t = getTranslations(locale);
 
@@ -116,5 +117,6 @@ export default async function DocsPage({ searchParams }: Props) {
     startOpen={startOpen === "true"}
     pagePath={pagePath}
     parentOrigin={parentOrigin}
+    loaderVersion={loaderVersion}
   />;
 }

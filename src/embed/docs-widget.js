@@ -306,6 +306,7 @@
           startOpen: startOpen.toString(),
           pagePath: window.location.pathname,
           parentOrigin: window.location.origin,
+          loaderVersion: WIDGET_VERSION,
         });
 
         iframe.src = `${baseUrl}/embed/docs?${params.toString()}`;
