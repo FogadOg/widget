@@ -1,4 +1,4 @@
-{
+﻿{
   "typeYourMessage": "Typ je bericht...",
   "typeYourMessageLabel": "Typ je bericht",
   "send": "Verzenden",
@@ -96,7 +96,7 @@
   "poweredBy": "Mogelijk gemaakt door ",
   "gettingStartedTitle": "Aan de slag",
   "gettingStartedSubtitle": "Voeg de chatwidget in 3 stappen toe aan uw website",
-  "gettingStartedBack": "← Terug",
+  "gettingStartedBack": "Terug",
   "gettingStartedPrerequisitesTitle": "Vereisten",
   "gettingStartedPrerequisitesDesc": "Voordat u begint, heeft u het volgende uit uw dashboard nodig:",
   "gettingStartedCredentialClientId": "Klant-ID",

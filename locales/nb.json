@@ -1,4 +1,4 @@
-{
+﻿{
   "typeYourMessage": "Skriv meldingen din...",
   "typeYourMessageLabel": "Skriv meldingen din",
   "send": "Send melding",
@@ -96,7 +96,7 @@
   "poweredBy": "Drevet av ",
   "gettingStartedTitle": "Komme i gang",
   "gettingStartedSubtitle": "Legg til chat-widgeten på nettstedet ditt i 3 trinn",
-  "gettingStartedBack": "← Tilbake",
+  "gettingStartedBack": "Tilbake",
   "gettingStartedPrerequisitesTitle": "Forutsetninger",
   "gettingStartedPrerequisitesDesc": "Før du begynner, trenger du følgende fra dashbordet:",
   "gettingStartedCredentialClientId": "Klient-ID",

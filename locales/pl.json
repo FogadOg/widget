@@ -1,4 +1,4 @@
-{
+﻿{
   "typeYourMessage": "Wpisz swoją wiadomość...",
   "typeYourMessageLabel": "Wpisz wiadomość...",
   "send": "Wyślij",
@@ -96,7 +96,7 @@
   "poweredBy": "Wspierane przez ",
   "gettingStartedTitle": "Pierwsze kroki",
   "gettingStartedSubtitle": "Dodaj widżet czatu do swojej witryny w 3 krokach",
-  "gettingStartedBack": "← Powrót",
+  "gettingStartedBack": "Powrót",
   "gettingStartedPrerequisitesTitle": "Warunki wstępne",
   "gettingStartedPrerequisitesDesc": "Zanim zaczniesz, będziesz potrzebować następujących elementów na swoim pulpicie nawigacyjnym:",
   "gettingStartedCredentialClientId": "Identyfikator klienta",

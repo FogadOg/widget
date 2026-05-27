@@ -1,4 +1,4 @@
-{
+﻿{
   "typeYourMessage": "Skriv ditt meddelande...",
   "typeYourMessageLabel": "Skriv ditt meddelande",
   "send": "Skicka",
@@ -96,7 +96,7 @@
   "poweredBy": "Drivs av ",
   "gettingStartedTitle": "Komma igång",
   "gettingStartedSubtitle": "Lägg till chattwidgeten på din webbplats i tre steg",
-  "gettingStartedBack": "← Tillbaka",
+  "gettingStartedBack": "Tillbaka",
   "gettingStartedPrerequisitesTitle": "Förutsättningar",
   "gettingStartedPrerequisitesDesc": "Innan du börjar behöver du följande från din instrumentpanel:",
   "gettingStartedCredentialClientId": "Klient-ID",

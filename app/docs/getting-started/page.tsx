@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import FrameworkTabs from './FrameworkTabs';
 import { getTranslations } from '../../../lib/i18n';
 import { getEmbedSrc } from '../../../lib/embedManifest';
@@ -15,8 +16,9 @@ export default async function GettingStartedPage() {
 
         <Link
           href={`/${locale}`}
-          className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
+          className="flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
         >
+          <ArrowLeft size={14} />
           {t.gettingStartedBack}
         </Link>
 

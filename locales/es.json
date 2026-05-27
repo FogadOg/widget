@@ -1,4 +1,4 @@
-{
+﻿{
   "typeYourMessage": "Escribe tu mensaje...",
   "typeYourMessageLabel": "Escribe tu mensaje",
   "send": "Enviar",
@@ -96,7 +96,7 @@
   "poweredBy": "Proporcionado por ",
   "gettingStartedTitle": "Empezando",
   "gettingStartedSubtitle": "Añade el widget de chat a tu sitio web en 3 pasos",
-  "gettingStartedBack": "← Volver",
+  "gettingStartedBack": "Volver",
   "gettingStartedPrerequisitesTitle": "Requisitos previos",
   "gettingStartedPrerequisitesDesc": "Antes de comenzar, necesitará lo siguiente en su panel:",
   "gettingStartedCredentialClientId": "ID de cliente",

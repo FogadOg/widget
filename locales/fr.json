@@ -1,4 +1,4 @@
-{
+﻿{
   "typeYourMessage": "Tapez votre message...",
   "typeYourMessageLabel": "Tapez votre message",
   "send": "Envoyer",
@@ -96,7 +96,7 @@
   "poweredBy": "Propulsé par ",
   "gettingStartedTitle": "Commencer",
   "gettingStartedSubtitle": "Ajoutez le widget de chat à votre site Web en 3 étapes",
-  "gettingStartedBack": "← Retour",
+  "gettingStartedBack": "Retour",
   "gettingStartedPrerequisitesTitle": "Conditions préalables",
   "gettingStartedPrerequisitesDesc": "Avant de commencer, vous aurez besoin des éléments suivants dans votre tableau de bord :",
   "gettingStartedCredentialClientId": "Identifiant client",

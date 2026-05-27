@@ -1,4 +1,4 @@
-{
+﻿{
   "typeYourMessage": "Schreiben Sie Ihre Nachricht...",
   "typeYourMessageLabel": "Schreiben Sie Ihre Nachricht",
   "send": "Senden",
@@ -96,7 +96,7 @@
   "poweredBy": "Bereitgestellt von ",
   "gettingStartedTitle": "Erste Schritte",
   "gettingStartedSubtitle": "Fügen Sie das Chat-Widget in 3 Schritten zu Ihrer Website hinzu",
-  "gettingStartedBack": "← Zurück",
+  "gettingStartedBack": "Zurück",
   "gettingStartedPrerequisitesTitle": "Voraussetzungen",
   "gettingStartedPrerequisitesDesc": "Bevor Sie beginnen, benötigen Sie Folgendes aus Ihrem Dashboard:",
   "gettingStartedCredentialClientId": "Kunden-ID",

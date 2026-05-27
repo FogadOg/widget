@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import FrameworkTabs from './FrameworkTabs';
 import LanguageSwitcher from '../../../components/LanguageSwitcher';
 import { getTranslations } from '../../../../lib/i18n';
@@ -17,8 +18,9 @@ export default async function GettingStartedPage({ params }: { params: Promise<{
         <div className="flex items-center justify-between">
           <Link
             href={`/${locale}`}
-            className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
+            className="flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
           >
+            <ArrowLeft size={14} />
             {t.gettingStartedBack}
           </Link>
           <LanguageSwitcher locale={locale} />

@@ -1,4 +1,4 @@
-{
+﻿{
   "typeYourMessage": "Type your message...",
   "typeYourMessageLabel": "Type your message",
   "send": "Send",
@@ -96,7 +96,7 @@
   "poweredBy": "Powered by ",
   "gettingStartedTitle": "Getting Started",
   "gettingStartedSubtitle": "Add the chat widget to your website in 3 steps",
-  "gettingStartedBack": "← Back",
+  "gettingStartedBack": "Back",
   "gettingStartedPrerequisitesTitle": "Prerequisites",
   "gettingStartedPrerequisitesDesc": "Before you begin, you'll need the following from your dashboard:",
   "gettingStartedCredentialClientId": "Client ID",
