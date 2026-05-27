@@ -14,11 +14,16 @@ import fs from 'fs';
 import path from 'path';
 import { WIDGET_SCRIPT_ID } from '../lib/constants';
 
+// After build:embed, public/widget.js is a tiny stub that dynamically loads the
+// versioned file from the CDN — jsdom never fetches it, so the widget never boots.
+// Read the versioned file directly; it always contains the real widget code.
+const { version } = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
+
 describe('public/widget.js loader', () => {
   let code: string;
 
   beforeAll(() => {
-    code = fs.readFileSync(path.resolve(__dirname, '../public/widget.js'), 'utf8');
+    code = fs.readFileSync(path.resolve(__dirname, `../public/widget-${version}.js`), 'utf8');
   });
 
   function inject(attrs: Record<string, string> = {}) {

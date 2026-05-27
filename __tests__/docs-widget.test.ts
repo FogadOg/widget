@@ -22,11 +22,16 @@ import { DOCS_WIDGET_SCRIPT_ID } from '../lib/constants';
 const fs = require('fs');
 const path = require('path');
 
+// After build:embed, public/docs-widget.js is a tiny stub that dynamically loads
+// the versioned file from the CDN — jsdom never fetches it, so the widget never
+// boots. Read the versioned file directly; it always contains the real widget code.
+const { version } = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
+
 describe('public/docs-widget.js loader', () => {
   let code: string;
 
   beforeAll(() => {
-    code = fs.readFileSync(path.resolve(__dirname, '../public/docs-widget.js'), 'utf8');
+    code = fs.readFileSync(path.resolve(__dirname, `../public/docs-widget-${version}.js`), 'utf8');
   });
 
   function inject(attrs: Record<string, string> = {}) {
