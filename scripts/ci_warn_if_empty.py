@@ -6,7 +6,7 @@ from pathlib import Path
 
 report_path = Path(__file__).resolve().parents[0] / 'locale_issues_report.json'
 try:
-    with open(report_path, 'r', encoding='utf-8') as f:
+    with open(report_path, 'r', encoding='utf-8-sig') as f:
         r = json.load(f)
 except Exception as e:
     print(f"::warning::Could not read {report_path}: {e}")
