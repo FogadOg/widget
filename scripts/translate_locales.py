@@ -36,30 +36,64 @@ Re-translate specific top-level keys:
 
 REQUIREMENTS
 ------------
-    pip install deep-translator
+    pip install openai
+    export OPENAI_API_KEY=sk-...
 
-Uses the free Google Translate tier — no API key required. For large runs
-the script saves progress after every top-level key so Ctrl+C is safe.
+Uses the OpenAI Chat Completions API (model defined by TRANSLATION_MODEL
+below) — mirrors the runtime helper in assistant/lib/openaiTranslate.ts so
+behaviour is consistent across the build-time script and the live widget
+proxy. For large runs the script saves progress after every top-level key
+so Ctrl+C is safe.
 
 LANGUAGE CODE MAPPING
 ---------------------
-Project locale codes that differ from Google Translate codes are listed in
-LANG_MAP at the top of this file (e.g. nb -> no for Norwegian Bokmål).
+Project locale codes that differ from the codes we send to the model are
+listed in LANG_MAP at the top of this file (e.g. nb -> no for Norwegian
+Bokmål — matches the mapping in lib/openaiTranslate.ts).
 """
 
 import argparse
 import glob
 import json
 import os
+import re
 import time
 
-from deep_translator import GoogleTranslator
+from openai import OpenAI
+
+
+# ---------------------------------------------------------------------------
+# Load .env file (chatWidget/.env) into os.environ for keys not already set.
+# This means an explicit export in the shell always wins over the file.
+# ---------------------------------------------------------------------------
+
+def _load_dotenv() -> None:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    env_path = os.path.normpath(os.path.join(script_dir, "..", ".env"))
+    if not os.path.exists(env_path):
+        return
+    with open(env_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            match = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)=(.*)$', line)
+            if match:
+                key, value = match.group(1), match.group(2).strip()
+                # Strip optional surrounding quotes
+                if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+                    value = value[1:-1]
+                if key not in os.environ:
+                    os.environ[key] = value
+
+_load_dotenv()
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
-# Map project locale codes to Google Translate language codes where they differ
+# Map project locale codes to the codes we send to the translation model
+# where they differ. Kept aligned with mapLang() in lib/openaiTranslate.ts.
 LANG_MAP = {
     "nb": "no",
 }
@@ -67,8 +101,33 @@ LANG_MAP = {
 # Keys whose values should NOT be translated (technical identifiers, placeholders, etc.)
 SKIP_KEYS = set()
 
-# Delay between translation requests (seconds) — be gentle with the free tier
-REQUEST_DELAY = 0.15
+# Delay between translation requests (seconds). OpenAI tolerates much higher
+# RPM than the old free Google tier did, but a tiny pause keeps us well clear
+# of per-minute limits on the cheaper accounts.
+REQUEST_DELAY = 0.05
+
+# Matches TRANSLATION_MODEL in assistant/lib/openaiTranslate.ts so the script
+# and the live widget proxy produce comparable output.
+TRANSLATION_MODEL = "gpt-4o-mini"
+
+# ---------------------------------------------------------------------------
+# OpenAI client (lazy — only instantiated when a translation is requested)
+# ---------------------------------------------------------------------------
+
+_client: OpenAI | None = None
+
+
+def _get_client() -> OpenAI:
+    global _client
+    if _client is not None:
+        return _client
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError(
+            "OPENAI_API_KEY is not set — export it before running this script."
+        )
+    _client = OpenAI()
+    return _client
+
 
 # ---------------------------------------------------------------------------
 # Translation helpers
@@ -76,10 +135,26 @@ REQUEST_DELAY = 0.15
 
 def translate_text(text: str, target: str, retries: int = 3) -> str | None:
     """Translate a single string. Returns None if all attempts fail."""
+    src = "en"
+    tgt = target
+    prompt = (
+        f"Translate the following text from {src} to {tgt} (ISO 639-1 codes). "
+        "Only return the translated text, with no commentary or quoting.\n\n"
+        f"{text}"
+    )
     for attempt in range(retries):
         try:
-            result = GoogleTranslator(source="en", target=target).translate(text)
-            return result
+            response = _get_client().chat.completions.create(
+                model=TRANSLATION_MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a translation engine."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.2,
+                max_tokens=2000,
+            )
+            content = response.choices[0].message.content or ""
+            return content.strip()
         except Exception as exc:
             wait = 2 ** attempt
             print(f"      translate error (attempt {attempt + 1}/{retries}): {exc}")
@@ -243,7 +318,13 @@ Examples:
                     continue
 
                 print(f"\n  [{key}]")
-                translated_val = translate_value(key, en_val, target, overwrite=args.overwrite)
+                # The outer filter above guarantees the target either has no
+                # value yet or the user passed --overwrite, so we want to
+                # translate the English source unconditionally. Passing
+                # overwrite=False here would trip translate_value's
+                # short-circuit (it inspects `value`, which is the source,
+                # not the target's existing value) and write English back.
+                translated_val = translate_value(key, en_val, target, overwrite=True)
 
                 data[key] = translated_val
                 keys_written += 1
