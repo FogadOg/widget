@@ -91,7 +91,8 @@ export async function trackEvent(
   assistantId?: string,
   metadata: Record<string, unknown> = {},
   clientId?: string,
-  authToken?: string
+  authToken?: string,
+  embedHeaders?: Record<string, string>
 ): Promise<void> {
   const BASE = getApiBaseUrl();
   if (!BASE) {
@@ -115,6 +116,9 @@ export async function trackEvent(
 
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (embedHeaders) {
+      Object.assign(headers, embedHeaders);
+    }
     if (authToken) {
       headers['Authorization'] = `Bearer ${authToken}`;
     }
@@ -167,12 +171,14 @@ export async function createSupportTicket(
     conversation_id?: string;
     session_id?: string;
   },
+  embedHeaders?: Record<string, string>,
 ): Promise<{ id: string; created_at: string }> {
   const response = await fetch(API.supportTickets(), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
+      ...(embedHeaders ?? {}),
     },
     body: JSON.stringify(payload),
   });

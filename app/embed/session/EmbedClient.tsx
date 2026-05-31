@@ -343,7 +343,7 @@ export default function EmbedClient({
       return;
     }
 
-    trackEvent('widget_load', initialAssistantId, { widget_config_id: initialConfigId }, initialClientId).catch(() => {});
+    trackEvent('widget_load', initialAssistantId, { widget_config_id: initialConfigId }, initialClientId, undefined, embedHeaders).catch(() => {});
 
     try {
       localStorage.setItem(loadKey, '1');
@@ -370,7 +370,7 @@ export default function EmbedClient({
     }
 
     const initialEvent = initialStartOpen ? 'widget_open' : 'widget_close';
-    trackEvent(initialEvent, initialAssistantId, {}, initialClientId).catch(() => {});
+    trackEvent(initialEvent, initialAssistantId, {}, initialClientId, undefined, embedHeaders).catch(() => {});
 
     try {
       localStorage.setItem(initKey, '1');
@@ -1925,6 +1925,8 @@ export default function EmbedClient({
       initialAssistantId,
       { rating, comment },
       initialClientId,
+      undefined,
+      embedHeaders,
     ).catch(() => {});
     setFeedbackSubmitted(true);
     setShowFeedbackDialog(false);
@@ -2211,7 +2213,7 @@ export default function EmbedClient({
             }
 
             // record telemetry for message sent
-            trackEvent('message_sent', initialAssistantId, { message }, initialClientId, authToken ?? undefined).catch(() => {});
+            trackEvent('message_sent', initialAssistantId, { message }, initialClientId, authToken ?? undefined, embedHeaders).catch(() => {});
 
             return data.data;
           } catch (fetchError: unknown) {
@@ -2358,7 +2360,7 @@ export default function EmbedClient({
     const hasLocalResponse = Boolean(maybeText) || maybeButtons.length > 0;
     const labelText = getLocalizedText(b.label) || (typeof b.label === 'string' ? b.label : (b.label?.en || ''));
 
-    trackEvent('button_clicked', initialAssistantId, { label: labelText }, initialClientId).catch(() => {});
+    trackEvent('button_clicked', initialAssistantId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
 
     // Add response as a grouped flow response
     if (maybeText || maybeButtons.length > 0) {
@@ -2459,7 +2461,7 @@ export default function EmbedClient({
 
     const flowHandled = processWidgetFlow(b.action);
     // track interaction click
-    trackEvent('button_clicked', initialAssistantId, { label: labelText }, initialClientId).catch(() => {});
+    trackEvent('button_clicked', initialAssistantId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
 
     if (!maybeText && !flowHandled) {
       // Interaction buttons are local-only entry points. When there is no
@@ -2536,7 +2538,9 @@ export default function EmbedClient({
         newCollapsed ? 'widget_close' : 'widget_open',
         initialAssistantId,
         { clientId: initialClientId },
-        initialClientId
+        initialClientId,
+        undefined,
+        embedHeaders,
       ).catch(() => {});
 
       // Reset unread count when opening the widget
@@ -2782,7 +2786,7 @@ export default function EmbedClient({
                 message: handoffMessage,
                 conversation_id: handoffConversationIdRef.current ?? undefined,
                 session_id: sessionId ?? undefined,
-              });
+              }, embedHeaders);
               setShowHandoffModal(false);
               setHasEscalated(false);
               const confirmationMessage: Message = {

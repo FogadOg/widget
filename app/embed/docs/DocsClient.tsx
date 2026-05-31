@@ -252,7 +252,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
     } catch {
       // localStorage unavailable — fire anyway
     }
-    trackEvent('widget_load', assistantId, { widget_config_id: configId }, clientId).catch(() => {});
+    trackEvent('widget_load', assistantId, { widget_config_id: configId }, clientId, undefined, embedHeaders).catch(() => {});
     try {
       localStorage.setItem(loadKey, '1');
     } catch {
