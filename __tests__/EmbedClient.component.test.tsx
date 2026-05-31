@@ -1112,7 +1112,14 @@ describe('EmbedClient Component', () => {
         expect(postCalls.length).toBeGreaterThan(0);
       }, { timeout: 3000 });
 
-      expect(trackEvent).toHaveBeenCalledWith('message_sent', expect.anything(), expect.any(Object), expect.anything(), expect.anything());
+      expect(trackEvent).toHaveBeenCalledWith(
+        'message_sent',
+        expect.anything(),
+        expect.any(Object),
+        expect.anything(),
+        expect.anything(),
+        expect.objectContaining({ 'X-Embed-Origin': 'https://example.com' })
+      );
     });
 
     test('handleSubmit: prevents sending empty messages', async () => {
@@ -1227,7 +1234,14 @@ describe('EmbedClient Component', () => {
       expect(window.localStorage.setItem).toHaveBeenCalled();
       // telemetry should fire for open event
       const { trackEvent } = require('../lib/telemetry');
-      expect(trackEvent).toHaveBeenCalledWith('widget_open', expect.anything(), expect.any(Object), expect.anything());
+      expect(trackEvent).toHaveBeenCalledWith(
+        'widget_open',
+        expect.anything(),
+        expect.any(Object),
+        expect.anything(),
+        undefined,
+        expect.objectContaining({ 'X-Embed-Origin': 'https://example.com' })
+      );
     });
 
     test('does not send initial telemetry if session key already set', async () => {
@@ -1240,7 +1254,14 @@ describe('EmbedClient Component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
       });
-      expect(trackEvent).not.toHaveBeenCalledWith('widget_open', expect.anything(), expect.any(Object), expect.anything());
+      expect(trackEvent).not.toHaveBeenCalledWith(
+        'widget_open',
+        expect.anything(),
+        expect.any(Object),
+        expect.anything(),
+        undefined,
+        expect.objectContaining({ 'X-Embed-Origin': 'https://example.com' })
+      );
     });
 
     test('resets unread count when expanding', async () => {
@@ -2799,6 +2820,8 @@ describe('EmbedClient Component', () => {
           defaultProps.assistantId,
           { rating: 'positive', comment: 'great' },
           defaultProps.clientId,
+          undefined,
+          expect.objectContaining({ 'X-Embed-Origin': 'https://example.com' })
         );
       });
 
@@ -4772,7 +4795,14 @@ describe('EmbedClient Component', () => {
           !JSON.parse((opts.body as string) || '{}').skip_ai_response
       );
       expect(llmPost).toBeUndefined();
-      expect(trackEvent).toHaveBeenCalledWith('button_clicked', expect.anything(), expect.any(Object), expect.anything());
+      expect(trackEvent).toHaveBeenCalledWith(
+        'button_clicked',
+        expect.anything(),
+        expect.any(Object),
+        expect.anything(),
+        undefined,
+        expect.objectContaining({ 'X-Embed-Origin': 'https://example.com' })
+      );
     });
 
     test('handleFollowUpButtonClick returns early without session or auth', async () => {
@@ -4957,7 +4987,14 @@ describe('EmbedClient Component', () => {
 
       expect(screen.getByTestId('typing-state')).toHaveTextContent('idle');
       expect(screen.getByTestId('flow-responses')).toBeInTheDocument();
-      expect(trackEvent).toHaveBeenCalledWith('button_clicked', expect.anything(), expect.any(Object), expect.anything());
+      expect(trackEvent).toHaveBeenCalledWith(
+        'button_clicked',
+        expect.anything(),
+        expect.any(Object),
+        expect.anything(),
+        undefined,
+        expect.objectContaining({ 'X-Embed-Origin': 'https://example.com' })
+      );
 
       jest.useRealTimers();
     });
