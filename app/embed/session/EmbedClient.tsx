@@ -1446,6 +1446,9 @@ export default function EmbedClient({
   async function createSession(assistant: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null, skipMessageLoad = false) {
     try {
       const visitorId = helpers.getVisitorId(initialClientId);
+      // Mutable so a 401/403 (expired token on a long-open widget) can refresh
+      // the token mid-retry and the next attempt uses the fresh one.
+      let activeToken = token;
 
       const sessionData = await retryWithBackoff(
         async () => {
@@ -1472,7 +1475,7 @@ export default function EmbedClient({
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
+                'Authorization': `Bearer ${activeToken}`,
                 ...embedHeaders,
               },
               body: JSON.stringify({
@@ -1495,6 +1498,23 @@ export default function EmbedClient({
                 'Invalid response from session server',
                 WidgetErrorCode.SESSION_CREATE_FAILED
               );
+            }
+
+            // Expired/invalid token (the widget has likely been open past the
+            // 1h token lifetime). Refresh it once and retry the next attempt
+            // with the fresh token, rather than surfacing "Failed to establish
+            // session." This path runs without fetchWithAuthRetry because
+            // createSession is invoked before sessionId/auth refs are settled.
+            if (response.status === 401 || response.status === 403) {
+              const refreshed = await getAuthToken(initialClientId, initialParentOrigin);
+              if (refreshed && refreshed !== activeToken) {
+                activeToken = refreshed;
+                authTokenRef.current = refreshed;
+                throw createNetworkError(
+                  'Auth token refreshed; retrying session creation',
+                  WidgetErrorCode.NETWORK_REQUEST_FAILED
+                );
+              }
             }
 
             if (!response.ok) {
@@ -1548,7 +1568,7 @@ export default function EmbedClient({
       setSessionId(sessionData.session_id);
       // keep ref in sync for immediate callers
       sessionIdRef.current = sessionData.session_id;
-      authTokenRef.current = token ?? null;
+      authTokenRef.current = activeToken ?? null;
       setError(null);
 
       // Store session data in localStorage. Use the legacy base key when
@@ -1562,7 +1582,7 @@ export default function EmbedClient({
       // Load messages after session creation — skip when recovering from expiry
       // so existing in-memory messages are not wiped by the empty new session.
       if (!skipMessageLoad) {
-        await loadSessionMessages(sessionData.session_id, token, true);
+        await loadSessionMessages(sessionData.session_id, activeToken, true);
       }
 
       // Attempt to flush any queued messages now that session/auth are available
@@ -2343,6 +2363,17 @@ export default function EmbedClient({
         }
         return next.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
       });
+
+      // The backend extends the session TTL on every message (refresh_expiration).
+      // Persist the refreshed expiry locally so an actively-used session isn't
+      // treated as locally expired — otherwise the 60s background check would
+      // tear down and re-create the session mid-conversation even though the
+      // server-side session is still alive.
+      const refreshedExpiresAt = (messageData as { expires_at?: string } | null)?.expires_at;
+      const refreshedSessionId = (messageData as { session_id?: string } | null)?.session_id || sessionIdRef.current;
+      if (refreshedExpiresAt && refreshedSessionId) {
+        helpers.storeSession(baseSessionKey, refreshedSessionId, refreshedExpiresAt);
+      }
     } catch (err: unknown) {
       const e = err as unknown as { userMessage?: string; message?: string; code?: string | WidgetErrorCode; name?: string };
       const errMsg = (e.message || '').toLowerCase();

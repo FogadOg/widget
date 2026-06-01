@@ -30,6 +30,12 @@ export function useWidgetAuth() {
   // Track token expiry so callers can schedule proactive silent refresh
   const tokenExpiresAtRef = useRef<number | null>(null);
   const autoRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Holds the latest `scheduleAutoRefresh` so `getAuthToken` can re-arm the
+  // refresh timer on every successful fetch without a circular useCallback
+  // dependency (getAuthToken → scheduleAutoRefresh → refreshToken → getAuthToken).
+  const scheduleAutoRefreshRef = useRef<
+    ((expiresAt: string | number, clientId: string, parentOrigin?: string) => void) | null
+  >(null);
 
   // Cancel pending auto-refresh on unmount
   useEffect(() => {
@@ -227,7 +233,18 @@ export function useWidgetAuth() {
       setRetryCount(0);
       tokenExpiresAtRef.current = expiresAtMs;
 
+      // Re-arm the silent refresh after EVERY successful fetch (initial or a
+      // prior refresh). Previously the timer was only armed once by the
+      // bootstrap caller and merely cleared here, so the token was renewed at
+      // most once — a widget left open past ~2h then ran with an expired token
+      // and background session re-establishment failed with "Failed to
+      // establish session." Re-scheduling here makes refresh recurring for the
+      // widget's whole lifetime. When the server omits expires_in we leave the
+      // bootstrap fallback (55-min) to cover scheduling.
       if (autoRefreshTimerRef.current) clearTimeout(autoRefreshTimerRef.current);
+      if (tokenString && expiresAtMs && scheduleAutoRefreshRef.current) {
+        scheduleAutoRefreshRef.current(expiresAtMs, normalizedClientId, parentOrigin);
+      }
 
       return tokenString;
     } catch (err: any) {
@@ -296,6 +313,11 @@ export function useWidgetAuth() {
       await refreshToken(clientId, parentOrigin);
     }, msUntilRefresh);
   }, [refreshToken]);
+
+  // Expose the latest scheduler to getAuthToken (see scheduleAutoRefreshRef).
+  useEffect(() => {
+    scheduleAutoRefreshRef.current = scheduleAutoRefresh;
+  }, [scheduleAutoRefresh]);
 
   return {
     getAuthToken,
