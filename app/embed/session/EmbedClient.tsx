@@ -2134,6 +2134,9 @@ export default function EmbedClient({
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${useToken}`,
+                // Negotiate Server-Sent Events so the server streams the
+                // assistant reply token-by-token; falls back to JSON otherwise.
+                'Accept': 'text/event-stream, application/json',
                 ...embedHeaders,
               },
               body: JSON.stringify({
@@ -2146,14 +2149,14 @@ export default function EmbedClient({
 
             clearTimeout(timeoutId);
 
-            let data;
-            try {
-              data = await response.json();
-            } catch {
-              throw new Error('Invalid response from message server');
-            }
-
             if (!response.ok) {
+              let data: any = {};
+              try {
+                data = await response.json();
+              } catch {
+                // Non-JSON error body — fall through with empty data so
+                // parseApiError yields the generic fallback message.
+              }
               const errorMessage = parseApiError(data, 'Failed to send message');
 
               // Session expired server-side (410 is the explicit signal;
@@ -2208,6 +2211,59 @@ export default function EmbedClient({
               throw new Error(errorMessage);
             }
 
+            // Streaming (SSE) success path: relay tokens to the live bubble as
+            // they arrive, then resolve with the final `done` payload — which
+            // is the same shape the JSON path returns, so all downstream
+            // handling (unsure / handoff / citations / feedback) is unchanged.
+            const contentType = response.headers?.get?.('content-type') || '';
+            if (response.body && contentType.includes('text/event-stream')) {
+              const reader = response.body.getReader();
+              const decoder = new TextDecoder();
+              let buffer = '';
+              let accumulated = '';
+              let finalData: any = null;
+              setStreamingMessage('');
+              let streamDone = false;
+              while (!streamDone) {
+                const { value, done: dr } = await reader.read();
+                streamDone = dr;
+                if (!value) continue;
+                buffer += decoder.decode(value, { stream: true });
+                let sepIndex: number;
+                while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+                  const rawEvent = buffer.slice(0, sepIndex);
+                  buffer = buffer.slice(sepIndex + 2);
+                  const dataLine = rawEvent.split('\n').find(l => l.startsWith('data:'));
+                  if (!dataLine) continue;
+                  const payloadStr = dataLine.slice(5).trim();
+                  if (!payloadStr) continue;
+                  let evt: any;
+                  try { evt = JSON.parse(payloadStr); } catch { continue; }
+                  if (evt.type === 'token') {
+                    accumulated += evt.text;
+                    setStreamingMessage(accumulated);
+                  } else if (evt.type === 'done') {
+                    finalData = evt.data;
+                  } else if (evt.type === 'error') {
+                    throw createNetworkError(evt.detail || 'Streaming failed', WidgetErrorCode.NETWORK_SERVER_ERROR);
+                  }
+                }
+              }
+              setStreamingMessage(null);
+              if (!finalData) {
+                throw createNetworkError('Stream ended unexpectedly', WidgetErrorCode.NETWORK_SERVER_ERROR);
+              }
+              trackEvent('message_sent', initialAssistantId, { message }, initialClientId, authToken ?? undefined, embedHeaders).catch(() => {});
+              return finalData;
+            }
+
+            // Non-streaming JSON fallback (server did not negotiate SSE).
+            let data;
+            try {
+              data = await response.json();
+            } catch {
+              throw new Error('Invalid response from message server');
+            }
             if (data.status !== 'success') {
               throw new Error(parseApiError(data, 'Failed to send message'));
             }
@@ -2338,6 +2394,9 @@ export default function EmbedClient({
       }
     } finally {
       setIsTyping(false);
+      // Clear any partial streamed text (e.g. if the stream errored mid-flight)
+      // so a stale half-message never lingers in the UI.
+      setStreamingMessage(null);
     }
   }, [
     input,
@@ -2719,6 +2778,7 @@ export default function EmbedClient({
         toggleCollapsed={toggleCollapsed}
         messages={messages}
         isTyping={isTyping}
+        streamingMessage={streamingMessage}
         input={input}
         setInput={setInput}
         handleSubmit={handleSubmit}

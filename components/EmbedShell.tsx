@@ -25,6 +25,8 @@ type Props = {
   toggleCollapsed: () => void;
   messages: Message[];
   isTyping: boolean;
+  /** Partial assistant text while a response streams in (null when idle). */
+  streamingMessage?: string | null;
   input: string;
   setInput: (v: string) => void;
   handleSubmit: (e: React.FormEvent) => void;
@@ -74,6 +76,7 @@ export default function EmbedShell({
   toggleCollapsed,
   messages,
   isTyping,
+  streamingMessage = null,
   input,
   setInput,
   handleSubmit,
@@ -164,7 +167,7 @@ export default function EmbedShell({
     if (shouldAutoScroll()) {
       el.scrollTop = el.scrollHeight;
     }
-  }, [messages, flowResponses, isTyping]);
+  }, [messages, flowResponses, isTyping, streamingMessage]);
 
   // Skeleton loading state for chat
   const [showSkeleton, setShowSkeleton] = useState(
@@ -539,7 +542,20 @@ export default function EmbedShell({
                       }
                     })}
 
-                    {showTypingIndicator && isTyping && (
+                    {streamingMessage ? (
+                      <div className="flex w-full justify-start">
+                        <MessageBubble
+                          message={{ id: '__streaming__', text: streamingMessage, from: 'assistant' }}
+                          widgetConfig={widgetConfig}
+                          assistantName={assistantName}
+                          showMessageAvatars={showMessageAvatars}
+                          textColor={textColor}
+                          fontStyles={fontStyles}
+                          messageBubbleRadius={messageBubbleRadius}
+                          showTimestamps={false}
+                        />
+                      </div>
+                    ) : (showTypingIndicator && isTyping && (
                       <div className="flex justify-start" role="status" aria-live="polite">
                         <div className="flex items-start gap-2">
                           {showMessageAvatars && widgetConfig?.bot_avatar && (
@@ -555,7 +571,7 @@ export default function EmbedShell({
                           </div>
                         </div>
                       </div>
-                    )}
+                    ))}
                   </>
                 )}
               </div>
@@ -832,7 +848,20 @@ export default function EmbedShell({
                     }
                   })}
 
-                  {isTyping && (
+                  {streamingMessage ? (
+                    <div className="flex w-full justify-start">
+                      <MessageBubble
+                        message={{ id: '__streaming__', text: streamingMessage, from: 'assistant' }}
+                        widgetConfig={widgetConfig}
+                        assistantName={assistantName}
+                        showMessageAvatars={showMessageAvatars}
+                        textColor={textColor}
+                        fontStyles={fontStyles}
+                        messageBubbleRadius={messageBubbleRadius}
+                        showTimestamps={false}
+                      />
+                    </div>
+                  ) : (isTyping && (
                     <div className="flex justify-start" role="status" aria-live="polite">
                       <div className="p-3" style={{ backgroundColor: '#e5e7eb', color: textColor, borderRadius: `${messageBubbleRadius}px` }}>
                         <span style={{ position: 'absolute', left: '-9999px' }}>{translate(locale, 'assistantTyping')}</span>
@@ -843,7 +872,7 @@ export default function EmbedShell({
                         </div>
                       </div>
                     </div>
-                  )}
+                  ))}
                 </div>
 
                 {/* Feedback Dialog Overlay */}
