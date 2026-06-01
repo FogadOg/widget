@@ -378,9 +378,13 @@
       padding: 0;
       box-sizing: border-box;
       z-index: 999999;
-      transition: all 0.3s ease;
       display: none;
     `;
+
+    // Apply open/close transition only when the user hasn't requested reduced motion.
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      container.style.transition = 'all 0.3s ease';
+    }
 
     // Ensure body is ready
     if (!document.body) {

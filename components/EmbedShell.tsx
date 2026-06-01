@@ -563,11 +563,13 @@ export default function EmbedShell({
                           )}
                           <div className="p-3" style={{ backgroundColor: '#e5e7eb', color: textColor, borderRadius: `${messageBubbleRadius}px` }}>
                             <span style={{ position: 'absolute', left: '-9999px' }}>{translate(locale, 'assistantTyping')}</span>
-                            <div className="flex space-x-1">
+                            {/* Animated dots for standard motion; static ellipsis for reduced-motion users */}
+                            <div className="flex space-x-1 motion-reduce:hidden" aria-hidden="true">
                               <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                               <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                               <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                             </div>
+                            <span className="hidden motion-reduce:inline text-gray-500 text-sm">…</span>
                           </div>
                         </div>
                       </div>
@@ -865,11 +867,12 @@ export default function EmbedShell({
                     <div className="flex justify-start" role="status" aria-live="polite">
                       <div className="p-3" style={{ backgroundColor: '#e5e7eb', color: textColor, borderRadius: `${messageBubbleRadius}px` }}>
                         <span style={{ position: 'absolute', left: '-9999px' }}>{translate(locale, 'assistantTyping')}</span>
-                        <div className="flex space-x-1">
+                        <div className="flex space-x-1 motion-reduce:hidden" aria-hidden="true">
                           <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                           <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                           <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                         </div>
+                        <span className="hidden motion-reduce:inline text-gray-500 text-sm">…</span>
                       </div>
                     </div>
                   ))}

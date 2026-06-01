@@ -143,3 +143,21 @@
 .animate-fade-in {
   animation: fade-in 0.3s ease-in-out;
 }
+
+/* ── prefers-reduced-motion ─────────────────────────────────────────────────
+   Strip all decorative motion in one place. Tailwind's utility classes
+   (animate-pulse, animate-spin, animate-bounce, animate-fade-in) and
+   Radix/shadcn transitions all resolve to CSS animation/transition properties,
+   so this single block covers every component without touching each call site.
+   Elements that convey *state* through motion (e.g. the typing indicator) are
+   handled in their own components — see EmbedShell.tsx.              ─────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
