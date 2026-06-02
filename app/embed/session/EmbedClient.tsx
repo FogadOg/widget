@@ -1480,7 +1480,7 @@ export default function EmbedClient({
               ...embedHeaders,
             },
             body: JSON.stringify({
-              assistant_id: assistant,
+              assistant_id: agentId,
               visitor_id: visitorId,
               locale: activeLocale,
               widget_config_id: activeConfig?.id ?? undefined,

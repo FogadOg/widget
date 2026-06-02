@@ -101,7 +101,7 @@ export async function trackEvent(
   const endpoint = `${BASE.replace(/\/+$/, '')}/telemetry/events/`;
 
   const payload: TelemetryPayload = { event_type: eventType };
-  if (assistantId) payload.assistant = assistantId;
+  if (assistantId) payload.agent = assistantId;
   if (metadata && Object.keys(metadata).length > 0) payload.metadata = metadata;
 
   try {
