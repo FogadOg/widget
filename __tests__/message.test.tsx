@@ -70,16 +70,16 @@ describe('Message Components', () => {
       expect(message).toHaveClass('is-user', 'ml-auto', 'justify-end');
     });
 
-    it('renders assistant message with correct classes', () => {
+    it('renders agent message with correct classes', () => {
       render(
-        <Message from="assistant" data-testid="message">
+        <Message from="agent" data-testid="message">
           Assistant message content
         </Message>
       );
 
       const message = screen.getByTestId('message');
       expect(message).toHaveClass('group', 'flex', 'w-full', 'max-w-[95%]', 'flex-col', 'gap-2');
-      expect(message).toHaveClass('is-assistant');
+      expect(message).toHaveClass('is-agent');
       expect(message).not.toHaveClass('is-user');
     });
 
@@ -287,7 +287,7 @@ describe('Message Components', () => {
     it('does not render when only one branch', () => {
       const { container } = render(
         <MessageBranch>
-          <MessageBranchSelector from="assistant" />
+          <MessageBranchSelector from="agent" />
           <MessageBranchContent>
             <div key="1">Single Branch</div>
           </MessageBranchContent>
@@ -306,7 +306,7 @@ describe('Message Components', () => {
             <div key="1">Branch 1</div>
             <div key="2">Branch 2</div>
           </MessageBranchContent>
-          <MessageBranchSelector from="assistant" />
+          <MessageBranchSelector from="agent" />
         </MessageBranch>
       );
 

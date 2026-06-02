@@ -31,7 +31,7 @@ jest.mock('../lib/i18n', () => ({ t: (_l: string, k: string) => k }));
 import MessageBubble from '../components/MessageBubble';
 
 test('renders markdown when react-markdown is available', async () => {
-  const message = { id: 'm-md', text: 'Hello **world**', from: 'assistant' } as any;
+  const message = { id: 'm-md', text: 'Hello **world**', from: 'agent' } as any;
   render(<MessageBubble message={message} />);
   // wait for dynamic import to resolve and markdown to render
   expect(await screen.findByText('world')).toBeInTheDocument();
@@ -39,7 +39,7 @@ test('renders markdown when react-markdown is available', async () => {
 });
 
 test('copy fallback uses execCommand when clipboard API missing', async () => {
-  const message = { id: 'm-cb', text: 'copy me', from: 'assistant' } as any;
+  const message = { id: 'm-cb', text: 'copy me', from: 'agent' } as any;
   // make clipboard reject so the promise catch branch runs
   // @ts-ignore
   const originalClipboard = navigator.clipboard;

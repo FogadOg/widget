@@ -38,9 +38,9 @@ describe('EmbedShell - Unread Badge', () => {
   } as any;
 
   const messages = [
-    { id: 'm1', text: 'Hello from assistant', from: 'assistant' as const, timestamp: 1000 },
+    { id: 'm1', text: 'Hello from agent', from: 'agent' as const, timestamp: 1000 },
     { id: 'm2', text: 'User reply', from: 'user' as const, timestamp: 2000 },
-    { id: 'm3', text: 'Another assistant message', from: 'assistant' as const, timestamp: 3000 },
+    { id: 'm3', text: 'Another agent message', from: 'agent' as const, timestamp: 3000 },
   ];
 
   it('renders unread badge when collapsed with unread messages and show_unread_badge is true', () => {

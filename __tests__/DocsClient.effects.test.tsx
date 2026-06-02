@@ -291,7 +291,7 @@ describe('DocsClient missing effect/flow coverage', () => {
             data: {
               messages: [
                 { id: 'u1', sender: 'user', content: 'hello' },
-                { id: 'a1', sender: 'assistant', content: 'assistant message' },
+                { id: 'a1', sender: 'assistant', content: 'agent message' },
               ],
             },
           }),
@@ -332,7 +332,7 @@ describe('DocsClient missing effect/flow coverage', () => {
     expect((helpers.scrollToBottom as jest.Mock).mock.calls.length).toBeGreaterThanOrEqual(2)
 
     await waitFor(() => {
-      expect(screen.getByText(/ANNOUNCE:assistant message/i)).toBeTruthy()
+      expect(screen.getByText(/ANNOUNCE:agent message/i)).toBeTruthy()
     })
   })
 
@@ -355,7 +355,7 @@ describe('DocsClient missing effect/flow coverage', () => {
     render(<DocsClient clientId="c3" assistantId="a3" configId="cfg3" locale="en" startOpen={false} />)
 
     await waitFor(() => expect(helpers.storeSession).toHaveBeenCalled())
-    await waitFor(() => expect(screen.getByText('assistant message')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('agent message')).toBeTruthy())
     await waitFor(() => expect(screen.getByText('How do I get started?')).toBeTruthy())
 
     fireEvent.click(screen.getByText('How do I get started?'))
@@ -392,7 +392,7 @@ describe('DocsClient missing effect/flow coverage', () => {
       if (method === 'GET') {
         return {
           ok: true,
-          json: async () => ({ status: 'success', data: { messages: [{ id: 'u1', sender: 'user', content: 'hello' }, { id: 'a1', sender: 'assistant', content: 'assistant message' }] } }),
+          json: async () => ({ status: 'success', data: { messages: [{ id: 'u1', sender: 'user', content: 'hello' }, { id: 'a1', sender: 'assistant', content: 'agent message' }] } }),
         } as any
       }
 
@@ -433,7 +433,7 @@ describe('DocsClient missing effect/flow coverage', () => {
       if (method === 'GET') {
         return {
           ok: true,
-          json: async () => ({ status: 'success', data: { messages: [{ id: 'u1', sender: 'user', content: 'hello' }, { id: 'a1', sender: 'assistant', content: 'assistant message' }] } }),
+          json: async () => ({ status: 'success', data: { messages: [{ id: 'u1', sender: 'user', content: 'hello' }, { id: 'a1', sender: 'assistant', content: 'agent message' }] } }),
         } as any
       }
 
@@ -513,7 +513,7 @@ describe('DocsClient missing effect/flow coverage', () => {
     consoleErrorSpy.mockRestore()
   })
 
-  it('covers missing client/assistant warning branch', async () => {
+  it('covers missing client/agent warning branch', async () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
 
     render(<DocsClient clientId="" assistantId="a10" configId="cfg10" locale="en" startOpen={false} />)
@@ -532,14 +532,14 @@ describe('DocsClient missing effect/flow coverage', () => {
 
     render(<DocsClient clientId="c11" assistantId="a11" configId="cfg11" locale="en" startOpen={false} />)
 
-    await waitFor(() => expect(screen.getByText('assistant message')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('agent message')).toBeTruthy())
 
     act(() => {
       jest.advanceTimersByTime(60000)
     })
 
     await waitFor(() => {
-      expect(screen.queryByText('assistant message')).toBeNull()
+      expect(screen.queryByText('agent message')).toBeNull()
     })
   })
 
@@ -571,7 +571,7 @@ describe('DocsClient missing effect/flow coverage', () => {
       if (method === 'GET') {
         return {
           ok: true,
-          json: async () => ({ status: 'success', data: { messages: [{ id: 'u1', sender: 'user', content: 'hello' }, { id: 'a1', sender: 'assistant', content: 'assistant message' }] } }),
+          json: async () => ({ status: 'success', data: { messages: [{ id: 'u1', sender: 'user', content: 'hello' }, { id: 'a1', sender: 'assistant', content: 'agent message' }] } }),
         } as any
       }
 

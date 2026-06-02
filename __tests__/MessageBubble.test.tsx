@@ -11,11 +11,11 @@ jest.mock('../lib/i18n', () => ({
 }));
 
 describe('MessageBubble', () => {
-  test('renders assistant message with avatar, feedback buttons, and timestamp', () => {
+  test('renders agent message with avatar, feedback buttons, and timestamp', () => {
     const message = {
       id: 'a1',
       text: 'hello',
-      from: 'assistant' as const,
+      from: 'agent' as const,
       timestamp: Date.now(),
       sources: [{ url: 'https://example.com', title: 'Title', snippet: 'snippet text' }],
     };
@@ -26,7 +26,7 @@ describe('MessageBubble', () => {
       <MessageBubble
         message={message}
         widgetConfig={{ bot_avatar: 'https://img' } as any}
-        assistantName="Bot"
+        agentName="Bot"
         onSubmitMessageFeedback={onFeedback}
       />,
     );
@@ -44,16 +44,16 @@ describe('MessageBubble', () => {
     expect(onFeedback).toHaveBeenCalledWith('a1', 'thumbs_down');
   });
 
-  test('renders assistant message without sources and without feedback controls when callback is missing', () => {
+  test('renders agent message without sources and without feedback controls when callback is missing', () => {
     const message = {
       id: 'a-no-sources',
-      text: 'assistant plain text',
-      from: 'assistant' as const,
+      text: 'agent plain text',
+      from: 'agent' as const,
     };
 
     render(<MessageBubble message={message} showTimestamps={false} />);
 
-    expect(screen.getByText('assistant plain text')).toBeInTheDocument();
+    expect(screen.getByText('agent plain text')).toBeInTheDocument();
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
     // only copy button should be present
     const allButtons = screen.queryAllByRole('button');
@@ -61,11 +61,11 @@ describe('MessageBubble', () => {
     expect(screen.getByLabelText('copyMessage')).toBeInTheDocument();
   });
 
-  test('renders assistant message with non-URL source and shows submitted feedback label', () => {
+  test('renders agent message with non-URL source and shows submitted feedback label', () => {
     const message = {
       id: 'a2',
-      text: 'assistant no-link source',
-      from: 'assistant' as const,
+      text: 'agent no-link source',
+      from: 'agent' as const,
       sources: [{ title: 'Local Source', snippet: 'x'.repeat(120) }],
     };
 
@@ -78,7 +78,7 @@ describe('MessageBubble', () => {
       />,
     );
 
-    expect(screen.getByText('assistant no-link source')).toBeInTheDocument();
+    expect(screen.getByText('agent no-link source')).toBeInTheDocument();
     // Source title no longer rendered in a separate panel
     expect(screen.queryByText('Local Source')).not.toBeInTheDocument();
     expect(screen.getByText(/feedbackSubmitted/i)).toBeInTheDocument();
@@ -87,11 +87,11 @@ describe('MessageBubble', () => {
     expect(screen.getByLabelText('copyMessage')).toBeInTheDocument();
   });
 
-  test('renders assistant message with mixed url/non-url sources (no bottom panel)', () => {
+  test('renders agent message with mixed url/non-url sources (no bottom panel)', () => {
     const message = {
       id: 'a3',
       text: 'mixed sources',
-      from: 'assistant' as const,
+      from: 'agent' as const,
       sources: [
         { url: 'https://example.com/no-snippet', title: 'No Snippet Source' },
         { title: 'Short Snippet Source', snippet: 'short snippet' },

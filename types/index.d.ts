@@ -54,14 +54,14 @@ export type ErrorReport = {
 };
 
 /**
- * Event emitted by the widget when the user sends a message, the assistant
+ * Event emitted by the widget when the user sends a message, the agent
  * responds, or the widget opens/closes.
  */
 export type MessageEvent = {
   /** Unique event identifier. */
   id: string;
   /** Event type. */
-  type: 'user-message' | 'assistant-response' | 'open' | 'close' | 'auth-failure' | 'error';
+  type: 'user-message' | 'agent-response' | 'open' | 'close' | 'auth-failure' | 'error';
   /** ISO-8601 timestamp. */
   timestamp: string;
   /** Event payload — shape depends on `type`. */

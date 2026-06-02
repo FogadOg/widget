@@ -17,8 +17,8 @@
     "minimize": "Minimer chat"
   },
   "newMessageAnnouncement": "Ny melding: {message}",
-  "viewUncertaintyLog": "Vis Customer Support AI Assistant usikkerhetslogg",
-  "uncertaintyResponsesHint": "Customer Support AI Assistant har vist usikkerhet i noen svar",
+  "viewUncertaintyLog": "Vis Customer Support AI Agent usikkerhetslogg",
+  "uncertaintyResponsesHint": "Customer Support AI Agent har vist usikkerhet i noen svar",
   "closeFeedback": "Lukk tilbakemelding",
   "unreadMessages": {
     "one": "{count} ulest melding",
@@ -28,9 +28,8 @@
     "one": "{count} kilde",
     "other": "{count} kilder"
   },
-  "assistantTyping": "Customer Support AI Assistant skriver",
-  "appTitle": "Customer Support AI Assistant Chat-widget",
-  "appDescription": "Customer Support AI Assistant chat-widget for ditt nettsted",
+  "appTitle": "Customer Support AI Agent Chat-widget",
+  "appDescription": "Customer Support AI Agent chat-widget for ditt nettsted",
   "getStarted": "Kom i gang",
   "viewDemo": "Vis demo",
   "easyIntegrationTitle": "Enkel integrasjon",
@@ -115,7 +114,7 @@
   "gettingStartedStep3Desc": "Widgeten vil vises på siden din. Den respekterer posisjonen, fargene og oppførselen du konfigurerte i dashbordet.",
   "gettingStartedStep4Title": "Prøv docs-widgeten",
   "gettingStartedStep4Desc": "Dokument-widgeten fungerer på samme måte – last inn skriptet og ring {openCall} for å åpne det programmatisk. Prøv det live:",
-  "docsConfigError": "Konfigurasjonsfeil for Docs Assistant",
+  "docsConfigError": "Konfigurasjonsfeil for Docs Agent",
   "uncertaintyLogEmpty": "Ingen usikre svar ennå.",
   "uncertaintyLogSubtitle": "Meldinger der assistenten indikerte usikkerhet:",
   "uncertaintyLogTitle": "Assistent-usikkerhetslogg",
@@ -132,5 +131,9 @@
   "handoffConfirmation": "Meldingen din er sendt. Teamet vårt tar kontakt.",
   "docsTitleFallback": "Dokumentasjonsassistent",
   "docsSubtitleFallback": "Hvordan kan vi hjelpe deg i dag?",
-  "docsInitialGreeting": "Hei! Jeg er dokumentasjonsassistenten din. Hvordan kan jeg hjelpe deg i dag?"
+  "docsInitialGreeting": "Hei! Jeg er dokumentasjonsassistenten din. Hvordan kan jeg hjelpe deg i dag?",
+  "sessionExpiredTitle": "Your session expired",
+  "sessionExpiredBody": "We've started a fresh session so you can keep chatting.",
+  "sessionExpiredDismiss": "Dismiss",
+  "agentTyping": "Customer Support AI Agent is typing"
 }

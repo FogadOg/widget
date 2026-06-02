@@ -277,7 +277,7 @@ describe('EmbedClient Component', () => {
         sessionOrAuthError: 'Session or auth error',
         failedToSendMessage: 'Failed to send message',
         uncertaintyLogTitle: 'Assistant Uncertainty Log',
-        uncertaintyLogSubtitle: 'Messages where the assistant indicated uncertainty:',
+        uncertaintyLogSubtitle: 'Messages where the agent indicated uncertainty:',
         uncertaintyLogEmpty: 'No uncertain responses yet.',
         handoffTitle: 'Talk to our team',
         handoffNameLabel: 'Name',
@@ -756,7 +756,7 @@ describe('EmbedClient Component', () => {
       });
     });
 
-    test('handles assistant fetch error', async () => {
+    test('handles agent fetch error', async () => {
       mockFetch.mockImplementation((url: string) => {
         if (url.includes('/assistants/')) {
           return Promise.resolve({
@@ -2567,7 +2567,7 @@ describe('EmbedClient Component', () => {
   });
 
   describe('validateAndRestoreSession Message Filtering', () => {
-    test('filters out assistant messages when no user messages exist', async () => {
+    test('filters out agent messages when no user messages exist', async () => {
       mockHelpers.getStoredSession.mockReturnValue({
         sessionId: 'existing-session',
         expiresAt: '2026-12-31T23:59:59Z',
@@ -2582,7 +2582,7 @@ describe('EmbedClient Component', () => {
               data: {
                 messages: [
                   { id: 'msg-1', content: 'Welcome!', sender: 'assistant', created_at: '2026-01-01T12:00:00Z' },
-                  // No user messages, so this assistant message should be filtered out
+                  // No user messages, so this agent message should be filtered out
                 ],
               },
             }),
@@ -2611,13 +2611,13 @@ describe('EmbedClient Component', () => {
       await waitFor(() => {
         const messagesEl = screen.queryByTestId('messages');
         if (messagesEl) {
-          // Should show 0 messages since assistant message was filtered
+          // Should show 0 messages since agent message was filtered
           expect(messagesEl.textContent).toContain('0 messages');
         }
       });
     });
 
-    test('keeps assistant messages when user messages exist', async () => {
+    test('keeps agent messages when user messages exist', async () => {
       mockHelpers.getStoredSession.mockReturnValue({
         sessionId: 'existing-session',
         expiresAt: '2026-12-31T23:59:59Z',
@@ -4390,7 +4390,7 @@ describe('EmbedClient Component', () => {
       createNetworkErrorSpy.mockRestore();
     });
 
-    test('tracks unsure assistant responses', async () => {
+    test('tracks unsure agent responses', async () => {
       mockFetch.mockImplementation((url: string, options?: any) => {
         if (url.includes('/messages') && options?.method === 'POST') {
           return Promise.resolve({
@@ -5322,7 +5322,7 @@ describe('EmbedClient Component', () => {
                 {messages.map((msg: any, index: number) => (
                   <div key={index} data-testid={`message-${index}`}>
                     <p>{msg.userMessage}</p>
-                    <p>{msg.assistantMessage}</p>
+                    <p>{msg.agentMessage}</p>
                     <div>{new Date(msg.timestamp).toLocaleString()}</div>
                   </div>
                 ))}
@@ -5414,7 +5414,7 @@ describe('EmbedClient Component', () => {
                 {messages.map((msg: any, index: number) => (
                   <div key={index} data-testid={`message-${index}`}>
                     <span data-testid={`user-msg-${index}`}>{msg.userMessage}</span>
-                    <span data-testid={`asst-msg-${index}`}>{msg.assistantMessage}</span>
+                    <span data-testid={`asst-msg-${index}`}>{msg.agentMessage}</span>
                   </div>
                 ))}
               </div>
@@ -5426,12 +5426,12 @@ describe('EmbedClient Component', () => {
       const testMessages = [
         {
           userMessage: 'What is the answer?',
-          assistantMessage: 'I\'m not entirely sure, but...',
+          agentMessage: 'I\'m not entirely sure, but...',
           timestamp: 1709640000000
         },
         {
           userMessage: 'Can you help?',
-          assistantMessage: 'I might be able to...',
+          agentMessage: 'I might be able to...',
           timestamp: 1709640060000
         }
       ];
@@ -5470,7 +5470,7 @@ describe('EmbedClient Component', () => {
       const testMessages = [
         {
           userMessage: 'Test',
-          assistantMessage: 'Response',
+          agentMessage: 'Response',
           timestamp: testDate.getTime()
         }
       ];

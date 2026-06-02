@@ -92,7 +92,7 @@ describe("widget-app basic smoke render", () => {
           buttonBorderRadius={4}
           fontStyles={{}}
         />
-        <MessageBubble message={{ id: 'm1', text: 'hello', from: 'assistant', timestamp: Date.now() }} />
+        <MessageBubble message={{ id: 'm1', text: 'hello', from: 'agent', timestamp: Date.now() }} />
         <MessageInput />
         <SessionManager />
         <WidgetConfigManager />

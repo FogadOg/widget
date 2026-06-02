@@ -83,7 +83,7 @@ describe('embed session helpers', () => {
     const msgs = (setMessages.mock.calls[0][0] as any[]);
     expect(msgs.length).toBe(2);
     expect(msgs[0].id).toBe('m1');
-    expect(msgs[1].from).toBe('assistant');
+    expect(msgs[1].from).toBe('agent');
   });
 
   test('getStoredSession handles invalid JSON and logs error', () => {

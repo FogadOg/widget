@@ -27,9 +27,8 @@
     "one": "{count} źródło",
     "other": "{count} źródeł"
   },
-  "assistantTyping": "Asystent pisze",
-  "appTitle": "Widżet Customer Support AI Assistant",
-  "appDescription": "Widżet czatu Customer Support AI Assistant dla Twojej strony",
+  "appTitle": "Widżet Customer Support AI Agent",
+  "appDescription": "Widżet czatu Customer Support AI Agent dla Twojej strony",
   "getStarted": "Rozpocznij",
   "viewDemo": "Zobacz demo",
   "easyIntegrationTitle": "Łatwa integracja",
@@ -132,5 +131,9 @@
   "handoffConfirmation": "Twoja wiadomość została wysłana. Nasz zespół skontaktuje się z Tobą.",
   "docsTitleFallback": "Asystent dokumentacji",
   "docsSubtitleFallback": "Jak możemy ci dzisiaj pomóc?",
-  "docsInitialGreeting": "Cześć! Jestem twoim asystentem dokumentacji. Jak mogę ci dziś pomóc?"
+  "docsInitialGreeting": "Cześć! Jestem twoim asystentem dokumentacji. Jak mogę ci dziś pomóc?",
+  "sessionExpiredTitle": "Your session expired",
+  "sessionExpiredBody": "We've started a fresh session so you can keep chatting.",
+  "sessionExpiredDismiss": "Dismiss",
+  "agentTyping": "Customer Support AI Agent is typing"
 }

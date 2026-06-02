@@ -15,7 +15,7 @@ type Source = { url?: string; title?: string; snippet?: string };
 type Message = {
   id: string;
   text: string;
-  from: 'user' | 'assistant';
+  from: 'user' | 'agent';
   timestamp?: number;
   sources?: Source[];
   pending?: boolean;
@@ -24,7 +24,7 @@ type Message = {
 type Props = {
   message: Message;
   widgetConfig?: WidgetConfig;
-  assistantName?: string;
+  agentName?: string;
   showMessageAvatars?: boolean;
   textColor?: string;
   fontStyles?: Record<string, unknown>;
@@ -52,7 +52,7 @@ function linkifyText(text: string): string {
   return text;
 }
 
-export default function MessageBubble({ message, widgetConfig, assistantName, showMessageAvatars = true, textColor = '#111', fontStyles = {}, messageBubbleRadius = 8, onSubmitMessageFeedback, messageFeedbackSubmitted = new Set(), showTimestamps = true }: Props) {
+export default function MessageBubble({ message, widgetConfig, agentName, showMessageAvatars = true, textColor = '#111', fontStyles = {}, messageBubbleRadius = 8, onSubmitMessageFeedback, messageFeedbackSubmitted = new Set(), showTimestamps = true }: Props) {
   const { locale } = useWidgetTranslation();
   const hasFeedback = messageFeedbackSubmitted.has(message.id);
 
@@ -186,13 +186,13 @@ export default function MessageBubble({ message, widgetConfig, assistantName, sh
     }
   }, [message.text]);
 
-  if (message.from === 'assistant') {
+  if (message.from === 'agent') {
     return (
       <div className={`flex w-full justify-start`}>
         <div className="flex flex-col items-start w-full">
           <div className="flex items-start gap-2">
               {showMessageAvatars && widgetConfig?.bot_avatar && (
-              <img src={widgetConfig.bot_avatar} alt={(assistantName || widgetConfig?.title?.en || 'assistant') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
+              <img src={widgetConfig.bot_avatar} alt={(agentName || widgetConfig?.title?.en || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
             )}
             <div className={`max-w-[80%] p-2 group relative`} style={{ backgroundColor: '#e5e7eb', color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
               {/* Copy button — appears on hover */}

@@ -80,7 +80,7 @@ jest.mock('../hooks/useWidgetTranslation', () => ({
 }));
 
 describe('EmbedShell - logo and avatar', () => {
-  it('renders header logo and assistant avatar when provided', () => {
+  it('renders header logo and agent avatar when provided', () => {
     const widgetConfig: any = {
       title: { en: 'My Bot' },
       subtitle: { en: 'Sub' },
@@ -104,7 +104,7 @@ describe('EmbedShell - logo and avatar', () => {
     };
 
     const messages = [
-      { id: 'm1', text: 'Hello from assistant', from: 'assistant' },
+      { id: 'm1', text: 'Hello from agent', from: 'agent' },
       { id: 'm2', text: 'User reply', from: 'user' }
     ];
 
@@ -125,7 +125,7 @@ describe('EmbedShell - logo and avatar', () => {
     // header logo should be rendered
     expect(screen.getByAltText(/logo/)).toBeInTheDocument();
 
-    // assistant avatar should be rendered (there may be multiple avatar images)
+    // agent avatar should be rendered (there may be multiple avatar images)
     const avatars = screen.getAllByAltText(/avatar/);
     expect(avatars.length).toBeGreaterThan(0);
   });
@@ -295,7 +295,7 @@ describe('EmbedShell - logo and avatar', () => {
           widgetConfig={{ ...widgetConfig, bot_avatar: 'a.png' }}
         />
       );
-      expect(screen.getByAltText(/assistant avatar/)).toBeInTheDocument();
+      expect(screen.getByAltText(/agent avatar/)).toBeInTheDocument();
       rerender(
         <EmbedShell
           isEmbedded={true}
@@ -365,7 +365,7 @@ describe('EmbedShell - logo and avatar', () => {
           onFollowUpButtonClick={onFollow}
         />
       );
-      expect(getByAltText(/assistant avatar/)).toBeInTheDocument();
+      expect(getByAltText(/agent avatar/)).toBeInTheDocument();
     });
 
     it('handles flow response with both text and buttons and avatar present', () => {
@@ -406,7 +406,7 @@ describe('EmbedShell - logo and avatar', () => {
           onFollowUpButtonClick={onFollow}
         />
       );
-      expect(getByAltText(/assistant avatar/)).toBeInTheDocument();
+      expect(getByAltText(/agent avatar/)).toBeInTheDocument();
       expect(getByText('hello flow')).toBeInTheDocument();
       const btn = getByText('Btn4');
       act(() => {
@@ -486,7 +486,7 @@ describe('EmbedShell - logo and avatar', () => {
           onFollowUpButtonClick={onFollow}
         />
       );
-      expect(queryByAltText(/assistant avatar/)).toBeNull();
+      expect(queryByAltText(/agent avatar/)).toBeNull();
       act(() => {
         getByText('Btn').click();
       });
@@ -617,7 +617,7 @@ describe('EmbedShell - logo and avatar', () => {
           onFollowUpButtonClick={onFollow}
         />
       );
-      expect(queryByAltText(/assistant avatar/)).toBeNull();
+      expect(queryByAltText(/agent avatar/)).toBeNull();
       act(() => {
         getByText('Btn2').click();
       });
@@ -684,7 +684,7 @@ describe('EmbedShell - logo and avatar', () => {
         />
       );
       expect(getByText('embedded flow')).toBeInTheDocument();
-      expect(getByAltText(/assistant avatar/)).toBeInTheDocument();
+      expect(getByAltText(/agent avatar/)).toBeInTheDocument();
       const btn = getByText('EmbedBtn');
       act(() => {
         btn.click();
@@ -836,7 +836,7 @@ describe('EmbedShell - logo and avatar', () => {
           onFollowUpButtonClick={onFollow}
         />
       );
-      expect(queryByAltText(/assistant avatar/)).toBeNull();
+      expect(queryByAltText(/agent avatar/)).toBeNull();
       expect(getByText('no avatar')).toBeInTheDocument();
       act(() => {
         getByText('NoAv').click();

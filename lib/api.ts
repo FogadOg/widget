@@ -76,7 +76,7 @@ export const isApiConfigured = (): boolean => {
 
 interface TelemetryPayload {
   event_type: string;
-  assistant?: string;
+  agent?: string;
   user_id?: string;
   metadata?: Record<string, unknown>;
 }

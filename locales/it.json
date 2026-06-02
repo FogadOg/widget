@@ -17,8 +17,8 @@
     "minimize": "Riduci chat"
   },
   "newMessageAnnouncement": "Nuovo messaggio: {message}",
-  "viewUncertaintyLog": "Visualizza il registro di incertezza di Customer Support AI Assistant",
-  "uncertaintyResponsesHint": "Customer Support AI Assistant ha mostrato incertezza in alcune risposte",
+  "viewUncertaintyLog": "Visualizza il registro di incertezza di Customer Support AI Agent",
+  "uncertaintyResponsesHint": "Customer Support AI Agent ha mostrato incertezza in alcune risposte",
   "closeFeedback": "Chiudi feedback",
   "unreadMessages": {
     "one": "{count} messaggio non letto",
@@ -28,9 +28,8 @@
     "one": "{count} fonte",
     "other": "{count} fonti"
   },
-  "assistantTyping": "Customer Support AI Assistant sta scrivendo",
-  "appTitle": "Customer Support AI Assistant Widget di chat",
-  "appDescription": "Customer Support AI Assistant widget di chat per il tuo sito web",
+  "appTitle": "Customer Support AI Agent Widget di chat",
+  "appDescription": "Customer Support AI Agent widget di chat per il tuo sito web",
   "getStarted": "Inizia",
   "viewDemo": "Vedi demo",
   "easyIntegrationTitle": "Integrazione semplice",
@@ -132,5 +131,9 @@
   "handoffConfirmation": "Il tuo messaggio è stato inviato. Il nostro team ti contatterà.",
   "docsTitleFallback": "Assistente di documentazione",
   "docsSubtitleFallback": "Come possiamo aiutarti oggi?",
-  "docsInitialGreeting": "Ciao! Sono il tuo assistente di documentazione. Come posso aiutarti oggi?"
+  "docsInitialGreeting": "Ciao! Sono il tuo assistente di documentazione. Come posso aiutarti oggi?",
+  "sessionExpiredTitle": "Your session expired",
+  "sessionExpiredBody": "We've started a fresh session so you can keep chatting.",
+  "sessionExpiredDismiss": "Dismiss",
+  "agentTyping": "Customer Support AI Agent is typing"
 }

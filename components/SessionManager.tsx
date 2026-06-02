@@ -70,7 +70,7 @@ export default function SessionManager({
         // Convert API messages to widget message format
         const loadedMessages: Message[] = data.data.messages
           .filter((msg: any) => {
-            // Filter out assistant greeting messages
+            // Filter out agent greeting messages
             if (msg.sender === 'assistant') {
               const userMessages = data.data.messages.filter((m: any) => m.sender === 'user');
               return userMessages.length > 0;
@@ -80,7 +80,7 @@ export default function SessionManager({
           .map((msg: any) => ({
             id: msg.id,
             text: msg.content,
-            from: msg.sender as 'user' | 'assistant',
+            from: msg.sender as 'user' | 'agent',
             timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
             sources: msg.sources || [],
           }));
@@ -220,7 +220,7 @@ export default function SessionManager({
           // Load messages
           const loadedMessages: Message[] = data.data.messages
             .filter((msg: any) => {
-              // Filter out assistant greeting messages
+              // Filter out agent greeting messages
               if (msg.sender === 'assistant') {
                 const userMessages = data.data.messages.filter((m: any) => m.sender === 'user');
                 return userMessages.length > 0;
@@ -230,7 +230,7 @@ export default function SessionManager({
             .map((msg: any) => ({
               id: msg.id,
               text: msg.content,
-              from: msg.sender as 'user' | 'assistant',
+              from: msg.sender as 'user' | 'agent',
               timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now()
             }));
 

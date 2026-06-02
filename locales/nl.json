@@ -17,8 +17,8 @@
     "minimize": "Chat minimaliseren"
   },
   "newMessageAnnouncement": "Nieuw bericht: {message}",
-  "viewUncertaintyLog": "Bekijk het onzekerheidslogboek van Customer Support AI Assistant",
-  "uncertaintyResponsesHint": "Customer Support AI Assistant heeft onzekerheid getoond in sommige antwoorden",
+  "viewUncertaintyLog": "Bekijk het onzekerheidslogboek van Customer Support AI Agent",
+  "uncertaintyResponsesHint": "Customer Support AI Agent heeft onzekerheid getoond in sommige antwoorden",
   "closeFeedback": "Sluit feedback",
   "unreadMessages": {
     "one": "{count} ongelezen bericht",
@@ -28,9 +28,8 @@
     "one": "{count} bron",
     "other": "{count} bronnen"
   },
-  "assistantTyping": "Customer Support AI Assistant is aan het typen",
-  "appTitle": "Customer Support AI Assistant Chat-widget",
-  "appDescription": "Customer Support AI Assistant chat-widget voor uw website",
+  "appTitle": "Customer Support AI Agent Chat-widget",
+  "appDescription": "Customer Support AI Agent chat-widget voor uw website",
   "getStarted": "Aan de slag",
   "viewDemo": "Bekijk demo",
   "easyIntegrationTitle": "Makkelijke integratie",
@@ -132,5 +131,9 @@
   "handoffConfirmation": "Uw bericht is verzonden. Ons team neemt contact met u op.",
   "docsTitleFallback": "Documentatie-assistent",
   "docsSubtitleFallback": "Hoe kunnen we u vandaag helpen?",
-  "docsInitialGreeting": "Hallo! Ik ben uw documentatie-assistent. Hoe kan ik u vandaag helpen?"
+  "docsInitialGreeting": "Hallo! Ik ben uw documentatie-assistent. Hoe kan ik u vandaag helpen?",
+  "sessionExpiredTitle": "Your session expired",
+  "sessionExpiredBody": "We've started a fresh session so you can keep chatting.",
+  "sessionExpiredDismiss": "Dismiss",
+  "agentTyping": "Customer Support AI Agent is typing"
 }

@@ -120,7 +120,7 @@ export default async function GettingStartedPage() {
 `<script\n  src="${docsWidgetSrc}"${docsIntegrityAttr ? `\n  ${docsIntegrityAttr}` : ''}\n  data-client-id="YOUR_CLIENT_ID"\n  data-assistant-id="YOUR_ASSISTANT_ID"\n  data-config-id="YOUR_CONFIG_ID"\n  data-instance-id="docs-help"\n  data-locale="en"\n  async>\n</script>
 
 <button onclick="window.CompaninDocsWidget.open()">
-  Ask the assistant
+  Ask the agent
 </button>`,
             'Next.js':
 `// app/layout.tsx
@@ -163,7 +163,7 @@ export default function App() {
   return (
     <div>
       <button onClick={() => window.CompaninDocsWidget?.open()}>
-        Ask the assistant
+        Ask the agent
       </button>
     </div>
   );
@@ -209,7 +209,7 @@ const open = () => (window as any).CompaninDocsWidget?.open();
 </script>
 
 <template>
-  <button @click="open">Ask the assistant</button>
+  <button @click="open">Ask the agent</button>
 </template>`,
           }} />
         </section>

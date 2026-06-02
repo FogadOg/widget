@@ -171,7 +171,7 @@ describe('SessionManager', () => {
     await waitFor(() => expect(onSessionCreated).toHaveBeenCalledWith('created', ''));
   });
 
-  test('filters out assistant greeting messages when no user messages', async () => {
+  test('filters out agent greeting messages when no user messages', async () => {
     const sessionStorage = require('lib/sessionStorage');
     sessionStorage.getStoredSessionByKey.mockReturnValue({ sessionId: 's4', expiresAt: '' });
 

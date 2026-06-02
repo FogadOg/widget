@@ -212,7 +212,7 @@ describe('DocsClient targeted branches', () => {
     await waitFor(() => expect(parentPostMessageSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'WIDGET_RESIZE' }), expect.any(String)))
   })
 
-  it('renders feedback controls for assistant messages and marks submitted feedback', async () => {
+  it('renders feedback controls for agent messages and marks submitted feedback', async () => {
     global.fetch = jest.fn((input: RequestInfo, init?: RequestInit) => {
       const url = String(input)
       if (url.includes('/auth/widget-token')) {

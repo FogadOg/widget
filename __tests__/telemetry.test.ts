@@ -28,7 +28,7 @@ describe('telemetry helper', () => {
     expect(body.user_id).toBeDefined();
   });
 
-  it('includes assistant and metadata', async () => {
+  it('includes agent and metadata', async () => {
     await trackEvent('button_clicked', 'assist-1', { button: 'ok' }, 'clientA');
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringMatching(/^https?:\/\/127\.0\.0\.1:8000\/telemetry\/events/),
@@ -37,7 +37,7 @@ describe('telemetry helper', () => {
     const sent = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
     expect(sent).toMatchObject({
       event_type: 'button_clicked',
-      assistant: 'assist-1',
+      agent: 'assist-1',
       metadata: { button: 'ok' },
     });
     expect(sent.user_id).toBeDefined();

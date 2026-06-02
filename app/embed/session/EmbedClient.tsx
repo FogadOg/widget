@@ -323,13 +323,13 @@ export default function EmbedClient({
   const lastReadStorageKey = helpers.lastReadStorageKey(initialClientId, initialAssistantId);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  // Streaming state: holds the partial assistant message being streamed
+  // Streaming state: holds the partial agent message being streamed
   const [streamingMessage, setStreamingMessage] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(true);
 
   // emit widget_load telemetry when widget mounts, but only once per
   // browser session; reloading the page should not produce duplicate load events.
-  // We use a storage key unique to the client+assistant+config combo.
+  // We use a storage key unique to the client+agent+config combo.
   useEffect(() => {
     const loadKey = `companin-telemetry-load-${initialClientId}-${initialAssistantId}-${initialConfigId}`;
     // if we've already sent the load event, do nothing
@@ -355,7 +355,7 @@ export default function EmbedClient({
 
   // emit initial open/close telemetry when widget mounts, but only once per
   // browser session; reloading the page should not produce duplicate open/close
-  // events. We use a storage key unique to the client+assistant combo.
+  // events. We use a storage key unique to the client+agent combo.
   useEffect(() => {
     const initKey = `companin-telemetry-init-${initialClientId}-${initialAssistantId}`;
     // if we've already sent the initial event, do nothing
@@ -457,7 +457,7 @@ export default function EmbedClient({
     typeof navigator !== 'undefined' ? !navigator.onLine : false
   );
   const [isEmbedded, setIsEmbedded] = useState(false);
-  const [assistantName, setAssistantName] = useState<string>('');
+  const [agentName, setAssistantName] = useState<string>('');
   const [widgetConfig, setWidgetConfig] = useState<WidgetConfig | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [shouldRender, setShouldRender] = useState(true);
@@ -466,7 +466,7 @@ export default function EmbedClient({
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [messageFeedbackSubmitted, setMessageFeedbackSubmitted] = useState<Set<string>>(new Set());
-  const [unsureMessages, setUnsureMessages] = useState<Array<{userMessage: string, assistantMessage: string, timestamp: number}>>([]);
+  const [unsureMessages, setUnsureMessages] = useState<Array<{userMessage: string, agentMessage: string, timestamp: number}>>([]);
   const [showUnsureModal, setShowUnsureModal] = useState(false);
   const [showHandoffModal, setShowHandoffModal] = useState(false);
   const [lastUserMessage, setLastUserMessage] = useState('');
@@ -719,7 +719,7 @@ export default function EmbedClient({
 
         if (cancelled) return;
 
-        // Validate assistant exists
+        // Validate agent exists
         await fetchAssistantDetails(assistantIdParam, token);
 
         // Validate config exists if provided
@@ -776,7 +776,7 @@ export default function EmbedClient({
 
   // --- Streaming sendMessage handler ---
   // Supports SSE with: AbortController timeout, up to 2 retries with backoff,
-  // SSE reconnect via Last-Event-ID, and a graceful assistant fallback on failure.
+  // SSE reconnect via Last-Event-ID, and a graceful agent fallback on failure.
   const sendMessageWithStreaming = async (userMessage: string) => {
     if (!sessionId || !authToken) return;
     setIsTyping(true);
@@ -847,9 +847,9 @@ export default function EmbedClient({
             }
           }
           setMessages(prev => [...prev, {
-            id: `assistant-${Date.now()}`,
+            id: `agent-${Date.now()}`,
             text: accumulatedText,
-            from: 'assistant',
+            from: 'agent',
             timestamp: Date.now(),
           }]);
           setStreamingMessage(null);
@@ -858,9 +858,9 @@ export default function EmbedClient({
           const data = await response.json();
           if (data.status === 'success' && data.data?.message) {
             setMessages(prev => [...prev, {
-              id: `assistant-${Date.now()}`,
+              id: `agent-${Date.now()}`,
               text: data.data.message,
-              from: 'assistant',
+              from: 'agent',
               timestamp: Date.now(),
             }]);
           }
@@ -887,12 +887,12 @@ export default function EmbedClient({
       });
     } catch (err) {
       setStreamingMessage(null);
-      // Show a graceful assistant message rather than a raw error string
+      // Show a graceful agent message rather than a raw error string
       const fallbackText = String(t.failedToSendMessage) || "I'm having trouble responding right now. Please try again in a moment.";
       setMessages(prev => [...prev, {
-        id: `assistant-err-${Date.now()}`,
+        id: `agent-err-${Date.now()}`,
         text: fallbackText,
-        from: 'assistant' as const,
+        from: 'agent' as const,
         timestamp: Date.now(),
       }]);
       logError(err as Error, { action: 'sendMessageWithStreaming' });
@@ -1218,7 +1218,7 @@ export default function EmbedClient({
     };
   }, [lastReadStorageKey, unreadStorageKey]);
 
-  // Track unread messages when new assistant messages arrive and widget is collapsed
+  // Track unread messages when new agent messages arrive and widget is collapsed
   useEffect(() => {
     // Only track unread if the feature is enabled
     const showUnreadBadge = widgetConfig?.show_unread_badge ?? true; // Default to true
@@ -1228,19 +1228,19 @@ export default function EmbedClient({
     }
 
     if (isCollapsed && messages.length > 0) {
-      // Get the last assistant message
+      // Get the last agent message
       const lastMessage = messages[messages.length - 1];
 
-      if (lastMessage?.from === 'assistant' && lastMessage?.id) {
+      if (lastMessage?.from === 'agent' && lastMessage?.id) {
         // Only count as unread if this message is after the last read message
         if (!lastReadMessageId || lastMessage.id !== lastReadMessageId) {
-          // Count unread assistant messages after the last read message
+          // Count unread agent messages after the last read message
           const lastReadIndex = lastReadMessageId
             ? messages.findIndex(m => m.id === lastReadMessageId)
             : -1;
 
           const unreadMessages = messages.filter((m, idx) =>
-            m.from === 'assistant' &&
+            m.from === 'agent' &&
             idx > lastReadIndex &&
             !m.id.startsWith('greeting-') // Don't count greeting messages
           );
@@ -1368,7 +1368,7 @@ export default function EmbedClient({
             return {
               id: m.id,
               text: m.content,
-              from: m.sender as 'user' | 'assistant',
+              from: m.sender as 'user' | 'agent',
               timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
               sources: (m.sources as SourceData[]) || [],
             };
@@ -1414,7 +1414,7 @@ export default function EmbedClient({
             if (last) {
               if (parentSensitiveOrigin) {
                 window.parent.postMessage({ type: EMBED_EVENTS.MESSAGE, data: last }, parentSensitiveOrigin);
-                if (last.from === 'assistant') {
+                if (last.from === 'agent') {
                   window.parent.postMessage({ type: EMBED_EVENTS.RESPONSE, data: last }, parentSensitiveOrigin);
                 }
               }
@@ -1443,7 +1443,7 @@ export default function EmbedClient({
     }
   }
 
-  async function createSession(assistant: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null, skipMessageLoad = false) {
+  async function createSession(agentId: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null, skipMessageLoad = false) {
     try {
       const visitorId = helpers.getVisitorId(initialClientId);
       // Mutable so a 401/403 (expired token on a long-open widget) can refresh
@@ -1560,7 +1560,7 @@ export default function EmbedClient({
           maxRetries: 3,
           initialDelay: 1000,
           onRetry: (attempt, error) => {
-            logError(error, { assistant, attempt, action: 'createSession' });
+            logError(error, { agentId, attempt, action: 'createSession' });
           },
         }
       );
@@ -1593,7 +1593,7 @@ export default function EmbedClient({
       const e = err as unknown as { userMessage?: string; message?: string };
       const errorMessage = e.userMessage || String(t.failedToCreateSession);
       setError(errorMessage);
-      logError(e, { assistant, action: 'createSession' });
+      logError(e, { agentId, action: 'createSession' });
 
       // Notify parent window of error
       if (window.parent !== window) {
@@ -1667,7 +1667,7 @@ export default function EmbedClient({
 
           // Load messages
           type ApiMessage = {
-            sender: 'user' | 'assistant';
+            sender: 'user' | 'agent';
             id: string;
             content: string;
             created_at?: string;
@@ -1742,7 +1742,7 @@ export default function EmbedClient({
               return {
                 id,
                 text,
-                from: from as 'user' | 'assistant',
+                from: from as 'user' | 'agent',
                 timestamp,
               } as Message;
             });
@@ -1834,11 +1834,11 @@ export default function EmbedClient({
           const data = await response.json();
           // Accept success responses even if `name` is missing so tests that
           // return a minimal payload don't cause the whole widget to abort
-          // validation. Missing assistant name is non-fatal at runtime.
+          // validation. Missing agent name is non-fatal at runtime.
           if (data.status === 'success') {
             setAssistantName(data.data?.name || '');
           } else {
-            throw createAuthError('Invalid assistant response', WidgetErrorCode.AUTH_TOKEN_FAILED);
+            throw createAuthError('Invalid agent response', WidgetErrorCode.AUTH_TOKEN_FAILED);
           }
         } else {
           const errorMessage = `Assistant not found or access denied (${response.status})`;
@@ -2155,7 +2155,7 @@ export default function EmbedClient({
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${useToken}`,
                 // Negotiate Server-Sent Events so the server streams the
-                // assistant reply token-by-token; falls back to JSON otherwise.
+                // agent reply token-by-token; falls back to JSON otherwise.
                 'Accept': 'text/event-stream, application/json',
                 ...embedHeaders,
               },
@@ -2315,18 +2315,18 @@ export default function EmbedClient({
         }
       );
 
-      // Check if assistant was unsure
+      // Check if agent was unsure
       if (messageData?.assistant_message?.metadata?.assistant_unsure) {
         const userMsg = messageData.user_message?.content || message;
-        const assistantMsg = messageData.assistant_message?.content || '';
+        const agentMsg = messageData.assistant_message?.content || '';
         setUnsureMessages(prev => [...prev, {
           userMessage: userMsg,
-          assistantMessage: assistantMsg,
+          agentMessage: agentMsg,
           timestamp: Date.now()
         }]);
       }
 
-      // Check if assistant requested a human handoff
+      // Check if agent requested a human handoff
       if (messageData?.assistant_message?.metadata?.handoff === true && !hasEscalated) {
         setLastUserMessage(message);
         setHasEscalated(true);
@@ -2356,7 +2356,7 @@ export default function EmbedClient({
           next.push({
             id: serverAssistant.id,
             text: serverAssistant.content,
-            from: 'assistant' as const,
+            from: 'agent' as const,
             timestamp: serverAssistant.created_at ? new Date(serverAssistant.created_at).getTime() : Date.now(),
             sources: (serverAssistant.sources as SourceData[]) || [],
           });
@@ -2494,7 +2494,7 @@ export default function EmbedClient({
       setMessages(prev => [...prev, userMsg]);
 
       // A follow-up button that already defines a local response should remain
-      // local-only: render the user's button click plus the local assistant
+      // local-only: render the user's button click plus the local agent
       // response and skip the backend submit.
       if (hasLocalResponse) {
         const sid = sessionIdRef.current;
@@ -2815,7 +2815,7 @@ export default function EmbedClient({
         handleSubmit={handleSubmit}
         error={error}
         locale={activeLocale}
-        assistantName={assistantName}
+        agentName={agentName}
         widgetConfig={safeWidgetConfig}
         onInteractionButtonClick={handleInteractionButtonClick}
         onFollowUpButtonClick={handleFollowUpButtonClick}
@@ -2883,7 +2883,7 @@ export default function EmbedClient({
               const confirmationMessage: Message = {
                 id: `temp-handoff-${Date.now()}`,
                 text: String(t.handoffConfirmation),
-                from: 'assistant',
+                from: 'agent',
                 timestamp: Date.now(),
               };
               setMessages(prev => [...prev, confirmationMessage]);
@@ -2896,7 +2896,7 @@ export default function EmbedClient({
   );
 }
 type UnsureMessagesModalProps = {
-  messages: Array<{userMessage: string, assistantMessage: string, timestamp: number}>;
+  messages: Array<{userMessage: string, agentMessage: string, timestamp: number}>;
   onClose: () => void;
   primaryColor: string;
   backgroundColor: string;
@@ -2942,7 +2942,7 @@ function UnsureMessagesModal({ messages, onClose, primaryColor, backgroundColor,
                 </div>
                 <div>
                   <span className="text-xs text-gray-500">Assistant:</span>
-                  <p className="text-sm mt-1 italic">{msg.assistantMessage}</p>
+                  <p className="text-sm mt-1 italic">{msg.agentMessage}</p>
                 </div>
                 <div className="text-xs text-gray-400 mt-2">
                   {new Date(msg.timestamp).toLocaleString(locale)}

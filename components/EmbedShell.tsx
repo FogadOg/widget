@@ -25,14 +25,14 @@ type Props = {
   toggleCollapsed: () => void;
   messages: Message[];
   isTyping: boolean;
-  /** Partial assistant text while a response streams in (null when idle). */
+  /** Partial agent text while a response streams in (null when idle). */
   streamingMessage?: string | null;
   input: string;
   setInput: (v: string) => void;
   handleSubmit: (e: React.FormEvent) => void;
   error?: string | null;
   title?: string;
-  assistantName?: string;
+  agentName?: string;
   widgetConfig?: WidgetConfig;
   onInteractionButtonClick?: (button: ButtonLike) => void | Promise<void>;
   onFollowUpButtonClick?: (button: ButtonLike) => void | Promise<void>;
@@ -82,7 +82,7 @@ export default function EmbedShell({
   handleSubmit,
   error,
   title,
-  assistantName,
+  agentName,
   widgetConfig,
   onInteractionButtonClick,
   onFollowUpButtonClick,
@@ -184,15 +184,15 @@ export default function EmbedShell({
   };
 
   useEffect(() => {
-    const latestAssistant = [...messages]
+    const latestAgent = [...messages]
       .reverse()
-      .find((msg) => msg.from === 'assistant' && !msg.id.startsWith('greeting-'));
-    if (latestAssistant && latestAssistant.id !== lastAnnouncedId.current) {
-      lastAnnouncedId.current = latestAssistant.id;
+      .find((msg) => msg.from === 'agent' && !msg.id.startsWith('greeting-'));
+    if (latestAgent && latestAgent.id !== lastAnnouncedId.current) {
+      lastAnnouncedId.current = latestAgent.id;
       const timeoutId = window.setTimeout(() => {
         setLiveMessage(
           translate(locale, 'newMessageAnnouncement', {
-            vars: { message: latestAssistant.text },
+            vars: { message: latestAgent.text },
           })
         );
       }, 0);
@@ -300,7 +300,7 @@ export default function EmbedShell({
               title={translate(locale, 'chatControl', { context: 'open' })}
             >
                 {widgetConfig?.bot_avatar ? (
-                  <img src={widgetConfig.bot_avatar} alt={(assistantName || getText(widgetConfig?.title) || 'assistant') + ' avatar'} className={`${btnIcon} rounded-full object-cover`} />
+                  <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className={`${btnIcon} rounded-full object-cover`} />
                 ) : widgetConfig?.logo ? (
                   <img src={widgetConfig.logo} alt={(getText(widgetConfig?.title) || title || 'logo') + ' logo'} className={`${btnIcon} object-contain`} />
                 ) : (
@@ -447,7 +447,7 @@ export default function EmbedShell({
                       <div className="flex flex-col items-start w-full">
                         <div className="flex items-start gap-2">
                           {showMessageAvatars && widgetConfig?.bot_avatar && (
-                            <img src={widgetConfig.bot_avatar} alt={(assistantName || getText(widgetConfig?.title) || 'assistant') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                            <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
                           )}
                           <div className="max-w-[80%] p-2 rounded-lg bg-gray-200" style={{ color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
                             {greetingText}
@@ -478,7 +478,7 @@ export default function EmbedShell({
                             <MessageBubble
                               message={message}
                               widgetConfig={widgetConfig}
-                              assistantName={assistantName}
+                              agentName={agentName}
                               showMessageAvatars={showMessageAvatars}
                               textColor={textColor}
                               fontStyles={fontStyles}
@@ -495,9 +495,9 @@ export default function EmbedShell({
                           <div key={`flow-${index}`} className="space-y-2">
                             {flowResponse.text && (
                               <MessageBubble
-                                message={{ id: `flow-text-${index}`, text: flowResponse.text, from: 'assistant' }}
+                                message={{ id: `flow-text-${index}`, text: flowResponse.text, from: 'agent' }}
                                 widgetConfig={widgetConfig}
-                                assistantName={assistantName}
+                                agentName={agentName}
                                 showMessageAvatars={showMessageAvatars}
                                 textColor={textColor}
                                 fontStyles={fontStyles}
@@ -545,9 +545,9 @@ export default function EmbedShell({
                     {streamingMessage ? (
                       <div className="flex w-full justify-start">
                         <MessageBubble
-                          message={{ id: '__streaming__', text: streamingMessage, from: 'assistant' }}
+                          message={{ id: '__streaming__', text: streamingMessage, from: 'agent' }}
                           widgetConfig={widgetConfig}
-                          assistantName={assistantName}
+                          agentName={agentName}
                           showMessageAvatars={showMessageAvatars}
                           textColor={textColor}
                           fontStyles={fontStyles}
@@ -559,10 +559,10 @@ export default function EmbedShell({
                       <div className="flex justify-start" role="status" aria-live="polite">
                         <div className="flex items-start gap-2">
                           {showMessageAvatars && widgetConfig?.bot_avatar && (
-                            <img src={widgetConfig.bot_avatar} alt={(assistantName || getText(widgetConfig?.title) || 'assistant') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                            <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
                           )}
                           <div className="p-3" style={{ backgroundColor: '#e5e7eb', color: textColor, borderRadius: `${messageBubbleRadius}px` }}>
-                            <span style={{ position: 'absolute', left: '-9999px' }}>{translate(locale, 'assistantTyping')}</span>
+                            <span style={{ position: 'absolute', left: '-9999px' }}>{translate(locale, 'agentTyping')}</span>
                             {/* Animated dots for standard motion; static ellipsis for reduced-motion users */}
                             <div className="flex space-x-1 motion-reduce:hidden" aria-hidden="true">
                               <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
@@ -666,7 +666,7 @@ export default function EmbedShell({
               title={typeof t.openChat === 'string' ? t.openChat : String(t.openChat)}
             >
                 {widgetConfig?.bot_avatar ? (
-                  <img src={widgetConfig.bot_avatar} alt={(assistantName || getText(widgetConfig?.title) || 'assistant') + ' avatar'} className={`${btnIcon} rounded-full object-cover`} />
+                  <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className={`${btnIcon} rounded-full object-cover`} />
                 ) : widgetConfig?.logo ? (
                   <img src={widgetConfig.logo} alt={(getText(widgetConfig?.title) || title || 'logo') + ' logo'} className={`${btnIcon} object-contain`} />
                 ) : (
@@ -755,7 +755,7 @@ export default function EmbedShell({
                     <div className="flex flex-col items-start w-full">
                       <div className="flex items-start gap-2">
                         {widgetConfig?.bot_avatar && (
-                          <img src={widgetConfig.bot_avatar} alt={(assistantName || getText(widgetConfig?.title) || 'assistant') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                          <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
                         )}
                         <div className="max-w-[80%] p-2 bg-gray-200" style={{ color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
                           {greetingText}
@@ -786,7 +786,7 @@ export default function EmbedShell({
                           <MessageBubble
                             message={message}
                             widgetConfig={widgetConfig}
-                            assistantName={assistantName}
+                            agentName={agentName}
                             showMessageAvatars={showMessageAvatars}
                             textColor={textColor}
                             fontStyles={fontStyles}
@@ -803,9 +803,9 @@ export default function EmbedShell({
                         <div key={`flow-${index}`} className="space-y-2">
                           {flowResponse.text && (
                             <MessageBubble
-                              message={{ id: `flow-text-${index}`, text: flowResponse.text, from: 'assistant' }}
+                              message={{ id: `flow-text-${index}`, text: flowResponse.text, from: 'agent' }}
                               widgetConfig={widgetConfig}
-                              assistantName={assistantName}
+                              agentName={agentName}
                               showMessageAvatars={showMessageAvatars}
                               textColor={textColor}
                               fontStyles={fontStyles}
@@ -853,9 +853,9 @@ export default function EmbedShell({
                   {streamingMessage ? (
                     <div className="flex w-full justify-start">
                       <MessageBubble
-                        message={{ id: '__streaming__', text: streamingMessage, from: 'assistant' }}
+                        message={{ id: '__streaming__', text: streamingMessage, from: 'agent' }}
                         widgetConfig={widgetConfig}
-                        assistantName={assistantName}
+                        agentName={agentName}
                         showMessageAvatars={showMessageAvatars}
                         textColor={textColor}
                         fontStyles={fontStyles}
@@ -866,7 +866,7 @@ export default function EmbedShell({
                   ) : (isTyping && (
                     <div className="flex justify-start" role="status" aria-live="polite">
                       <div className="p-3" style={{ backgroundColor: '#e5e7eb', color: textColor, borderRadius: `${messageBubbleRadius}px` }}>
-                        <span style={{ position: 'absolute', left: '-9999px' }}>{translate(locale, 'assistantTyping')}</span>
+                        <span style={{ position: 'absolute', left: '-9999px' }}>{translate(locale, 'agentTyping')}</span>
                         <div className="flex space-x-1 motion-reduce:hidden" aria-hidden="true">
                           <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                           <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>

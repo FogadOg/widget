@@ -176,7 +176,7 @@ export default function MessageInput({
         }
       );
 
-      // Reload all messages from server to get the assistant's response
+      // Reload all messages from server to get the agent's response
       await loadLatestMessages();
     } catch (err: any) {
       const errorMessage = err.userMessage || err.message || 'Failed to send message';
@@ -215,7 +215,7 @@ export default function MessageInput({
         // Convert API messages to widget message format
         const loadedMessages: Message[] = data.data.messages
           .filter((msg: any) => {
-            // Filter out assistant greeting messages
+            // Filter out agent greeting messages
             if (msg.sender === 'assistant') {
               const userMessages = data.data.messages.filter((m: any) => m.sender === 'user');
               return userMessages.length > 0;
@@ -225,7 +225,7 @@ export default function MessageInput({
           .map((msg: any) => ({
             id: msg.id,
             text: msg.content,
-            from: msg.sender as 'user' | 'assistant',
+            from: msg.sender as 'user' | 'agent',
             timestamp: msg.created_at ? new Date(msg.created_at).getTime() : nowMs(),
             sources: msg.sources || [],
           }));
@@ -234,7 +234,7 @@ export default function MessageInput({
         // For now, we'll emit the latest messages
         const recentThreshold = nowMs() - 10000;
         loadedMessages.forEach(msg => {
-          if (msg.from === 'assistant' && msg.timestamp && msg.timestamp > recentThreshold) { // Recent messages
+          if (msg.from === 'agent' && msg.timestamp && msg.timestamp > recentThreshold) { // Recent messages
             onMessageSent(msg);
           }
         });

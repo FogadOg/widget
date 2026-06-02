@@ -43,7 +43,7 @@ import MessageBubble from "../components/MessageBubble";
 // ---------------------------------------------------------------- helpers --
 
 function mkMsg(text: string, sources?: any[]) {
-  return { id: "test-id", text, from: "assistant" as const, sources };
+  return { id: "test-id", text, from: "agent" as const, sources };
 }
 
 // ------------------------------------------------------------------ tests --

@@ -17,7 +17,7 @@ describe('ai-elements smoke', () => {
 
   test('message elements render', () => {
     render(<div>
-      <Msg.Message from="assistant">x</Msg.Message>
+      <Msg.Message from="agent">x</Msg.Message>
       <Msg.MessageResponse>r</Msg.MessageResponse>
     </div>)
     expect(screen.getByText('x')).toBeInTheDocument()

@@ -17,8 +17,8 @@
     "minimize": "Chat minimieren"
   },
   "newMessageAnnouncement": "Neue Nachricht: {message}",
-  "viewUncertaintyLog": "Customer Support AI Assistant Unsicherheitsprotokoll anzeigen",
-  "uncertaintyResponsesHint": "Customer Support AI Assistant hat in einigen Antworten Unsicherheit angezeigt",
+  "viewUncertaintyLog": "Customer Support AI Agent Unsicherheitsprotokoll anzeigen",
+  "uncertaintyResponsesHint": "Customer Support AI Agent hat in einigen Antworten Unsicherheit angezeigt",
   "closeFeedback": "Feedback schließen",
   "unreadMessages": {
     "one": "{count} ungelesene Nachricht",
@@ -28,9 +28,8 @@
     "one": "{count} Quelle",
     "other": "{count} Quellen"
   },
-  "assistantTyping": "Customer Support AI Assistant tippt",
-  "appTitle": "Customer Support AI Assistant Chat-Widget",
-  "appDescription": "Customer Support AI Assistant Chat-Widget für Ihre Website",
+  "appTitle": "Customer Support AI Agent Chat-Widget",
+  "appDescription": "Customer Support AI Agent Chat-Widget für Ihre Website",
   "getStarted": "Loslegen",
   "viewDemo": "Demo ansehen",
   "easyIntegrationTitle": "Einfache Integration",
@@ -115,7 +114,7 @@
   "gettingStartedStep3Desc": "Das Widget wird auf Ihrer Seite angezeigt. Es respektiert die Position, Farben und das Verhalten, die Sie im Dashboard konfiguriert haben.",
   "gettingStartedStep4Title": "Probieren Sie das Dokumenten-Widget aus",
   "gettingStartedStep4Desc": "Das Dokumenten-Widget funktioniert auf die gleiche Weise – laden Sie das Skript und rufen Sie {openCall} auf, um es programmgesteuert zu öffnen. Probieren Sie es live aus:",
-  "docsConfigError": "Konfigurationsfehler beim Docs Assistant",
+  "docsConfigError": "Konfigurationsfehler beim Docs Agent",
   "uncertaintyLogEmpty": "Noch keine unsicheren Antworten.",
   "uncertaintyLogSubtitle": "Nachrichten, bei denen der Assistent Unsicherheit anzeigte:",
   "uncertaintyLogTitle": "Assistenten-Unsicherheitsprotokoll",
@@ -132,5 +131,9 @@
   "handoffConfirmation": "Ihre Nachricht wurde gesendet. Unser Team meldet sich bei Ihnen.",
   "docsTitleFallback": "Dokumentationsassistent",
   "docsSubtitleFallback": "Wie können wir Ihnen heute helfen?",
-  "docsInitialGreeting": "Hallo! Ich bin Ihr Dokumentationsassistent. Wie kann ich Ihnen heute helfen?"
+  "docsInitialGreeting": "Hallo! Ich bin Ihr Dokumentationsassistent. Wie kann ich Ihnen heute helfen?",
+  "sessionExpiredTitle": "Your session expired",
+  "sessionExpiredBody": "We've started a fresh session so you can keep chatting.",
+  "sessionExpiredDismiss": "Dismiss",
+  "agentTyping": "Customer Support AI Agent is typing"
 }

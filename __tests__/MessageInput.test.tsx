@@ -185,8 +185,8 @@ describe('MessageInput component', () => {
       fireEvent.click(button);
     });
 
-    // component adds user message before network, and then our simulated assistant message
-    expect(onMessageSent).toHaveBeenCalledWith(expect.objectContaining({ from: 'assistant', text: 'hi' }));
+    // component adds user message before network, and then our simulated agent message
+    expect(onMessageSent).toHaveBeenCalledWith(expect.objectContaining({ from: 'agent', text: 'hi' }));
   });
 
   it('handles 500 server error response from POST', async () => {

@@ -141,7 +141,7 @@ type Props = {
 
 type MessageType = {
   key: string;
-  from: "user" | "assistant";
+  from: "user" | "agent";
   sources?: { url?: string; href?: string; title?: string; snippet?: string; type?: string; reference_id?: string }[];
   versions: {
     id: string;
@@ -156,11 +156,11 @@ type MessageType = {
 const initialMessages: MessageType[] = [
   {
     key: nanoid(),
-    from: "assistant",
+    from: "agent",
     versions: [
       {
         id: nanoid(),
-        content: "Hello! I'm your documentation assistant. How can I help you today?",
+        content: "Hello! I'm your documentation agent. How can I help you today?",
       },
     ],
   },
@@ -261,10 +261,10 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
   }, [assistantId, clientId]);
 
   useEffect(() => {
-    const latestAssistant = [...messages].reverse().find((msg) => msg.from === 'assistant');
-    if (!latestAssistant) return;
-    const latestContent = latestAssistant.versions?.[latestAssistant.versions.length - 1]?.content || '';
-    const announcementKey = `${latestAssistant.key}-${latestContent}`;
+    const latestAgent = [...messages].reverse().find((msg) => msg.from === 'agent');
+    if (!latestAgent) return;
+    const latestContent = latestAgent.versions?.[latestAgent.versions.length - 1]?.content || '';
+    const announcementKey = `${latestAgent.key}-${latestContent}`;
 
     if (announcementKey !== lastAnnouncedKey.current) {
       lastAnnouncedKey.current = announcementKey;
@@ -362,7 +362,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
             })
             .map((msg: any) => ({
               key: msg.id,
-              from: msg.sender as 'user' | 'assistant',
+              from: msg.sender as 'user' | 'agent',
               sources: msg.sources || [],
               versions: [{
                 id: msg.id,
@@ -414,7 +414,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
             })
             .map((msg: any) => ({
               key: msg.id,
-              from: msg.sender as 'user' | 'assistant',
+              from: msg.sender as 'user' | 'agent',
               sources: msg.sources || [],
               versions: [{
                 id: msg.id,
@@ -495,7 +495,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
       const data = await response.json();
 
       if (response.ok && data.status === 'success') {
-        // Reload all messages from the server to get the assistant's response
+        // Reload all messages from the server to get the agent's response
         await loadSessionMessages(sessionId, authToken);
       } else {
         console.error('Failed to send message:', data);
@@ -747,7 +747,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
                                       <MessageContent>
                                         <MessageResponse sources={message.sources}>{version.content}</MessageResponse>
                                       </MessageContent>
-                                      {message.from === 'assistant' && !messageFeedbackSubmitted.has(message.key) && (
+                                      {message.from === 'agent' && !messageFeedbackSubmitted.has(message.key) && (
                                         <div className="mt-2 flex gap-2">
                                           <button
                                             type="button"
@@ -773,7 +773,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
                                           </button>
                                         </div>
                                       )}
-                                      {message.from === 'assistant' && messageFeedbackSubmitted.has(message.key) && (
+                                      {message.from === 'agent' && messageFeedbackSubmitted.has(message.key) && (
                                         <div className="mt-2 text-xs opacity-50">
                                           {typeof t.feedbackSubmittedMessage === 'string' ? t.feedbackSubmittedMessage : String(t.feedbackSubmittedMessage)}
                                         </div>

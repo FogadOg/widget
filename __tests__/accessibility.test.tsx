@@ -21,7 +21,7 @@ describe('accessibility checks', () => {
         handleSubmit={() => {}}
         error={null}
         title="Test Widget"
-        assistantName="Assistant"
+        agentName="Assistant"
         widgetConfig={{}} // empty config is fine
         onInteractionButtonClick={() => {}}
         onFollowUpButtonClick={() => {}}

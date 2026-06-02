@@ -44,7 +44,7 @@ export type DevPanelTab = 'events' | 'errors' | 'timings';
  *  1. URL query param: ?widget_debug=1
  *  2. localStorage:    localStorage.setItem('widget_debug', '1')
  *  3. Script attribute: <script data-client-id="..." data-dev="true">
- *     (set via NEXT_PUBLIC_WIDGET_DEV=true in the *host* app, e.g. the assistant)
+ *     (set via NEXT_PUBLIC_WIDGET_DEV=true in the *host* app, e.g. the agent)
  */
 export function detectDebugMode(): boolean {
   if (typeof window === 'undefined') return false;

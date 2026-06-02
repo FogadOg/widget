@@ -47,7 +47,7 @@ describe('MessageBubble copy and markdown integrations', () => {
 
   test('clicking copy uses clipboard API and resets `copied` after timeout', async () => {
     jest.useFakeTimers();
-    const message = { id: 'm-copy-ok', text: 'copy me', from: 'assistant' } as any;
+    const message = { id: 'm-copy-ok', text: 'copy me', from: 'agent' } as any;
     // mock clipboard
     // ensure clipboard exists in this environment
     // @ts-ignore
@@ -76,7 +76,7 @@ describe('MessageBubble copy and markdown integrations', () => {
 
   test('clipboard missing falls back to execCommand and resets `copied` after timeout', async () => {
     jest.useFakeTimers();
-    const message = { id: 'm-copy-fallback', text: 'copy fallback', from: 'assistant' } as any;
+    const message = { id: 'm-copy-fallback', text: 'copy fallback', from: 'agent' } as any;
     // simulate clipboard present but writeText failing so the promise .catch branch runs
     // @ts-ignore
     const originalClipboard = navigator.clipboard;
@@ -116,19 +116,19 @@ describe('MessageBubble copy and markdown integrations', () => {
   });
 
   test('react-markdown components mapping: link opens new tab and code renders block/inline', async () => {
-    const linkMsg = { id: 'm-link', text: 'see [site](https://ex.com)', from: 'assistant' } as any;
+    const linkMsg = { id: 'm-link', text: 'see [site](https://ex.com)', from: 'agent' } as any;
     render(<MessageBubble message={linkMsg} />);
     const anchor = await screen.findByRole('link');
     expect(anchor).toHaveAttribute('href', 'https://ex.com');
     expect(anchor).toHaveAttribute('target', '_blank');
     expect(anchor).toHaveAttribute('rel', 'noopener noreferrer');
 
-    const inlineCodeMsg = { id: 'm-icode', text: 'inline `x`', from: 'assistant' } as any;
+    const inlineCodeMsg = { id: 'm-icode', text: 'inline `x`', from: 'agent' } as any;
     render(<MessageBubble message={inlineCodeMsg} />);
     const code = await screen.findByText('x');
     expect(code.tagName.toLowerCase()).toBe('code');
 
-    const blockMsg = { id: 'm-bcode', text: '```js\nconst a = 1\n```', from: 'assistant' } as any;
+    const blockMsg = { id: 'm-bcode', text: '```js\nconst a = 1\n```', from: 'agent' } as any;
     render(<MessageBubble message={blockMsg} />);
     const pre = await screen.findByText(/const a = 1/);
     expect(pre).toBeInTheDocument();

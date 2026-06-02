@@ -14,7 +14,7 @@ export type SourceData = {
 export type Message = {
   id: string;
   text: string;
-  from: 'user' | 'assistant';
+  from: 'user' | 'agent';
   timestamp?: number;
   hasFeedback?: boolean;
   sources?: SourceData[];
@@ -170,6 +170,6 @@ export type PageContext = {
 
 export type UnsureMessage = {
   userMessage: string;
-  assistantMessage: string;
+  agentMessage: string;
   timestamp: number;
 };
