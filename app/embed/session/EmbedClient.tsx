@@ -948,7 +948,7 @@ export default function EmbedClient({
                 const replaced: Message = {
                   id: server.id,
                   text: server.content || server.text || (idx >= 0 ? next[idx].text : ''),
-                  from: (server.sender || server.from) === 'assistant' ? 'assistant' : 'user',
+                  from: (server.sender || server.from) === 'assistant' ? 'agent' : 'user',
                   timestamp: server.created_at ? new Date(server.created_at).getTime() : (server.timestamp || Date.now()),
                 };
                 if (idx >= 0) next[idx] = replaced; else next.push(replaced);
@@ -1368,7 +1368,7 @@ export default function EmbedClient({
             return {
               id: m.id,
               text: m.content,
-              from: m.sender as 'user' | 'agent',
+              from: (m.sender === 'assistant' ? 'agent' : m.sender) as 'user' | 'agent',
               timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
               sources: (m.sources as SourceData[]) || [],
             };
@@ -1737,7 +1737,8 @@ export default function EmbedClient({
               const apiMsg = apiMsgRaw as ApiMessage & { from?: string; text?: string };
               const id = (apiMsg as any).id || ((apiMsg as any).message_id ?? '');
               const text = (apiMsg as any).content ?? (apiMsg as any).text ?? '';
-              const from = (apiMsg as any).sender ?? (apiMsg as any).from ?? 'user';
+              const fromRaw = (apiMsg as any).sender ?? (apiMsg as any).from ?? 'user';
+              const from = fromRaw === 'assistant' ? 'agent' : fromRaw;
               const timestamp = apiMsg.created_at ? new Date(apiMsg.created_at).getTime() : ((apiMsg as any).timestamp || Date.now());
               return {
                 id,
