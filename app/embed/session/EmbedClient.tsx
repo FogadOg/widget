@@ -1450,111 +1450,111 @@ export default function EmbedClient({
       // the token mid-retry and the next attempt uses the fresh one.
       let activeToken = token;
 
+      // Use the config snapshot passed directly (avoids React state timing issue)
+      // where widgetConfig state hasn't updated yet when createSession is called.
+      const activeConfig = configSnapshot ?? widgetConfig;
+      let abMeta: Record<string, string | boolean>;
+      if (activeConfig?.variant_id) {
+        // Visitor was assigned to a specific A/B variant.
+        abMeta = { variant_id: activeConfig.variant_id, variant_name: activeConfig.variant_name ?? '' };
+      } else if (activeConfig?.id && initialConfigId) {
+        // Visitor is in the control group (base config, no variant).
+        // Tag the session so analytics can count the control group.
+        abMeta = { is_ab_control: true, widget_config_id: activeConfig.id };
+      } else {
+        abMeta = {};
+      }
+
+      // Single POST attempt. Returns the parsed response so the caller can
+      // inspect the status (e.g. to refresh the token on 401) without the
+      // refresh being treated as a retryable failure.
+      const postSession = async (tok: string) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        try {
+          const response = await fetch(API.sessions(), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${tok}`,
+              ...embedHeaders,
+            },
+            body: JSON.stringify({
+              assistant_id: assistant,
+              visitor_id: visitorId,
+              locale: activeLocale,
+              widget_config_id: activeConfig?.id ?? undefined,
+              metadata: Object.keys(abMeta).length > 0 ? abMeta : undefined,
+            }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          let data;
+          try {
+            data = await response.json();
+          } catch {
+            throw createSessionError(
+              'Invalid response from session server',
+              WidgetErrorCode.SESSION_CREATE_FAILED
+            );
+          }
+          return { response, data };
+        } catch (fetchError: unknown) {
+          clearTimeout(timeoutId);
+          const fe = fetchError as unknown as { name?: string };
+          if (fe.name === 'AbortError') {
+            throw createNetworkError(
+              'Session creation timed out',
+              WidgetErrorCode.NETWORK_TIMEOUT
+            );
+          }
+          throw fetchError;
+        }
+      };
+
       const sessionData = await retryWithBackoff(
         async () => {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 15000);
+          let { response, data } = await postSession(activeToken);
 
-          try {
-            // Use the config snapshot passed directly (avoids React state timing issue)
-            // where widgetConfig state hasn't updated yet when createSession is called.
-            const activeConfig = configSnapshot ?? widgetConfig;
-            let abMeta: Record<string, string | boolean>;
-            if (activeConfig?.variant_id) {
-              // Visitor was assigned to a specific A/B variant.
-              abMeta = { variant_id: activeConfig.variant_id, variant_name: activeConfig.variant_name ?? '' };
-            } else if (activeConfig?.id && initialConfigId) {
-              // Visitor is in the control group (base config, no variant).
-              // Tag the session so analytics can count the control group.
-              abMeta = { is_ab_control: true, widget_config_id: activeConfig.id };
-            } else {
-              abMeta = {};
+          // Expired/invalid token (the widget has likely been open past the
+          // 1h token lifetime). Refresh it once and re-issue the request inline
+          // with the fresh token. Doing this inline (rather than throwing to
+          // trigger a retry) keeps the recovery silent — a thrown error would
+          // be surfaced by the onRetry logger as a console error even though
+          // nothing actually failed.
+          if (response.status === 401 || response.status === 403) {
+            const refreshed = await getAuthToken(initialClientId, initialParentOrigin);
+            if (refreshed && refreshed !== activeToken) {
+              activeToken = refreshed;
+              authTokenRef.current = refreshed;
+              ({ response, data } = await postSession(activeToken));
             }
-
-            const response = await fetch(API.sessions(), {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${activeToken}`,
-                ...embedHeaders,
-              },
-              body: JSON.stringify({
-                  assistant_id: assistant,
-                  visitor_id: visitorId,
-                  locale: activeLocale,
-                  widget_config_id: activeConfig?.id ?? undefined,
-                  metadata: Object.keys(abMeta).length > 0 ? abMeta : undefined,
-                }),
-              signal: controller.signal,
-            });
-
-            clearTimeout(timeoutId);
-
-            let data;
-            try {
-              data = await response.json();
-            } catch {
-              throw createSessionError(
-                'Invalid response from session server',
-                WidgetErrorCode.SESSION_CREATE_FAILED
-              );
-            }
-
-            // Expired/invalid token (the widget has likely been open past the
-            // 1h token lifetime). Refresh it once and retry the next attempt
-            // with the fresh token, rather than surfacing "Failed to establish
-            // session." This path runs without fetchWithAuthRetry because
-            // createSession is invoked before sessionId/auth refs are settled.
-            if (response.status === 401 || response.status === 403) {
-              const refreshed = await getAuthToken(initialClientId, initialParentOrigin);
-              if (refreshed && refreshed !== activeToken) {
-                activeToken = refreshed;
-                authTokenRef.current = refreshed;
-                throw createNetworkError(
-                  'Auth token refreshed; retrying session creation',
-                  WidgetErrorCode.NETWORK_REQUEST_FAILED
-                );
-              }
-            }
-
-            if (!response.ok) {
-              const errorMessage = parseApiError(data, 'Failed to create session');
-
-              if (response.status >= 500) {
-                throw createNetworkError(
-                  errorMessage,
-                  WidgetErrorCode.NETWORK_SERVER_ERROR
-                );
-              }
-
-              throw createSessionError(
-                errorMessage,
-                WidgetErrorCode.SESSION_CREATE_FAILED
-              );
-            }
-
-            if (data.status !== 'success' || !data.data?.session_id) {
-              throw createSessionError(
-                'Invalid session response format',
-                WidgetErrorCode.SESSION_CREATE_FAILED
-              );
-            }
-
-            return data.data;
-          } catch (fetchError: unknown) {
-            clearTimeout(timeoutId);
-
-            const fe = fetchError as unknown as { name?: string };
-
-            if (fe.name === 'AbortError') {
-              throw createNetworkError(
-                'Session creation timed out',
-                WidgetErrorCode.NETWORK_TIMEOUT
-              );
-            }
-
-            throw fetchError;
           }
+
+          if (!response.ok) {
+            const errorMessage = parseApiError(data, 'Failed to create session');
+
+            if (response.status >= 500) {
+              throw createNetworkError(
+                errorMessage,
+                WidgetErrorCode.NETWORK_SERVER_ERROR
+              );
+            }
+
+            throw createSessionError(
+              errorMessage,
+              WidgetErrorCode.SESSION_CREATE_FAILED
+            );
+          }
+
+          if (data.status !== 'success' || !data.data?.session_id) {
+            throw createSessionError(
+              'Invalid session response format',
+              WidgetErrorCode.SESSION_CREATE_FAILED
+            );
+          }
+
+          return data.data;
         },
         {
           maxRetries: 3,
