@@ -80,7 +80,7 @@ export default function SessionManager({
           .map((msg: any) => ({
             id: msg.id,
             text: msg.content,
-            from: msg.sender as 'user' | 'agent',
+            from: (msg.sender === 'assistant' ? 'agent' : msg.sender) as 'user' | 'agent',
             timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
             sources: msg.sources || [],
           }));
@@ -230,7 +230,7 @@ export default function SessionManager({
             .map((msg: any) => ({
               id: msg.id,
               text: msg.content,
-              from: msg.sender as 'user' | 'agent',
+              from: (msg.sender === 'assistant' ? 'agent' : msg.sender) as 'user' | 'agent',
               timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now()
             }));
 

@@ -80,7 +80,12 @@ describe('widget edge cases', () => {
     widget.sendMessage({ id: 'm1' });
     await new Promise((r) => setTimeout(r, 0));
     widget.sendMessage({ id: 'm2' });
-    await new Promise((r) => setTimeout(r, 200));
+    // The trailing debounce flush (~120ms) can be delayed when the full suite
+    // runs in parallel and starves the event loop, so poll for the second emit
+    // instead of asserting after a single fixed (and racy) wait.
+    for (let i = 0; i < 50 && handler.mock.calls.length < 2; i++) {
+      await new Promise((r) => setTimeout(r, 20));
+    }
     expect(handler).toHaveBeenCalledTimes(2);
   });
 

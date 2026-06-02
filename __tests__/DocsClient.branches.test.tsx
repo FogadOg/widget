@@ -266,7 +266,7 @@ describe('DocsClient targeted branches', () => {
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
 
     // default title should be shown when no title provided
-    await waitFor(() => expect(getByText('Documentation Assistant')).toBeTruthy())
+    await waitFor(() => expect(getByText('Documentation Agent')).toBeTruthy())
   })
 
   it('does not post hide/show when running in the top window', async () => {

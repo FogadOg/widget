@@ -155,7 +155,7 @@ export async function loadSessionMessages(
         return {
           id: m.id,
           text: m.content,
-          from: m.sender,
+          from: m.sender === 'assistant' ? 'agent' : m.sender,
           timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
           sources: (m.sources as SourceData[]) || [],
         };

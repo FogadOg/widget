@@ -225,7 +225,7 @@ export default function MessageInput({
           .map((msg: any) => ({
             id: msg.id,
             text: msg.content,
-            from: msg.sender as 'user' | 'agent',
+            from: (msg.sender === 'assistant' ? 'agent' : msg.sender) as 'user' | 'agent',
             timestamp: msg.created_at ? new Date(msg.created_at).getTime() : nowMs(),
             sources: msg.sources || [],
           }));

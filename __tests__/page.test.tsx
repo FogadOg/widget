@@ -15,13 +15,13 @@ describe('Home Page', () => {
     const jsx = await (Home as any)({ params: Promise.resolve({ locale: 'en' }) });
     render(jsx);
 
-    expect(screen.getByText('Customer Support AI Assistant Widget')).toBeInTheDocument();
+    expect(screen.getByText('Customer Support AI Agent Widget')).toBeInTheDocument();
   });
 
   it('renders the description', async () => {
     const jsx2 = await (Home as any)({ params: Promise.resolve({ locale: 'en' }) });
     render(jsx2);
-    expect(screen.getByText('Customer Support AI Assistant chat widget for your website')).toBeInTheDocument();
+    expect(screen.getByText('Customer Support AI Agent chat widget for your website')).toBeInTheDocument();
   });
 
   it('renders Get Started button', async () => {
