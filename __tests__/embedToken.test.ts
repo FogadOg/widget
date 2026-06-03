@@ -28,7 +28,7 @@ describe('embed token verification', () => {
         exp: nowSeconds + 600,
         iss: 'issuer-a',
         aud: 'widget-audience',
-        assistantId: 'assistant-1',
+        agentId: 'agent-1',
       },
       secret,
     );
@@ -36,7 +36,7 @@ describe('embed token verification', () => {
     const claims = verifyEmbedToken(token, secret, {
       requiredIssuer: 'issuer-a',
       requiredAudience: 'widget-audience',
-      assistantId: 'assistant-1',
+      agentId: 'agent-1',
       nowSeconds,
     });
 
@@ -53,7 +53,7 @@ describe('embed token verification', () => {
   test('rejects agent mismatch when claim is present', () => {
     const token = createToken({ exp: nowSeconds + 600, agent_id: 'agent-a' }, secret);
     const claims = verifyEmbedToken(token, secret, {
-      assistantId: 'assistant-b',
+      agentId: 'agent-b',
       nowSeconds,
     });
     expect(claims).toBeNull();
@@ -94,21 +94,21 @@ describe('embed token verification', () => {
     expect(claims).toBeNull();
   });
 
-  test('accepts token with no assistant claim even when assistantId option is set', () => {
-    // readAssistantClaim returns undefined → the mismatch guard is skipped
+  test('accepts token with no agent claim even when agentId option is set', () => {
+    // readAgentClaim returns undefined → the mismatch guard is skipped
     const token = createToken({ exp: nowSeconds + 600 }, secret);
     const claims = verifyEmbedToken(token, secret, {
-      assistantId: 'some-assistant',
+      agentId: 'some-agent',
       nowSeconds,
     });
     expect(claims).not.toBeNull();
   });
 
   test('accepts token signed with a fallback secret during rotation', () => {
-    const token = createToken({ exp: nowSeconds + 600, assistantId: 'assistant-1' }, 'old-secret');
+    const token = createToken({ exp: nowSeconds + 600, agentId: 'agent-1' }, 'old-secret');
 
     const claims = verifyEmbedToken(token, ['new-secret', 'old-secret'], {
-      assistantId: 'assistant-1',
+      agentId: 'agent-1',
       nowSeconds,
     });
 

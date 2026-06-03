@@ -204,7 +204,7 @@ export function resolveParentTargetOrigin(
 
 type EmbedClientProps = {
   clientId: string;
-  assistantId: string;
+  agentId: string;
   configId: string;
   locale: string;
   startOpen: boolean;
@@ -230,7 +230,7 @@ type EmbedClientProps = {
 
 export default function EmbedClient({
   clientId: initialClientId,
-  assistantId: initialAssistantId,
+  agentId: initialAgentId,
   configId: initialConfigId,
   locale: initialLocale,
   startOpen: initialStartOpen,
@@ -317,10 +317,10 @@ export default function EmbedClient({
   // precompute storage keys for this widget instance
   // activeLocale is computed before this point so we use initialLocale directly here
   // Call the legacy helper so tests that mock it still observe the call.
-  const baseSessionKey = helpers.sessionStorageKey(initialClientId, initialAssistantId);
+  const baseSessionKey = helpers.sessionStorageKey(initialClientId, initialAgentId);
   const sessionStorageKey = initialLocale ? `${baseSessionKey}-${initialLocale}` : baseSessionKey;
-  const unreadStorageKey = helpers.unreadStorageKey(initialClientId, initialAssistantId);
-  const lastReadStorageKey = helpers.lastReadStorageKey(initialClientId, initialAssistantId);
+  const unreadStorageKey = helpers.unreadStorageKey(initialClientId, initialAgentId);
+  const lastReadStorageKey = helpers.lastReadStorageKey(initialClientId, initialAgentId);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   // Streaming state: holds the partial agent message being streamed
@@ -331,7 +331,7 @@ export default function EmbedClient({
   // browser session; reloading the page should not produce duplicate load events.
   // We use a storage key unique to the client+agent+config combo.
   useEffect(() => {
-    const loadKey = `companin-telemetry-load-${initialClientId}-${initialAssistantId}-${initialConfigId}`;
+    const loadKey = `companin-telemetry-load-${initialClientId}-${initialAgentId}-${initialConfigId}`;
     // if we've already sent the load event, do nothing
     let alreadySent = false;
     try {
@@ -343,7 +343,7 @@ export default function EmbedClient({
       return;
     }
 
-    trackEvent('widget_load', initialAssistantId, { widget_config_id: initialConfigId }, initialClientId, undefined, embedHeaders).catch(() => {});
+    trackEvent('widget_load', initialAgentId, { widget_config_id: initialConfigId }, initialClientId, undefined, embedHeaders).catch(() => {});
 
     try {
       localStorage.setItem(loadKey, '1');
@@ -351,13 +351,13 @@ export default function EmbedClient({
       // record failure but don't crash the widget
       logError(error as Error, { context: 'widgetLoadTelemetry' });
     }
-  }, [initialAssistantId, initialClientId]);
+  }, [initialAgentId, initialClientId]);
 
   // emit initial open/close telemetry when widget mounts, but only once per
   // browser session; reloading the page should not produce duplicate open/close
   // events. We use a storage key unique to the client+agent combo.
   useEffect(() => {
-    const initKey = `companin-telemetry-init-${initialClientId}-${initialAssistantId}`;
+    const initKey = `companin-telemetry-init-${initialClientId}-${initialAgentId}`;
     // if we've already sent the initial event, do nothing
     let alreadySent = false;
     try {
@@ -370,7 +370,7 @@ export default function EmbedClient({
     }
 
     const initialEvent = initialStartOpen ? 'widget_open' : 'widget_close';
-    trackEvent(initialEvent, initialAssistantId, {}, initialClientId, undefined, embedHeaders).catch(() => {});
+    trackEvent(initialEvent, initialAgentId, {}, initialClientId, undefined, embedHeaders).catch(() => {});
 
     try {
       localStorage.setItem(initKey, '1');
@@ -378,7 +378,7 @@ export default function EmbedClient({
       // record failure but don't crash the widget
       logError(error as Error, { context: 'initialTelemetry' });
     }
-  }, [initialAssistantId, initialClientId, initialStartOpen]);
+  }, [initialAgentId, initialClientId, initialStartOpen]);
   const { getAuthToken, authToken, authError, scheduleAutoRefresh = () => {}, getTokenExpiresAt } = useWidgetAuth();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -457,7 +457,7 @@ export default function EmbedClient({
     typeof navigator !== 'undefined' ? !navigator.onLine : false
   );
   const [isEmbedded, setIsEmbedded] = useState(false);
-  const [agentName, setAssistantName] = useState<string>('');
+  const [agentName, setAgentName] = useState<string>('');
   const [widgetConfig, setWidgetConfig] = useState<WidgetConfig | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [shouldRender, setShouldRender] = useState(true);
@@ -573,13 +573,13 @@ export default function EmbedClient({
 
   // Instance registry: create an instance id and register this widget
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [instanceId] = useState<string>(() => makeInstanceId(initialClientId, initialAssistantId));
+  const [instanceId] = useState<string>(() => makeInstanceId(initialClientId, initialAgentId));
 
   useEffect(() => {
     const ref = {
       instanceId,
       clientId: initialClientId,
-      assistantId: initialAssistantId,
+      agentId: initialAgentId,
       container: containerRef.current,
       state: isCollapsed ? 'collapsed' as const : 'expanded' as const,
     };
@@ -588,11 +588,11 @@ export default function EmbedClient({
       if (containerRef.current) {
         containerRef.current.dataset.widgetInstance = instanceId;
         if (initialClientId) containerRef.current.dataset.clientId = initialClientId;
-        if (initialAssistantId) containerRef.current.dataset.assistantId = initialAssistantId;
+        if (initialAgentId) containerRef.current.dataset.agentId = initialAgentId;
       }
     } catch (err) {
       // non-fatal: registration failure should not break widget
-      logError(err as Error, { action: 'registerInstance', instanceId, clientId: initialClientId, assistantId: initialAssistantId });
+      logError(err as Error, { action: 'registerInstance', instanceId, clientId: initialClientId, agentId: initialAgentId });
     }
 
     return () => {
@@ -664,7 +664,7 @@ export default function EmbedClient({
         if (token) {
           // skipMessageLoad=true preserves the in-memory chat history so the
           // empty new session doesn't blank out what the user has been seeing.
-          await createSession(initialAssistantId, token, undefined, true);
+          await createSession(initialAgentId, token, undefined, true);
         }
       } catch {
         // Silent refresh failed; the next user message will re-attempt
@@ -676,7 +676,7 @@ export default function EmbedClient({
 
     const interval = setInterval(checkSessionExpiry, 60000);
     return () => clearInterval(interval);
-  }, [sessionId, sessionStorageKey, initialAssistantId]);
+  }, [sessionId, sessionStorageKey, initialAgentId]);
 
 
   useEffect(() => {
@@ -685,7 +685,7 @@ export default function EmbedClient({
     const bootstrap = async () => {
       // Use props instead of URL params
       const clientIdParam = initialClientId;
-      const assistantIdParam = initialAssistantId;
+      const agentIdParam = initialAgentId;
       const configIdParam = initialConfigId;
 
       try {
@@ -696,7 +696,7 @@ export default function EmbedClient({
           setIsEmbedded(true);
         }
 
-        if (!(clientIdParam && assistantIdParam)) {
+        if (!(clientIdParam && agentIdParam)) {
           return;
         }
 
@@ -720,7 +720,7 @@ export default function EmbedClient({
         if (cancelled) return;
 
         // Validate agent exists
-        await fetchAssistantDetails(assistantIdParam, token);
+        await fetchAgentDetails(agentIdParam, token);
 
         // Validate config exists if provided
         let fetchedConfig: ReturnType<typeof validateConfig>['config'] | null = null;
@@ -745,9 +745,9 @@ export default function EmbedClient({
         // Try to restore existing session first
         const storedSession = helpers.getStoredSession(sessionStorageKey);
         if (storedSession) {
-          await validateAndRestoreSession(storedSession.sessionId, assistantIdParam, token, fetchedConfig);
+          await validateAndRestoreSession(storedSession.sessionId, agentIdParam, token, fetchedConfig);
         } else {
-          await createSession(assistantIdParam, token, fetchedConfig);
+          await createSession(agentIdParam, token, fetchedConfig);
         }
       } catch (err: unknown) {
         if (cancelled) return;
@@ -756,7 +756,7 @@ export default function EmbedClient({
         setError(errorMessage);
         logError(err as Error, {
           clientId: initialClientId,
-          assistantId: initialAssistantId,
+          agentId: initialAgentId,
           configId: initialConfigId,
           action: 'validateWidget'
         });
@@ -772,7 +772,7 @@ export default function EmbedClient({
     return () => {
       cancelled = true;
     };
-  }, [getAuthToken, initialAssistantId, initialClientId, initialConfigId, initialParentOrigin, sessionStorageKey]);
+  }, [getAuthToken, initialAgentId, initialClientId, initialConfigId, initialParentOrigin, sessionStorageKey]);
 
   // --- Streaming sendMessage handler ---
   // Supports SSE with: AbortController timeout, up to 2 retries with backoff,
@@ -1443,7 +1443,7 @@ export default function EmbedClient({
     }
   }
 
-  async function createSession(agentId: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null, skipMessageLoad = false) {
+  async function createSession(agent: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null, skipMessageLoad = false) {
     try {
       const visitorId = helpers.getVisitorId(initialClientId);
       // Mutable so a 401/403 (expired token on a long-open widget) can refresh
@@ -1480,7 +1480,7 @@ export default function EmbedClient({
               ...embedHeaders,
             },
             body: JSON.stringify({
-              agent_id: agentId,
+              agent_id: agent,
               visitor_id: visitorId,
               locale: activeLocale,
               widget_config_id: activeConfig?.id ?? undefined,
@@ -1560,7 +1560,7 @@ export default function EmbedClient({
           maxRetries: 3,
           initialDelay: 1000,
           onRetry: (attempt, error) => {
-            logError(error, { agentId, attempt, action: 'createSession' });
+            logError(error, { agent, attempt, action: 'createSession' });
           },
         }
       );
@@ -1593,7 +1593,7 @@ export default function EmbedClient({
       const e = err as unknown as { userMessage?: string; message?: string };
       const errorMessage = e.userMessage || String(t.failedToCreateSession);
       setError(errorMessage);
-      logError(e, { agentId, action: 'createSession' });
+      logError(e, { agent, action: 'createSession' });
 
       // Notify parent window of error
       if (window.parent !== window) {
@@ -1607,7 +1607,7 @@ export default function EmbedClient({
     }
   }
 
-  async function validateAndRestoreSession(sessionId: string, assistantId: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null) {
+  async function validateAndRestoreSession(sessionId: string, agentId: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null) {
     try {
       let response = await fetch(API.sessionMessages(sessionId ?? undefined), {
         method: 'GET',
@@ -1667,7 +1667,7 @@ export default function EmbedClient({
 
           // Load messages
           type ApiMessage = {
-            sender: 'user' | 'agent';
+            sender: 'user' | 'assistant';
             id: string;
             content: string;
             created_at?: string;
@@ -1737,8 +1737,7 @@ export default function EmbedClient({
               const apiMsg = apiMsgRaw as ApiMessage & { from?: string; text?: string };
               const id = (apiMsg as any).id || ((apiMsg as any).message_id ?? '');
               const text = (apiMsg as any).content ?? (apiMsg as any).text ?? '';
-              const fromRaw = (apiMsg as any).sender ?? (apiMsg as any).from ?? 'user';
-              const from = fromRaw === 'assistant' ? 'agent' : fromRaw;
+              const from = (apiMsg as any).sender ?? (apiMsg as any).from ?? 'user';
               const timestamp = apiMsg.created_at ? new Date(apiMsg.created_at).getTime() : ((apiMsg as any).timestamp || Date.now());
               return {
                 id,
@@ -1807,23 +1806,23 @@ export default function EmbedClient({
       // Session invalid or not found, create new one
       logError(new Error('Session validation failed'), {
         sessionId,
-        assistantId,
+        agentId,
         status: response.status
       });
       localStorage.removeItem(sessionStorageKey);
-      await createSession(assistantId, token, configSnapshot);
+      await createSession(agentId, token, configSnapshot);
     } catch (err) {
-      logError(err, { sessionId, assistantId, action: 'validateAndRestoreSession' });
+      logError(err, { sessionId, agentId, action: 'validateAndRestoreSession' });
       // On error, create new session
       localStorage.removeItem(sessionStorageKey);
-      await createSession(assistantId, token, configSnapshot);
+      await createSession(agentId, token, configSnapshot);
     }
   }
 
-  async function fetchAssistantDetails(assistantId: string, token: string) {
+  async function fetchAgentDetails(agentId: string, token: string) {
     const start = Date.now();
     try {
-      const response = await fetch(API.agent(assistantId), {
+      const response = await fetch(API.agent(agentId), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1837,20 +1836,20 @@ export default function EmbedClient({
           // return a minimal payload don't cause the whole widget to abort
           // validation. Missing agent name is non-fatal at runtime.
           if (data.status === 'success') {
-            setAssistantName(data.data?.name || '');
+            setAgentName(data.data?.name || '');
           } else {
             throw createAuthError('Invalid agent response', WidgetErrorCode.AUTH_TOKEN_FAILED);
           }
         } else {
-          const errorMessage = `Assistant not found or access denied (${response.status})`;
+          const errorMessage = `Agent not found or access denied (${response.status})`;
           throw createAuthError(errorMessage, WidgetErrorCode.AUTH_TOKEN_FAILED);
         }
     } catch (err) {
-      logError(err, { assistantId, action: 'fetchAssistantDetails' });
+      logError(err, { agentId, action: 'fetchAgentDetails' });
       throw err; // Re-throw so it can be caught by the caller
     } finally {
       const duration = Date.now() - start;
-      logPerf('fetchAssistantDetails', duration, { assistantId });
+      logPerf('fetchAgentDetails', duration, { agentId });
     }
   }
 
@@ -1943,7 +1942,7 @@ export default function EmbedClient({
     // telemetry for feedback given includes rating/comment metadata
     trackEvent(
       'feedback_given',
-      initialAssistantId,
+      initialAgentId,
       { rating, comment },
       initialClientId,
       undefined,
@@ -2086,7 +2085,7 @@ export default function EmbedClient({
         const sidBefore = sessionIdRef.current || sessionId;
         if (token && !sidBefore) {
           try {
-            await createSession(initialAssistantId, token, undefined, true);
+            await createSession(initialAgentId, token, undefined, true);
           } catch {
             // creation failed — continue to check below
           }
@@ -2195,7 +2194,7 @@ export default function EmbedClient({
                   sessionRefreshInFlightRef.current = true;
                   try {
                     if (useToken) {
-                      await createSession(initialAssistantId, useToken, undefined, true);
+                      await createSession(initialAgentId, useToken, undefined, true);
                     }
                   } catch {
                     // Refresh failed — fall through, the retry will surface
@@ -2274,7 +2273,7 @@ export default function EmbedClient({
               if (!finalData) {
                 throw createNetworkError('Stream ended unexpectedly', WidgetErrorCode.NETWORK_SERVER_ERROR);
               }
-              trackEvent('message_sent', initialAssistantId, { message }, initialClientId, authToken ?? undefined, embedHeaders).catch(() => {});
+              trackEvent('message_sent', initialAgentId, { message }, initialClientId, authToken ?? undefined, embedHeaders).catch(() => {});
               return finalData;
             }
 
@@ -2290,7 +2289,7 @@ export default function EmbedClient({
             }
 
             // record telemetry for message sent
-            trackEvent('message_sent', initialAssistantId, { message }, initialClientId, authToken ?? undefined, embedHeaders).catch(() => {});
+            trackEvent('message_sent', initialAgentId, { message }, initialClientId, authToken ?? undefined, embedHeaders).catch(() => {});
 
             return data.data;
           } catch (fetchError: unknown) {
@@ -2338,7 +2337,7 @@ export default function EmbedClient({
       // Replace the optimistic temp message with the confirmed server messages
       // directly from the response — no extra round-trip, no visible flash.
       const serverUser = messageData?.user_message;
-      const serverAssistant = messageData?.assistant_message;
+      const serverAgent = messageData?.assistant_message;
       setMessages(prev => {
         const withoutTemp = skipAddingUserMessage
           ? prev
@@ -2353,13 +2352,13 @@ export default function EmbedClient({
             sources: [],
           });
         }
-        if (serverAssistant) {
+        if (serverAgent) {
           next.push({
-            id: serverAssistant.id,
-            text: serverAssistant.content,
+            id: serverAgent.id,
+            text: serverAgent.content,
             from: 'agent' as const,
-            timestamp: serverAssistant.created_at ? new Date(serverAssistant.created_at).getTime() : Date.now(),
-            sources: (serverAssistant.sources as SourceData[]) || [],
+            timestamp: serverAgent.created_at ? new Date(serverAgent.created_at).getTime() : Date.now(),
+            sources: (serverAgent.sources as SourceData[]) || [],
           });
         }
         return next.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
@@ -2437,7 +2436,7 @@ export default function EmbedClient({
     activeLocale,
     parentTargetOrigin,
     t,
-    initialAssistantId,
+    initialAgentId,
     initialClientId,
     loadSessionMessages,
     sessionStorageKey,
@@ -2451,7 +2450,7 @@ export default function EmbedClient({
     const hasLocalResponse = Boolean(maybeText) || maybeButtons.length > 0;
     const labelText = getLocalizedText(b.label) || (typeof b.label === 'string' ? b.label : (b.label?.en || ''));
 
-    trackEvent('button_clicked', initialAssistantId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
+    trackEvent('button_clicked', initialAgentId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
 
     // Add response as a grouped flow response
     if (maybeText || maybeButtons.length > 0) {
@@ -2552,7 +2551,7 @@ export default function EmbedClient({
 
     const flowHandled = processWidgetFlow(b.action);
     // track interaction click
-    trackEvent('button_clicked', initialAssistantId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
+    trackEvent('button_clicked', initialAgentId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
 
     if (!maybeText && !flowHandled) {
       // Interaction buttons are local-only entry points. When there is no
@@ -2627,7 +2626,7 @@ export default function EmbedClient({
       // send telemetry whenever collapse state toggles
       trackEvent(
         newCollapsed ? 'widget_close' : 'widget_open',
-        initialAssistantId,
+        initialAgentId,
         { clientId: initialClientId },
         initialClientId,
         undefined,
@@ -2679,7 +2678,7 @@ export default function EmbedClient({
 
       return newCollapsed;
     });
-  }, [initialAssistantId, initialClientId, messages, lastReadStorageKey, unreadStorageKey, parentTargetOrigin]);
+  }, [initialAgentId, initialClientId, messages, lastReadStorageKey, unreadStorageKey, parentTargetOrigin]);
 
   useEffect(() => {
     const handleHostMessage = (event: MessageEvent) => {
@@ -2942,7 +2941,7 @@ function UnsureMessagesModal({ messages, onClose, primaryColor, backgroundColor,
                   <p className="text-sm mt-1">{msg.userMessage}</p>
                 </div>
                 <div>
-                  <span className="text-xs text-gray-500">Assistant:</span>
+                  <span className="text-xs text-gray-500">Agent:</span>
                   <p className="text-sm mt-1 italic">{msg.agentMessage}</p>
                 </div>
                 <div className="text-xs text-gray-400 mt-2">

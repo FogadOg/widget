@@ -13,7 +13,7 @@
  * Usage (React):
  *   <WidgetHost
  *     widgetOrigin="https://widget.example.com"
- *     config={{ assistantId: 'abc123' }}
+ *     config={{ agentId: 'abc123' }}
  *   />
  */
 
@@ -38,7 +38,7 @@ export function WidgetHost({
   config = {},
   widgetUrl,
   className,
-  title = 'Assistant Widget',
+  title = 'Agent Widget',
 }: WidgetHostProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = React.useState<number>(600);

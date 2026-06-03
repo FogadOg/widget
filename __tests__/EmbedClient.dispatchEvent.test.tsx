@@ -21,7 +21,7 @@ jest.mock('../components/EmbedShell', () => (props: any) => (
 describe('EmbedClient dispatchEvent wrapper', () => {
   const defaultProps = {
     clientId: 'c1',
-    assistantId: 'a1',
+    agentId: 'a1',
     configId: 'cfg',
     locale: 'en',
     startOpen: false,

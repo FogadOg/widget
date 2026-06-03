@@ -26,8 +26,8 @@ describe('widgetRegistry', () => {
     const aContainer = document.createElement('div');
     const bContainer = document.createElement('div');
 
-    registerInstance({ instanceId: aId, clientId: 'c1', assistantId: 'a1', container: aContainer, state: 'collapsed' });
-    registerInstance({ instanceId: bId, clientId: 'c1', assistantId: 'a2', container: bContainer, state: 'collapsed' });
+    registerInstance({ instanceId: aId, clientId: 'c1', agentId: 'a1', container: aContainer, state: 'collapsed' });
+    registerInstance({ instanceId: bId, clientId: 'c1', agentId: 'a2', container: bContainer, state: 'collapsed' });
 
     const items = listInstances();
     expect(items.find(i => i.instanceId === aId)).toBeTruthy();
@@ -49,8 +49,8 @@ describe('widgetRegistry', () => {
     const aContainer = document.createElement('div');
     const bContainer = document.createElement('div');
 
-    registerInstance({ instanceId: aId, clientId: 'c2', assistantId: 'a1', container: aContainer, state: 'collapsed' });
-    registerInstance({ instanceId: bId, clientId: 'c2', assistantId: 'a2', container: bContainer, state: 'collapsed' });
+    registerInstance({ instanceId: aId, clientId: 'c2', agentId: 'a1', container: aContainer, state: 'collapsed' });
+    registerInstance({ instanceId: bId, clientId: 'c2', agentId: 'a2', container: bContainer, state: 'collapsed' });
 
     open(aId);
     expect(getInstance(aId)?.state).toBe('expanded');
@@ -69,7 +69,7 @@ describe('widgetRegistry', () => {
   test('sendEvent and onForInstance deliver namespaced events', () => {
     const aId = makeInstanceId('c3', 'a1');
     const aContainer = document.createElement('div');
-    registerInstance({ instanceId: aId, clientId: 'c3', assistantId: 'a1', container: aContainer, state: 'collapsed' });
+    registerInstance({ instanceId: aId, clientId: 'c3', agentId: 'a1', container: aContainer, state: 'collapsed' });
 
     const handler = jest.fn();
     const off = onForInstance(aId, 'widget:event:custom', (d) => handler(d));
@@ -90,7 +90,7 @@ describe('widgetRegistry', () => {
   test('toggle switches between open and close', () => {
     const id = makeInstanceId('c4', 'a1');
     const container = document.createElement('div');
-    registerInstance({ instanceId: id, clientId: 'c4', assistantId: 'a1', container, state: 'collapsed' });
+    registerInstance({ instanceId: id, clientId: 'c4', agentId: 'a1', container, state: 'collapsed' });
 
     toggle(id);
     expect(getInstance(id)?.state).toBe('expanded');

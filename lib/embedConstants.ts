@@ -16,9 +16,9 @@ export const EMBED_EVENTS = {
 import { STORAGE_PREFIX } from "./constants";
 
 export const STORAGE_KEYS = {
-  sessionPrefix: (clientId: string, assistantId: string) => `${STORAGE_PREFIX}session-${clientId}-${assistantId}`,
-  unreadPrefix: (clientId: string, assistantId: string) => `${STORAGE_PREFIX}unread-${clientId}-${assistantId}`,
-  lastReadPrefix: (clientId: string, assistantId: string) => `${STORAGE_PREFIX}lastread-${clientId}-${assistantId}`,
+  sessionPrefix: (clientId: string, agentId: string) => `${STORAGE_PREFIX}session-${clientId}-${agentId}`,
+  unreadPrefix: (clientId: string, agentId: string) => `${STORAGE_PREFIX}unread-${clientId}-${agentId}`,
+  lastReadPrefix: (clientId: string, agentId: string) => `${STORAGE_PREFIX}lastread-${clientId}-${agentId}`,
   visitorPrefix: (clientId: string) => `${STORAGE_PREFIX}visitor-${clientId}`,
   feedbackKey: (sessionId: string) => `${STORAGE_PREFIX}feedback-${sessionId}`,
 };

@@ -74,7 +74,7 @@
       try {
         return !!(s && s.getAttribute && (
           s.getAttribute('data-client-id') ||
-          s.getAttribute('data-assistant-id') ||
+          s.getAttribute('data-agent-id') ||
           (s.src && /widget(\.|\/)/i.test(s.src))
         ));
       } catch (e) { return false; }
@@ -139,7 +139,7 @@
 
     // Get attributes with validation
     const clientId = script.getAttribute("data-client-id");
-    const assistantId = script.getAttribute("data-assistant-id");
+    const agentId = script.getAttribute("data-agent-id");
     const configId = script.getAttribute("data-config-id");
     const detectLocale = () => {
       const explicitLocale = script.getAttribute("data-locale");
@@ -173,10 +173,10 @@
     // not persist visitor IDs / sessions in localStorage until the host page
     // calls window.CompaninWidget.grantConsent(). Required for GDPR-strict deploys.
     const consentRequired = script.getAttribute("data-consent-required") === "true";
-    if (!clientId || !assistantId || !configId) {
+    if (!clientId || !agentId || !configId) {
       const missing = [];
       if (!clientId) missing.push("data-client-id");
-      if (!assistantId) missing.push("data-assistant-id");
+      if (!agentId) missing.push("data-agent-id");
       if (!configId) missing.push("data-config-id");
 
       logError("Missing required attributes", { missing });
@@ -227,12 +227,13 @@
           pf.rel = 'prefetch';
           const pfParams = new URLSearchParams({
             clientId,
-            assistantId,
+            agentId,
             configId,
             locale,
             startOpen: startOpen.toString(),
             pagePath: window.location.pathname,
             parentOrigin: window.location.origin,
+            loaderVersion: WIDGET_VERSION,
           });
           pf.href = `${baseUrl}/embed/session?${pfParams.toString()}`;
           pf.crossOrigin = 'anonymous';
@@ -243,7 +244,7 @@
       }
     })();
 
-    const requestedInstanceId = explicitInstanceId || `${clientId}::${assistantId}::${configId}::${locale}`;
+    const requestedInstanceId = explicitInstanceId || `${clientId}::${agentId}::${configId}::${locale}`;
     const registry = getOrCreateRegistry();
     let instanceId = sanitizeInstanceId(requestedInstanceId);
     if (registry[instanceId]) {
@@ -405,12 +406,13 @@
         const iframe = document.createElement("iframe");
         const params = new URLSearchParams({
           clientId,
-          assistantId,
+          agentId,
           configId,
           locale,
           startOpen: startOpen.toString(),
           pagePath: window.location.pathname,
           parentOrigin: window.location.origin,
+          loaderVersion: WIDGET_VERSION,
         });
 
         // Custom CSS is no longer forwarded via the URL query (LAUNCH-READINESS #20).
@@ -513,25 +515,22 @@
       };
 
       container.appendChild(iframe);
+
       document.body.appendChild(container);
 
-      // Ensure any hardcoded right positioning is removed (defensive):
+      // Defensive: sanitize right:20px from container inline styles.
+      // Use the direct reference — document.getElementById can't reach into shadow DOM.
       try {
-        const _c = document.getElementById(containerId);
-        if (_c) {
-          // also sanitize raw style attribute if present
-          const s = _c.getAttribute && _c.getAttribute('style');
-          if (s && /right:\s*20px/.test(s)) {
-            _c.setAttribute('style', s.replace(/right:\s*20px;?/g, ''));
-          }
-          // also sanitize any immediate child nodes that may carry inline right:20px
-          Array.from(_c.querySelectorAll('[style]')).forEach((el) => {
-            const ss = el.getAttribute('style');
-            if (ss && /right:\s*20px/.test(ss)) {
-              el.setAttribute('style', ss.replace(/right:\s*20px;?/g, ''));
-            }
-          });
+        const s = container.getAttribute && container.getAttribute('style');
+        if (s && /right:\s*20px/.test(s)) {
+          container.setAttribute('style', s.replace(/right:\s*20px;?/g, ''));
         }
+        Array.from(container.querySelectorAll('[style]')).forEach((el) => {
+          const ss = el.getAttribute('style');
+          if (ss && /right:\s*20px/.test(ss)) {
+            el.setAttribute('style', ss.replace(/right:\s*20px;?/g, ''));
+          }
+        });
       } catch (e) {
         logError('Failed sanitizing inline right spacing', { error: e && e.message });
       }
@@ -578,7 +577,7 @@
             context: {
               instanceId,
               clientId,
-              assistantId,
+              agentId,
               configId,
               locale,
               pagePath: window.location.pathname,
@@ -788,8 +787,9 @@
                 const state = debounceState[eventName];
                 if (state && state.timer) clearTimeout(state.timer);
               });
-              if (container.parentNode) {
-                container.parentNode.removeChild(container);
+              const _mount = container;
+              if (_mount.parentNode) {
+                _mount.parentNode.removeChild(_mount);
               }
               try {
                 delete registry[instanceId];
@@ -955,14 +955,14 @@
                 allowDisplay = false;
                 container.style.display = "none";
                 emitEvent('close', data, { rawType: type });
-                _gaTrack('widget_close', { assistant_id: assistantId });
+                _gaTrack('widget_close', { agent_id: agentId });
                 break;
 
               case "WIDGET_MINIMIZE":
                 // Widget requested minimize -> show minimized button state
                 // Don't hide container; let the iframe handle its own UI state
                 emitEvent('close', data, { rawType: type });
-                _gaTrack('widget_close', { assistant_id: assistantId });
+                _gaTrack('widget_close', { agent_id: agentId });
                 break;
 
               case "WIDGET_SHOW":
@@ -977,14 +977,14 @@
                   container.style.display = "block";
                 }
                 emitEvent('open', data, { rawType: type });
-                _gaTrack('widget_open', { assistant_id: assistantId });
+                _gaTrack('widget_open', { agent_id: agentId });
                 break;
 
               case "WIDGET_RESTORE":
                 // Widget requested restore/expand -> treat as open
                 // Container stays visible; iframe handles its own expanded state
                 emitEvent('open', data, { rawType: type });
-                _gaTrack('widget_open', { assistant_id: assistantId });
+                _gaTrack('widget_open', { agent_id: agentId });
                 break;
 
               case "WIDGET_ERROR":
@@ -1002,7 +1002,7 @@
                 } catch (e) {
                   logError('onAuthFailure hook check failed', { error: e && e.message });
                 }
-                _gaTrack('widget_error', { assistant_id: assistantId, error_type: data && data.errorType });
+                _gaTrack('widget_error', { agent_id: agentId, error_type: data && data.errorType });
                 break;
 
               case 'WIDGET_GA_INIT':
@@ -1023,7 +1023,7 @@
               if (t.includes('response') || t.endsWith('_response')) {
                 try {
                   emitEvent('response', data, { rawType: type, debounceMs: 120 });
-                  _gaTrack('widget_response_received', { assistant_id: assistantId });
+                  _gaTrack('widget_response_received', { agent_id: agentId });
                 } catch (e) { logError('onResponse hook threw', { error: e && e.message }); }
               }
 
@@ -1045,7 +1045,7 @@
                     __lastHostMessage = data;
                     emitEvent('message', data, { rawType: type, debounceMs: 120 });
                     const _gaMessageText = (data && (data.content || data.message || data.text)) || '';
-                    _gaTrack('widget_message_sent', { assistant_id: assistantId, message_length: _gaMessageText.length });
+                    _gaTrack('widget_message_sent', { agent_id: agentId, message_length: _gaMessageText.length });
                   }
                 } catch (e) { logError('onMessage hook threw', { error: e && e.message }); }
               }
@@ -1102,6 +1102,7 @@
   // they ever pass untrusted input.
   function showErrorWidget(title, message) {
     try {
+      const _errShadowHost = null;
       const errorContainer = document.createElement("div");
       errorContainer.id = WIDGET_SCRIPT_ID + '-error';
       errorContainer.style.cssText = `
@@ -1145,7 +1146,10 @@
       closeBtn.setAttribute('aria-label', 'Close');
       closeBtn.style.cssText = 'flex-shrink: 0; background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 20px; line-height: 1; padding: 0;';
       closeBtn.textContent = '×';
-      closeBtn.addEventListener('click', function () { errorContainer.remove(); });
+      closeBtn.addEventListener('click', function () {
+        // Remove the shadow host when present, otherwise the container itself.
+        (_errShadowHost || errorContainer).remove();
+      });
 
       row.appendChild(iconWrap);
       row.appendChild(body);
@@ -1153,11 +1157,12 @@
       errorContainer.appendChild(row);
       errorContainer.appendChild(buildPoweredByFooter());
 
+      const _errMount = _errShadowHost || errorContainer;
       if (document.body) {
-        document.body.appendChild(errorContainer);
+        document.body.appendChild(_errMount);
       } else {
         document.addEventListener("DOMContentLoaded", () => {
-          document.body.appendChild(errorContainer);
+          document.body.appendChild(_errMount);
         });
       }
     } catch (err) {

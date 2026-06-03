@@ -50,7 +50,7 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_ORIGIN = 'https://widget.example.com';
-const DEFAULT_CONFIG = { assistantId: 'bot-1' };
+const DEFAULT_CONFIG = { agentId: 'bot-1' };
 
 describe('WidgetHost – iframe rendering', () => {
   it('renders an iframe with the default title', async () => {
@@ -58,7 +58,7 @@ describe('WidgetHost – iframe rendering', () => {
       render(<WidgetHost widgetOrigin={DEFAULT_ORIGIN} />);
     });
 
-    expect(screen.getByTitle('Assistant Widget')).toBeInTheDocument();
+    expect(screen.getByTitle('Agent Widget')).toBeInTheDocument();
   });
 
   it('accepts a custom title prop', async () => {
@@ -74,7 +74,7 @@ describe('WidgetHost – iframe rendering', () => {
       render(<WidgetHost widgetOrigin={DEFAULT_ORIGIN} />);
     });
 
-    const iframe = screen.getByTitle('Assistant Widget') as HTMLIFrameElement;
+    const iframe = screen.getByTitle('Agent Widget') as HTMLIFrameElement;
     expect(iframe.src).toBe(`${DEFAULT_ORIGIN}/embed/widget`);
   });
 
@@ -85,7 +85,7 @@ describe('WidgetHost – iframe rendering', () => {
       );
     });
 
-    const iframe = screen.getByTitle('Assistant Widget') as HTMLIFrameElement;
+    const iframe = screen.getByTitle('Agent Widget') as HTMLIFrameElement;
     expect(iframe.src).toBe('https://cdn.example.com/widget');
   });
 
@@ -94,7 +94,7 @@ describe('WidgetHost – iframe rendering', () => {
       render(<WidgetHost widgetOrigin={DEFAULT_ORIGIN} />);
     });
 
-    const iframe = screen.getByTitle('Assistant Widget') as HTMLIFrameElement;
+    const iframe = screen.getByTitle('Agent Widget') as HTMLIFrameElement;
     expect(iframe.getAttribute('sandbox')).toBe('allow-scripts allow-forms');
   });
 
@@ -103,7 +103,7 @@ describe('WidgetHost – iframe rendering', () => {
       render(<WidgetHost widgetOrigin={DEFAULT_ORIGIN} />);
     });
 
-    const iframe = screen.getByTitle('Assistant Widget') as HTMLIFrameElement;
+    const iframe = screen.getByTitle('Agent Widget') as HTMLIFrameElement;
     expect(iframe.getAttribute('referrerpolicy')).toBe('no-referrer');
   });
 
@@ -112,7 +112,7 @@ describe('WidgetHost – iframe rendering', () => {
       render(<WidgetHost widgetOrigin={DEFAULT_ORIGIN} />);
     });
 
-    const iframe = screen.getByTitle('Assistant Widget') as HTMLIFrameElement;
+    const iframe = screen.getByTitle('Agent Widget') as HTMLIFrameElement;
     expect(iframe.height).toBe('600');
   });
 
@@ -121,7 +121,7 @@ describe('WidgetHost – iframe rendering', () => {
       render(<WidgetHost widgetOrigin={DEFAULT_ORIGIN} />);
     });
 
-    const iframe = screen.getByTitle('Assistant Widget') as HTMLIFrameElement;
+    const iframe = screen.getByTitle('Agent Widget') as HTMLIFrameElement;
     expect(iframe.width).toBe('100%');
   });
 
@@ -130,7 +130,7 @@ describe('WidgetHost – iframe rendering', () => {
       render(<WidgetHost widgetOrigin={DEFAULT_ORIGIN} className="my-widget" />);
     });
 
-    const iframe = screen.getByTitle('Assistant Widget');
+    const iframe = screen.getByTitle('Agent Widget');
     expect(iframe).toHaveClass('my-widget');
   });
 });
@@ -204,7 +204,7 @@ describe('WidgetHost – RESIZE', () => {
       resizeHandler({ type: 'RESIZE', height: 1024 });
     });
 
-    const iframe = screen.getByTitle('Assistant Widget') as HTMLIFrameElement;
+    const iframe = screen.getByTitle('Agent Widget') as HTMLIFrameElement;
     expect(iframe.height).toBe('1024');
   });
 
@@ -222,7 +222,7 @@ describe('WidgetHost – RESIZE', () => {
       resizeHandler({ type: 'RESIZE', height: 800 });
     });
 
-    const iframe = screen.getByTitle('Assistant Widget') as HTMLIFrameElement;
+    const iframe = screen.getByTitle('Agent Widget') as HTMLIFrameElement;
     expect(iframe.height).toBe('800');
   });
 });

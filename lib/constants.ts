@@ -1,4 +1,4 @@
-export const BRAND_NAME = "Customer Support AI Assistant";
+export const BRAND_NAME = "Customer Support AI Agent";
 export const COMPANY_NAME = "Companin";
 
 // Non-localizable identifiers / prefixes used across the widget
@@ -109,7 +109,7 @@ export const RATE_LIMIT = {
 export const API_ENDPOINTS = {
   AUTH_TOKEN: '/auth/widget-token',
   SESSIONS: '/sessions',
-  ASSISTANTS: '/assistants',
+  AGENTS: '/agents',
   WIDGET_CONFIG: '/widget-config',
   MESSAGES: (sessionId: string) => `/sessions/${sessionId}/messages`,
   FEEDBACK: (sessionId: string) => `/sessions/${sessionId}/feedback`,

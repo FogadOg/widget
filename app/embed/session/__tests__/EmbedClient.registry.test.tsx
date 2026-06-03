@@ -52,7 +52,7 @@ const registry = require('../../../../src/lib/widgetRegistry');
 
 const baseProps = {
   clientId: 'c1',
-  assistantId: 'a1',
+  agentId: 'a1',
   configId: 'cfg1',
   locale: 'en',
   startOpen: false as boolean,
@@ -98,7 +98,7 @@ describe('EmbedClient widget-registry lifecycle', () => {
     mockGetAuthToken.mockResolvedValue('tok-open');
 
     const fetchMock = jest.fn();
-    // fetchAssistantDetails
+    // fetchAgentDetails
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ status: 'success', data: { name: 'Bot' } }),

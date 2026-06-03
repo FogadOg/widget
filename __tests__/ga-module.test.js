@@ -33,15 +33,15 @@ function createGAModule() {
   }
 
   function mapWidgetEvent(type, data) {
-    const assistantId = data && data.assistantId;
+    const agentId = data && data.agentId;
     switch (type) {
-      case 'WIDGET_SHOW':    return ['widget_open',              { assistant_id: assistantId }];
-      case 'WIDGET_HIDE':    return ['widget_close',             { assistant_id: assistantId }];
-      case 'WIDGET_MESSAGE': return ['widget_message_sent',      { assistant_id: assistantId, message_length: data && data.length }];
-      case 'WIDGET_RESPONSE':return ['widget_response_received', { assistant_id: assistantId }];
-      case 'WIDGET_MINIMIZE':return ['widget_minimized',         { assistant_id: assistantId }];
-      case 'WIDGET_RESTORE': return ['widget_restored',          { assistant_id: assistantId }];
-      case 'WIDGET_ERROR':   return ['widget_error',             { assistant_id: assistantId, error_type: data && data.errorType }];
+      case 'WIDGET_SHOW':    return ['widget_open',              { agent_id: agentId }];
+      case 'WIDGET_HIDE':    return ['widget_close',             { agent_id: agentId }];
+      case 'WIDGET_MESSAGE': return ['widget_message_sent',      { agent_id: agentId, message_length: data && data.length }];
+      case 'WIDGET_RESPONSE':return ['widget_response_received', { agent_id: agentId }];
+      case 'WIDGET_MINIMIZE':return ['widget_minimized',         { agent_id: agentId }];
+      case 'WIDGET_RESTORE': return ['widget_restored',          { agent_id: agentId }];
+      case 'WIDGET_ERROR':   return ['widget_error',             { agent_id: agentId, error_type: data && data.errorType }];
       default:               return null;
     }
   }
@@ -94,13 +94,13 @@ describe('mapWidgetEvent', () => {
   const ga = createGAModule();
 
   it.each([
-    ['WIDGET_SHOW',     { assistantId: 'a1' }, 'widget_open',              { assistant_id: 'a1' }],
-    ['WIDGET_HIDE',     { assistantId: 'a1' }, 'widget_close',             { assistant_id: 'a1' }],
-    ['WIDGET_MESSAGE',  { assistantId: 'a1', length: 42 }, 'widget_message_sent', { assistant_id: 'a1', message_length: 42 }],
-    ['WIDGET_RESPONSE', { assistantId: 'a1' }, 'widget_response_received', { assistant_id: 'a1' }],
-    ['WIDGET_MINIMIZE', { assistantId: 'a1' }, 'widget_minimized',         { assistant_id: 'a1' }],
-    ['WIDGET_RESTORE',  { assistantId: 'a1' }, 'widget_restored',          { assistant_id: 'a1' }],
-    ['WIDGET_ERROR',    { assistantId: 'a1', errorType: 'auth' }, 'widget_error', { assistant_id: 'a1', error_type: 'auth' }],
+    ['WIDGET_SHOW',     { agentId: 'a1' }, 'widget_open',              { agent_id: 'a1' }],
+    ['WIDGET_HIDE',     { agentId: 'a1' }, 'widget_close',             { agent_id: 'a1' }],
+    ['WIDGET_MESSAGE',  { agentId: 'a1', length: 42 }, 'widget_message_sent', { agent_id: 'a1', message_length: 42 }],
+    ['WIDGET_RESPONSE', { agentId: 'a1' }, 'widget_response_received', { agent_id: 'a1' }],
+    ['WIDGET_MINIMIZE', { agentId: 'a1' }, 'widget_minimized',         { agent_id: 'a1' }],
+    ['WIDGET_RESTORE',  { agentId: 'a1' }, 'widget_restored',          { agent_id: 'a1' }],
+    ['WIDGET_ERROR',    { agentId: 'a1', errorType: 'auth' }, 'widget_error', { agent_id: 'a1', error_type: 'auth' }],
   ])('maps %s correctly', (type, data, expectedName, expectedParams) => {
     const result = ga.mapWidgetEvent(type, data);
     expect(result).toEqual([expectedName, expectedParams]);
@@ -117,9 +117,9 @@ describe('trackEvent', () => {
     window.gtag = mockGtag;
     const ga = createGAModule();
     ga.initGA('G-TEST999');
-    ga.trackEvent('widget_open', { assistant_id: 'a1' });
+    ga.trackEvent('widget_open', { agent_id: 'a1' });
     expect(mockGtag).toHaveBeenCalledWith('event', 'widget_open', {
-      assistant_id: 'a1',
+      agent_id: 'a1',
       send_to: 'G-TEST999',
     });
   });

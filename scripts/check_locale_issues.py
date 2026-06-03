@@ -24,7 +24,6 @@ ALWAYS_SAME = re.compile(
     r')$'
 )
 
-
 def flatten(d, parent_key='', sep='.'):
     items = {}
     if isinstance(d, dict):
@@ -38,17 +37,14 @@ def flatten(d, parent_key='', sep='.'):
         items[parent_key] = d
     return items
 
-
 def extract_placeholders(s):
     if not isinstance(s, str):
         return set()
     return set(m.group(0) for m in PLACEHOLDER_RE.finditer(s))
 
-
 def load_json(p):
     with open(p, 'r', encoding='utf-8-sig') as f:
         return json.load(f)
-
 
 def main():
     en_file = LOCALES_DIR / 'en.json'
@@ -111,7 +107,6 @@ def main():
         for name, r in issues.items():
             print(f"{name}: untranslated={r['untranslated_count']}, empty={r['empty_values_count']}, markers={r['suspicious_markers_count']}, placeholder_mismatch={r['placeholder_mismatches_count']}")
         print('\nFull JSON report written to:', REPORT_PATH)
-
 
 if __name__ == '__main__':
     main()

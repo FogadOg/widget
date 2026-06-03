@@ -73,7 +73,7 @@ describe('Message Components', () => {
     it('renders agent message with correct classes', () => {
       render(
         <Message from="agent" data-testid="message">
-          Assistant message content
+          Agent message content
         </Message>
       );
 

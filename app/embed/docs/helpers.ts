@@ -1,7 +1,7 @@
 // Helper utilities extracted from DocsClient for testing
 
-export const getSessionStorageKey = (clientId: string, assistantId: string) => {
-  return `companin-docs-session-${clientId}-${assistantId}`;
+export const getSessionStorageKey = (clientId: string, agentId: string) => {
+  return `companin-docs-session-${clientId}-${agentId}`;
 }
 
 export const getVisitorKey = (clientId: string) => `companin-visitor-${clientId}`;
@@ -34,9 +34,9 @@ export const getPageContext = (win: any = window, doc: any = document) => {
   }
 }
 
-export const getStoredSession = (clientId: string, assistantId: string) => {
+export const getStoredSession = (clientId: string, agentId: string) => {
   try {
-    const storageKey = getSessionStorageKey(clientId, assistantId);
+    const storageKey = getSessionStorageKey(clientId, agentId);
     const stored = localStorage.getItem(storageKey);
     if (stored) {
       const data = JSON.parse(stored);
@@ -52,9 +52,9 @@ export const getStoredSession = (clientId: string, assistantId: string) => {
   return null;
 }
 
-export const storeSession = (clientId: string, assistantId: string, sessionId: string, expiresAt: string) => {
+export const storeSession = (clientId: string, agentId: string, sessionId: string, expiresAt: string) => {
   try {
-    const storageKey = getSessionStorageKey(clientId, assistantId);
+    const storageKey = getSessionStorageKey(clientId, agentId);
     localStorage.setItem(storageKey, JSON.stringify({ sessionId, expiresAt, createdAt: new Date().toISOString() }));
   } catch (e) {
     // swallow

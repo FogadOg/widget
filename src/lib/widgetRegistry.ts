@@ -9,7 +9,7 @@ type InstanceState = 'collapsed' | 'expanded';
 export type InstanceRef = {
   instanceId: string;
   clientId?: string;
-  assistantId?: string;
+  agentId?: string;
   container?: HTMLElement | null;
   metadata?: Record<string, unknown>;
   state?: InstanceState;
@@ -159,8 +159,8 @@ export function onForInstance(instanceId: string, eventName: string, handler: (d
 }
 
 // Convenience: generate a simple instance id
-export function makeInstanceId(clientId?: string, assistantId?: string) {
-  const base = `${clientId ?? 'c'}-${assistantId ?? 'a'}`;
+export function makeInstanceId(clientId?: string, agentId?: string) {
+  const base = `${clientId ?? 'c'}-${agentId ?? 'a'}`;
   const rand = Math.random().toString(36).slice(2, 9);
   return `${base}-${rand}`;
 }

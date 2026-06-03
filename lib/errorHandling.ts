@@ -37,7 +37,7 @@ export enum WidgetErrorCode {
 
   // Config errors (5xxx)
   CONFIG_LOAD_FAILED = 5001,
-  ASSISTANT_NOT_FOUND = 5002,
+  AGENT_NOT_FOUND = 5002,
 
   // Message errors (6xxx)
   MESSAGE_SEND_FAILED = 6001,

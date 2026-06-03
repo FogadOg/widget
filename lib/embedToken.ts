@@ -4,7 +4,7 @@ export type EmbedTokenClaims = {
   exp?: number;
   iss?: string;
   aud?: string | string[];
-  assistantId?: string;
+  agentId?: string;
   agent_id?: string;
   [key: string]: unknown;
 };
@@ -12,7 +12,7 @@ export type EmbedTokenClaims = {
 type VerifyOptions = {
   requiredAudience?: string;
   requiredIssuer?: string;
-  assistantId?: string;
+  agentId?: string;
   nowSeconds?: number;
 };
 
@@ -52,8 +52,8 @@ function isAudienceValid(aud: string | string[] | undefined, requiredAudience?: 
   return aud.includes(requiredAudience);
 }
 
-function readAssistantClaim(claims: EmbedTokenClaims): string | undefined {
-  if (typeof claims.assistantId === 'string') return claims.assistantId;
+function readAgentClaim(claims: EmbedTokenClaims): string | undefined {
+  if (typeof claims.agentId === 'string') return claims.agentId;
   if (typeof claims.agent_id === 'string') return claims.agent_id;
   return undefined;
 }
@@ -108,8 +108,8 @@ function verifyEmbedTokenWithSecret(
   if (options?.requiredIssuer && payload.iss !== options.requiredIssuer) return null;
   if (!isAudienceValid(payload.aud, options?.requiredAudience)) return null;
 
-  const claimAssistantId = readAssistantClaim(payload);
-  if (options?.assistantId && claimAssistantId && claimAssistantId !== options.assistantId) {
+  const claimAgentId = readAgentClaim(payload);
+  if (options?.agentId && claimAgentId && claimAgentId !== options.agentId) {
     return null;
   }
 

@@ -75,7 +75,7 @@
         try {
           return s && s.getAttribute && (
             !!s.getAttribute('data-client-id') ||
-            !!s.getAttribute('data-assistant-id') ||
+            !!s.getAttribute('data-agent-id') ||
             (s.src && /docs-widget(\.|\/)/i.test(s.src))
           );
         } catch (_e) {
@@ -87,7 +87,7 @@
 
     // Get attributes with validation
     const clientId = script.getAttribute("data-client-id");
-    const assistantId = script.getAttribute("data-assistant-id");
+    const agentId = script.getAttribute("data-agent-id");
     const configId = script.getAttribute("data-config-id");
     const detectLocale = () => {
       const explicitLocale = script.getAttribute("data-locale");
@@ -104,10 +104,10 @@
     const startOpen = script.getAttribute("data-start-open") === "true";
 
     // Validate required attributes
-    if (!clientId || !assistantId || !configId) {
+    if (!clientId || !agentId || !configId) {
       const missing = [];
       if (!clientId) missing.push("data-client-id");
-      if (!assistantId) missing.push("data-assistant-id");
+      if (!agentId) missing.push("data-agent-id");
       if (!configId) missing.push("data-config-id");
 
       logError("Missing required attributes", { missing });
@@ -138,7 +138,7 @@
     // 1) `data-powered-by` attribute on the script tag, or
     // 2) a host-provided global `window.__COMPANIN_WIDGET_LOCALES__` object.
 
-    const requestedInstanceId = explicitInstanceId || `${clientId}::${assistantId}::${configId}::${locale}`;
+    const requestedInstanceId = explicitInstanceId || `${clientId}::${agentId}::${configId}::${locale}`;
     const registry = getOrCreateRegistry();
     let instanceId = sanitizeInstanceId(requestedInstanceId);
     if (registry[instanceId]) {
@@ -306,12 +306,13 @@
         const iframe = document.createElement("iframe");
         const params = new URLSearchParams({
           clientId,
-          assistantId,
+          agentId,
           configId,
           locale,
           startOpen: startOpen.toString(),
           pagePath: window.location.pathname,
           parentOrigin: window.location.origin,
+          loaderVersion: WIDGET_VERSION,
         });
 
         iframe.src = `${baseUrl}/embed/docs?${params.toString()}`;
@@ -469,7 +470,7 @@
             context: {
               instanceId,
               clientId,
-              assistantId,
+              agentId,
               configId,
               locale,
               pagePath: window.location.pathname,
@@ -750,7 +751,7 @@
               case "WIDGET_HIDE":
                 container.style.display = "none";
                 emitEvent("close", data || { source: "widget" }, { rawType: type });
-                _gaTrack('widget_close', { assistant_id: assistantId });
+                _gaTrack('widget_close', { agent_id: agentId });
                 break;
 
               case "WIDGET_SHOW":
@@ -764,12 +765,12 @@
                   container.style.display = "block";
                 }
                 emitEvent("open", data || { source: "widget" }, { rawType: type });
-                _gaTrack('widget_open', { assistant_id: assistantId });
+                _gaTrack('widget_open', { agent_id: agentId });
                 break;
 
               case "WIDGET_RESPONSE":
                 emitEvent("response", data, { rawType: type, debounceMs: 120 });
-                _gaTrack('widget_response_received', { assistant_id: assistantId });
+                _gaTrack('widget_response_received', { agent_id: agentId });
                 break;
 
               case "WIDGET_AUTH_FAILURE":
@@ -788,7 +789,7 @@
                   applyErrorContainerLayout(data);
                 }
                 emitEvent("error", data, { rawType: type });
-                _gaTrack('widget_error', { assistant_id: assistantId, error_type: data && data.errorType });
+                _gaTrack('widget_error', { agent_id: agentId, error_type: data && data.errorType });
                 break;
 
               default:
@@ -800,7 +801,7 @@
               const t = (type || '').toString().toLowerCase();
               if (t.includes('message') || t.includes('msg')) {
                 const _gaMessageText = (data && (data.content || data.message || data.text)) || '';
-                _gaTrack('widget_message_sent', { assistant_id: assistantId, message_length: _gaMessageText.length });
+                _gaTrack('widget_message_sent', { agent_id: agentId, message_length: _gaMessageText.length });
               }
             } catch (e) {
               logError('GA message tracking failed', { error: e && e.message });

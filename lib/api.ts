@@ -43,7 +43,7 @@ export const API = {
   // Message endpoints
   messageFeedback: (messageId: string) => `${getApiV1BaseUrl()}/message/${messageId}/feedback`,
 
-  // Assistant endpoints
+  // Agent endpoints
   agent: (agentId: string) => `${getApiV1BaseUrl()}/agents/${agentId}`,
 
   // Config endpoints. Widget runtime now uses the read-only public projection
@@ -88,7 +88,7 @@ interface TelemetryPayload {
  */
 export async function trackEvent(
   eventType: string,
-  assistantId?: string,
+  agentId?: string,
   metadata: Record<string, unknown> = {},
   clientId?: string,
   authToken?: string,
@@ -101,7 +101,7 @@ export async function trackEvent(
   const endpoint = `${BASE.replace(/\/+$/, '')}/telemetry/events/`;
 
   const payload: TelemetryPayload = { event_type: eventType };
-  if (assistantId) payload.agent = assistantId;
+  if (agentId) payload.agent = agentId;
   if (metadata && Object.keys(metadata).length > 0) payload.metadata = metadata;
 
   try {

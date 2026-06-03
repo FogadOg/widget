@@ -37,7 +37,7 @@ jest.mock('../../../../src/lib/widgetRegistry', () => ({
 
 const baseProps = {
   clientId: 'c1',
-  assistantId: 'a1',
+  agentId: 'a1',
   configId: 'cfg1',
   locale: 'en',
   startOpen: false as boolean,
@@ -57,7 +57,7 @@ describe('EmbedClient component', () => {
     render(
       <EmbedClient
         clientId="c1"
-        assistantId="a1"
+        agentId="a1"
         configId="cfg1"
         locale="en"
         startOpen={false}
@@ -74,7 +74,7 @@ describe('EmbedClient component', () => {
     render(
       <EmbedClient
         clientId="c2"
-        assistantId="a2"
+        agentId="a2"
         configId="cfg2"
         locale="en"
         startOpen={true}
@@ -102,7 +102,7 @@ describe('EmbedClient component', () => {
     render(
       <EmbedClient
         clientId=""
-        assistantId="a1"
+        agentId="a1"
         configId="cfg1"
         locale="en"
         startOpen={false}
@@ -111,11 +111,11 @@ describe('EmbedClient component', () => {
     await waitFor(() => expect(screen.getByTestId('embed-shell')).toBeInTheDocument(), { timeout: 3000 });
   });
 
-  test('bootstrap exits early when assistantId is missing', async () => {
+  test('bootstrap exits early when agentId is missing', async () => {
     render(
       <EmbedClient
         clientId="c1"
-        assistantId=""
+        agentId=""
         configId="cfg1"
         locale="en"
         startOpen={false}
@@ -128,7 +128,7 @@ describe('EmbedClient component', () => {
     mockGetAuthToken.mockResolvedValue('tok-1');
 
     const fetchMock = jest.fn();
-    // fetchAssistantDetails
+    // fetchAgentDetails
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ status: 'success', data: { name: 'Test Bot' } }),

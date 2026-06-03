@@ -12,7 +12,7 @@ import { getOrCreateVisitorId, getStoredSessionByKey, storeSessionByKey } from '
 import type { Message } from 'types/widget';
 
 type SessionManagerProps = {
-  assistantId: string;
+  agentId: string;
   authToken: string;
   locale: string;
   onSessionCreated: (sessionId: string, expiresAt: string) => void;
@@ -21,15 +21,15 @@ type SessionManagerProps = {
 };
 
 export default function SessionManager({
-  assistantId,
+  agentId,
   authToken,
   locale,
   onSessionCreated,
   onSessionError,
   onMessagesLoaded
 }: SessionManagerProps) {
-  const storageKey = `${STORAGE_PREFIX}session-${assistantId}`;
-  const visitorKey = `${STORAGE_PREFIX}visitor-${assistantId}`;
+  const storageKey = `${STORAGE_PREFIX}session-${agentId}`;
+  const visitorKey = `${STORAGE_PREFIX}visitor-${agentId}`;
 
   // Helper function to get stored session data
   const getStoredSession = useCallback(() => {
@@ -80,7 +80,7 @@ export default function SessionManager({
           .map((msg: any) => ({
             id: msg.id,
             text: msg.content,
-            from: (msg.sender === 'assistant' ? 'agent' : msg.sender) as 'user' | 'agent',
+            from: msg.sender === 'assistant' ? 'agent' : msg.sender as 'user' | 'agent',
             timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
             sources: msg.sources || [],
           }));
@@ -119,7 +119,7 @@ export default function SessionManager({
                 ...embedOriginHeader(),
               },
               body: JSON.stringify({
-                assistant_id: assistantId,
+                agent_id: agentId,
                 visitor_id: visitorId,
                 locale: locale,
               }),
@@ -179,7 +179,7 @@ export default function SessionManager({
           maxRetries: 3,
           initialDelay: 1000,
           onRetry: (attempt, error) => {
-            logError(error instanceof Error ? error.message : String(error), { assistantId, attempt, action: 'createSession' });
+            logError(error instanceof Error ? error.message : String(error), { agentId, attempt, action: 'createSession' });
           },
         }
       );
@@ -196,10 +196,10 @@ export default function SessionManager({
     } catch (err: any) {
       const errorMessage = err.userMessage || 'Failed to create session';
       onSessionError(errorMessage);
-      logError(err instanceof Error ? err.message : String(err), { assistantId, action: 'createSession' });
+      logError(err instanceof Error ? err.message : String(err), { agentId, action: 'createSession' });
     }
 
-  }, [assistantId, authToken, locale, getVisitorId, storeSession, onSessionCreated, onSessionError]);
+  }, [agentId, authToken, locale, getVisitorId, storeSession, onSessionCreated, onSessionError]);
 
   const validateAndRestoreSession = useCallback(async (storedSessionId: string) => {
     try {
@@ -230,7 +230,7 @@ export default function SessionManager({
             .map((msg: any) => ({
               id: msg.id,
               text: msg.content,
-              from: (msg.sender === 'assistant' ? 'agent' : msg.sender) as 'user' | 'agent',
+              from: msg.sender === 'assistant' ? 'agent' : msg.sender as 'user' | 'agent',
               timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now()
             }));
 
@@ -242,22 +242,22 @@ export default function SessionManager({
       // Session invalid or not found, create new one
       logError('Session validation failed', {
         sessionId: storedSessionId,
-        assistantId,
+        agentId,
         status: response.status
       });
       localStorage.removeItem(storageKey);
       await createSession();
     } catch (err) {
-      logError(err instanceof Error ? err.message : String(err), { sessionId: storedSessionId, assistantId, action: 'validateAndRestoreSession' });
+      logError(err instanceof Error ? err.message : String(err), { sessionId: storedSessionId, agentId, action: 'validateAndRestoreSession' });
       // On error, create new session
       localStorage.removeItem(storageKey);
       await createSession();
     }
-  }, [assistantId, authToken, createSession, onSessionCreated, onMessagesLoaded, storageKey]);
+  }, [agentId, authToken, createSession, onSessionCreated, onMessagesLoaded, storageKey]);
 
   // Initialize session on mount
   useEffect(() => {
-    if (authToken && assistantId) {
+    if (authToken && agentId) {
       // Try to restore existing session first
       const storedSession = getStoredSession();
       if (storedSession) {
@@ -266,7 +266,7 @@ export default function SessionManager({
         createSession();
       }
     }
-  }, [authToken, assistantId, getStoredSession, validateAndRestoreSession, createSession]);
+  }, [authToken, agentId, getStoredSession, validateAndRestoreSession, createSession]);
 
   return null; // This component doesn't render anything
 }

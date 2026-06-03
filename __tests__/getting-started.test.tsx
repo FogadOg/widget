@@ -143,7 +143,7 @@ describe('GettingStartedPage', () => {
     render(jsx)
     expect(screen.getByRole('heading', { name: /prerequisites/i })).toBeInTheDocument()
     expect(screen.getAllByText(/Client ID/).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/Assistant ID/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Agent ID/).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Config ID/).length).toBeGreaterThan(0)
   })
 

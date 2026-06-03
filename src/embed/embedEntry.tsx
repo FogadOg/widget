@@ -16,7 +16,7 @@ import React, { useEffect, useState } from 'react';
 import { createHandshake } from './handshake';
 
 interface EmbedConfig {
-  assistantId?: string;
+  agentId?: string;
   theme?: 'light' | 'dark';
   locale?: string;
   [key: string]: unknown;
@@ -87,7 +87,7 @@ export function EmbedEntry({ allowedOrigins = [] }: EmbedEntryProps) {
   }
 
   return (
-    <div data-widget-config={JSON.stringify({ assistantId: config.assistantId })}>
+    <div data-widget-config={JSON.stringify({ agentId: config.agentId })}>
       {/* Lazy-import the full widget shell so the embed entrypoint stays small */}
       <WidgetShell config={config} />
     </div>
@@ -98,7 +98,7 @@ export function EmbedEntry({ allowedOrigins = [] }: EmbedEntryProps) {
 // replace with the actual widget component when integrating.
 function WidgetShell({ config }: { config: EmbedConfig }) {
   return (
-    <div className="widget-shell" data-assistant-id={config.assistantId ?? ''} />
+    <div className="widget-shell" data-agent-id={config.agentId ?? ''} />
   );
 }
 

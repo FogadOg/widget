@@ -29,8 +29,8 @@ jest.mock('../lib/i18n', () => ({
     gettingStartedPrerequisitesDesc: 'You need credentials',
     gettingStartedCredentialClientId: 'Client ID',
     gettingStartedCredentialClientIdDesc: 'from dashboard',
-    gettingStartedCredentialAssistantId: 'Assistant ID',
-    gettingStartedCredentialAssistantIdDesc: 'from dashboard',
+    gettingStartedCredentialAgentId: 'Agent ID',
+    gettingStartedCredentialAgentIdDesc: 'from dashboard',
     gettingStartedCredentialConfigId: 'Config ID',
     gettingStartedCredentialConfigIdDesc: 'from dashboard',
     gettingStartedStep1Title: 'Step 1',
@@ -88,7 +88,7 @@ describe('app/[locale]/docs/getting-started/page.tsx', () => {
     const html = renderToStaticMarkup(element as React.ReactElement);
 
     expect(html).toContain('Client ID');
-    expect(html).toContain('Assistant ID');
+    expect(html).toContain('Agent ID');
     expect(html).toContain('Config ID');
   });
 

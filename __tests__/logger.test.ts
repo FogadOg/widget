@@ -73,7 +73,7 @@ describe('logger convenience functions', () => {
   });
 
   it('logPerf ignores blacklisted names', () => {
-    logPerf('fetchAssistantDetails', 50);
+    logPerf('fetchAgentDetails', 50);
     logPerf('fetchWidgetConfig', 60);
     // should not call console.debug at all for blacklisted names
     expect(console.debug).toHaveBeenCalledTimes(0);
@@ -155,8 +155,6 @@ describe('logger in production', () => {
     expect(body.userAgent).toBeUndefined();
     // url may still be populated by jsdom; no assertion here
   });
-
-
 
   it('posts perf data via fetch', () => {
     prodLog.perf('abc', 999, { x: 2 });

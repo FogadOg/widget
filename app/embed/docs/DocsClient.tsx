@@ -130,7 +130,7 @@ export function resolveLocalizedSuggestions(
 
 type Props = {
   clientId: string;
-  assistantId: string;
+  agentId: string;
   configId: string;
   locale: string;
   startOpen: boolean;
@@ -167,7 +167,7 @@ const initialMessages: MessageType[] = [
 ];
 
 
-export default function DocsClient({ clientId, assistantId, configId, locale: initialLocale, startOpen, pagePath, parentOrigin: initialParentOrigin, loaderVersion }: Props) {
+export default function DocsClient({ clientId, agentId, configId, locale: initialLocale, startOpen, pagePath, parentOrigin: initialParentOrigin, loaderVersion }: Props) {
   const embedHeaders = embedOriginHeader(initialParentOrigin, loaderVersion);
 
   const [open, setOpen] = useState(startOpen);
@@ -245,20 +245,20 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
   // Emit widget_load telemetry once per browser session so the install-status
   // endpoint can confirm the docs widget is active on a site.
   useEffect(() => {
-    if (!clientId || !assistantId) return;
-    const loadKey = `companin-telemetry-load-${clientId}-${assistantId}-${configId}`;
+    if (!clientId || !agentId) return;
+    const loadKey = `companin-telemetry-load-${clientId}-${agentId}-${configId}`;
     try {
       if (localStorage.getItem(loadKey)) return;
     } catch {
       // localStorage unavailable — fire anyway
     }
-    trackEvent('widget_load', assistantId, { widget_config_id: configId }, clientId, undefined, embedHeaders).catch(() => {});
+    trackEvent('widget_load', agentId, { widget_config_id: configId }, clientId, undefined, embedHeaders).catch(() => {});
     try {
       localStorage.setItem(loadKey, '1');
     } catch {
       // ignore storage errors
     }
-  }, [assistantId, clientId]);
+  }, [agentId, clientId]);
 
   useEffect(() => {
     const latestAgent = [...messages].reverse().find((msg) => msg.from === 'agent');
@@ -292,7 +292,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
       const visitorId = helpersGetVisitorId(clientId);
 
             const requestBody: Record<string, unknown> = {
-        agent_id: assistantId,
+        agent_id: agentId,
         visitor_id: visitorId,
         locale: activeLocale,
         ...(variantInfo?.variant_id ? { metadata: { variant_id: variantInfo.variant_id, variant_name: variantInfo.variant_name } } : {}),
@@ -315,7 +315,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         setError(null);
         // Store session data in localStorage
         if (data.data.expires_at) {
-          helpersStoreSession(clientId, assistantId, data.data.session_id, data.data.expires_at);
+          helpersStoreSession(clientId, agentId, data.data.session_id, data.data.expires_at);
         }
         // Load messages after session creation
         await loadSessionMessages(data.data.session_id, token, true);
@@ -329,7 +329,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
       console.error('Session creation error:', err);
       setError(errorMsg);
     }
-  }, [assistantId, activeLocale, clientId, initialParentOrigin]);
+  }, [agentId, activeLocale, clientId, initialParentOrigin]);
 
   // Validate and restore existing session
   const validateAndRestoreSession = useCallback(async (sessionId: string, token: string) => {
@@ -362,7 +362,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
             })
             .map((msg: any) => ({
               key: msg.id,
-              from: (msg.sender === 'assistant' ? 'agent' : msg.sender) as 'user' | 'agent',
+              from: msg.sender === 'assistant' ? 'agent' : msg.sender as 'user' | 'agent',
               sources: msg.sources || [],
               versions: [{
                 id: msg.id,
@@ -372,16 +372,16 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
           setMessages(loadedMessages.length > 0 ? loadedMessages : initialMessages);
           setIsInitialLoad(false);
         } else {
-          localStorage.removeItem(getSessionStorageKey(clientId, assistantId));
+          localStorage.removeItem(getSessionStorageKey(clientId, agentId));
           createSession(token);
         }
       } else {
-        localStorage.removeItem(getSessionStorageKey(clientId, assistantId));
+        localStorage.removeItem(getSessionStorageKey(clientId, agentId));
         createSession(token);
       }
     } catch (err) {
       console.error('Session validation error:', err);
-      localStorage.removeItem(getSessionStorageKey(clientId, assistantId));
+      localStorage.removeItem(getSessionStorageKey(clientId, agentId));
       createSession(token);
     }
   }, [createSession]);
@@ -414,7 +414,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
             })
             .map((msg: any) => ({
               key: msg.id,
-              from: (msg.sender === 'assistant' ? 'agent' : msg.sender) as 'user' | 'agent',
+              from: msg.sender === 'assistant' ? 'agent' : msg.sender as 'user' | 'agent',
               sources: msg.sources || [],
               versions: [{
                 id: msg.id,
@@ -620,7 +620,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
 
   // Initialize session on mount
   useEffect(() => {
-    if (clientId && assistantId) {
+    if (clientId && agentId) {
       const detectedParentOrigin = resolveParentOrigin();
 
       getAuthToken(clientId, detectedParentOrigin).then(async (token) => {
@@ -628,7 +628,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
           // Fetch widget config first so variant info is available for session creation
           const variantInfo = await fetchWidgetConfig(configId, token);
 
-          const storedSession = helpersGetStoredSession(clientId, assistantId);
+          const storedSession = helpersGetStoredSession(clientId, agentId);
           if (storedSession) {
             validateAndRestoreSession(storedSession.sessionId, token);
           } else {
@@ -646,14 +646,14 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
         setError('Failed to authenticate');
       });
     } else {
-      console.warn('Missing clientId or assistantId');
+      console.warn('Missing clientId or agentId');
     }
-  }, [clientId, assistantId, configId, createSession, validateAndRestoreSession, fetchWidgetConfig, getAuthToken, resolveParentOrigin]);
+  }, [clientId, agentId, configId, createSession, validateAndRestoreSession, fetchWidgetConfig, getAuthToken, resolveParentOrigin]);
 
   // Periodic check for expired sessions
   useEffect(() => {
     const checkSessionExpiry = () => {
-      const stored = helpersGetStoredSession(clientId, assistantId);
+      const stored = helpersGetStoredSession(clientId, agentId);
       if (!stored && sessionId) {
         setSessionId(null);
         setMessages([]);

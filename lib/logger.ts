@@ -35,7 +35,7 @@ const LEVEL_STYLES: Record<LogLevel, string> = {
  */
 class Logger {
   private isDevelopment: boolean;
-  private perfBlacklist: Set<string> = new Set(['fetchAssistantDetails','fetchWidgetConfig']);
+  private perfBlacklist: Set<string> = new Set(['fetchAgentDetails','fetchWidgetConfig']);
   private context: string;
   private defaultContext: LogContext;
 

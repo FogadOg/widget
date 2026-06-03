@@ -83,7 +83,7 @@ describe('createHandshake (widget-side)', () => {
     const handler = jest.fn();
     hs.on('INIT', handler);
 
-    dispatch(ALLOWED, { type: 'INIT', handshakeToken: 'tok-abc', config: { assistantId: 'x' } });
+    dispatch(ALLOWED, { type: 'INIT', handshakeToken: 'tok-abc', config: { agentId: 'x' } });
 
     expect(handler).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'INIT', handshakeToken: 'tok-abc' }),
@@ -213,13 +213,13 @@ describe('createHostHandshake (host-side)', () => {
 
   it('sendInit posts an INIT message to the iframe at widgetOrigin', () => {
     const hs = createHostHandshake({ iframe, widgetOrigin: WIDGET_ORIGIN });
-    hs.sendInit('tok-host', { assistantId: 'a1' });
+    hs.sendInit('tok-host', { agentId: 'a1' });
 
     expect(iframePostMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'INIT',
         handshakeToken: 'tok-host',
-        config: { assistantId: 'a1' },
+        config: { agentId: 'a1' },
       }),
       WIDGET_ORIGIN,
     );

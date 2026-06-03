@@ -10,21 +10,21 @@ import type { Message, SourceData } from '../../../types/widget';
  * by most callers and unit tests. Use `sessionStorageKeyForLocale` when a
  * locale-specific key is required to avoid cross-locale session bleed.
  */
-export function sessionStorageKey(clientId: string, assistantId: string) {
-  return `${STORAGE_PREFIX}session-${clientId}-${assistantId}`;
+export function sessionStorageKey(clientId: string, agentId: string) {
+  return `${STORAGE_PREFIX}session-${clientId}-${agentId}`;
 }
 
-export function sessionStorageKeyForLocale(clientId: string, assistantId: string, locale?: string) {
+export function sessionStorageKeyForLocale(clientId: string, agentId: string, locale?: string) {
   const localeSuffix = locale ? `-${locale}` : '';
-  return `${STORAGE_PREFIX}session-${clientId}-${assistantId}${localeSuffix}`;
+  return `${STORAGE_PREFIX}session-${clientId}-${agentId}${localeSuffix}`;
 }
 
-export function unreadStorageKey(clientId: string, assistantId: string) {
-  return `${STORAGE_PREFIX}unread-${clientId}-${assistantId}`;
+export function unreadStorageKey(clientId: string, agentId: string) {
+  return `${STORAGE_PREFIX}unread-${clientId}-${agentId}`;
 }
 
-export function lastReadStorageKey(clientId: string, assistantId: string) {
-  return `${STORAGE_PREFIX}lastread-${clientId}-${assistantId}`;
+export function lastReadStorageKey(clientId: string, agentId: string) {
+  return `${STORAGE_PREFIX}lastread-${clientId}-${agentId}`;
 }
 
 export function flowResponsesStorageKey(sessionId: string) {

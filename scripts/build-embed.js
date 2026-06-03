@@ -86,7 +86,7 @@ function buildEmbedFile(entry) {
     try { host = new URL(cur.src, window.location.href).origin; } catch (e) {}
   }
   var s = document.createElement('script');
-  // Copy all data-* attributes (client-id, assistant-id, etc.) to the versioned tag
+  // Copy all data-* attributes (client-id, agent-id, etc.) to the versioned tag
   // so the widget loader can read them from document.currentScript as normal.
   if (cur) {
     var a = cur.attributes;

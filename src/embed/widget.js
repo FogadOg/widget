@@ -68,7 +68,7 @@
       try {
         return !!(s && s.getAttribute && (
           s.getAttribute('data-client-id') ||
-          s.getAttribute('data-assistant-id') ||
+          s.getAttribute('data-agent-id') ||
           (s.src && /widget(\.|\/)/i.test(s.src))
         ));
       } catch (e) { return false; }
@@ -133,7 +133,7 @@
 
     // Get attributes with validation
     const clientId = script.getAttribute("data-client-id");
-    const assistantId = script.getAttribute("data-assistant-id");
+    const agentId = script.getAttribute("data-agent-id");
     const configId = script.getAttribute("data-config-id");
     const detectLocale = () => {
       const explicitLocale = script.getAttribute("data-locale");
@@ -167,10 +167,10 @@
     // not persist visitor IDs / sessions in localStorage until the host page
     // calls window.CompaninWidget.grantConsent(). Required for GDPR-strict deploys.
     const consentRequired = script.getAttribute("data-consent-required") === "true";
-    if (!clientId || !assistantId || !configId) {
+    if (!clientId || !agentId || !configId) {
       const missing = [];
       if (!clientId) missing.push("data-client-id");
-      if (!assistantId) missing.push("data-assistant-id");
+      if (!agentId) missing.push("data-agent-id");
       if (!configId) missing.push("data-config-id");
 
       logError("Missing required attributes", { missing });
@@ -221,7 +221,7 @@
           pf.rel = 'prefetch';
           const pfParams = new URLSearchParams({
             clientId,
-            assistantId,
+            agentId,
             configId,
             locale,
             startOpen: startOpen.toString(),
@@ -238,7 +238,7 @@
       }
     })();
 
-    const requestedInstanceId = explicitInstanceId || `${clientId}::${assistantId}::${configId}::${locale}`;
+    const requestedInstanceId = explicitInstanceId || `${clientId}::${agentId}::${configId}::${locale}`;
     const registry = getOrCreateRegistry();
     let instanceId = sanitizeInstanceId(requestedInstanceId);
     if (registry[instanceId]) {
@@ -400,7 +400,7 @@
         const iframe = document.createElement("iframe");
         const params = new URLSearchParams({
           clientId,
-          assistantId,
+          agentId,
           configId,
           locale,
           startOpen: startOpen.toString(),
@@ -571,7 +571,7 @@
             context: {
               instanceId,
               clientId,
-              assistantId,
+              agentId,
               configId,
               locale,
               pagePath: window.location.pathname,
@@ -949,14 +949,14 @@
                 allowDisplay = false;
                 container.style.display = "none";
                 emitEvent('close', data, { rawType: type });
-                _gaTrack('widget_close', { assistant_id: assistantId });
+                _gaTrack('widget_close', { agent_id: agentId });
                 break;
 
               case "WIDGET_MINIMIZE":
                 // Widget requested minimize -> show minimized button state
                 // Don't hide container; let the iframe handle its own UI state
                 emitEvent('close', data, { rawType: type });
-                _gaTrack('widget_close', { assistant_id: assistantId });
+                _gaTrack('widget_close', { agent_id: agentId });
                 break;
 
               case "WIDGET_SHOW":
@@ -971,14 +971,14 @@
                   container.style.display = "block";
                 }
                 emitEvent('open', data, { rawType: type });
-                _gaTrack('widget_open', { assistant_id: assistantId });
+                _gaTrack('widget_open', { agent_id: agentId });
                 break;
 
               case "WIDGET_RESTORE":
                 // Widget requested restore/expand -> treat as open
                 // Container stays visible; iframe handles its own expanded state
                 emitEvent('open', data, { rawType: type });
-                _gaTrack('widget_open', { assistant_id: assistantId });
+                _gaTrack('widget_open', { agent_id: agentId });
                 break;
 
               case "WIDGET_ERROR":
@@ -996,7 +996,7 @@
                 } catch (e) {
                   logError('onAuthFailure hook check failed', { error: e && e.message });
                 }
-                _gaTrack('widget_error', { assistant_id: assistantId, error_type: data && data.errorType });
+                _gaTrack('widget_error', { agent_id: agentId, error_type: data && data.errorType });
                 break;
 
               case 'WIDGET_GA_INIT':
@@ -1017,7 +1017,7 @@
               if (t.includes('response') || t.endsWith('_response')) {
                 try {
                   emitEvent('response', data, { rawType: type, debounceMs: 120 });
-                  _gaTrack('widget_response_received', { assistant_id: assistantId });
+                  _gaTrack('widget_response_received', { agent_id: agentId });
                 } catch (e) { logError('onResponse hook threw', { error: e && e.message }); }
               }
 
@@ -1039,7 +1039,7 @@
                     __lastHostMessage = data;
                     emitEvent('message', data, { rawType: type, debounceMs: 120 });
                     const _gaMessageText = (data && (data.content || data.message || data.text)) || '';
-                    _gaTrack('widget_message_sent', { assistant_id: assistantId, message_length: _gaMessageText.length });
+                    _gaTrack('widget_message_sent', { agent_id: agentId, message_length: _gaMessageText.length });
                   }
                 } catch (e) { logError('onMessage hook threw', { error: e && e.message }); }
               }
