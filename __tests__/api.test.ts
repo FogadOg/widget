@@ -67,7 +67,7 @@ describe('API utilities', () => {
       expect(API.messageFeedback('456')).toBe('https://api.example.com/api/v1/message/456/feedback');
     });
 
-    it('constructs assistant endpoint correctly', async () => {
+    it('constructs agent endpoint correctly', async () => {
       const { API } = await mockEnv({ NEXT_PUBLIC_API_BASE_URL: 'https://api.example.com' });
       expect(API.agent('789')).toBe('https://api.example.com/api/v1/agents/789');
     });
