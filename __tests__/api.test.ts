@@ -69,7 +69,7 @@ describe('API utilities', () => {
 
     it('constructs assistant endpoint correctly', async () => {
       const { API } = await mockEnv({ NEXT_PUBLIC_API_BASE_URL: 'https://api.example.com' });
-      expect(API.assistant('789')).toBe('https://api.example.com/api/v1/assistants/789');
+      expect(API.agent('789')).toBe('https://api.example.com/api/v1/agents/789');
     });
 
     it('constructs widgetConfig endpoint correctly', async () => {

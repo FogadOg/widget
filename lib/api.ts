@@ -44,7 +44,7 @@ export const API = {
   messageFeedback: (messageId: string) => `${getApiV1BaseUrl()}/message/${messageId}/feedback`,
 
   // Assistant endpoints
-  assistant: (assistantId: string) => `${getApiV1BaseUrl()}/assistants/${assistantId}`,
+  agent: (agentId: string) => `${getApiV1BaseUrl()}/agents/${agentId}`,
 
   // Config endpoints. Widget runtime now uses the read-only public projection
   // (LAUNCH-READINESS #17) so a widget_visitor JWT can load the config without

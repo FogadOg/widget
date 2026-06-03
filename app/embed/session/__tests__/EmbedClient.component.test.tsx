@@ -18,7 +18,7 @@ jest.mock('../../../../hooks/useWidgetAuth', () => ({
   }),
 }));
 jest.mock('../../../../hooks/useWidgetTranslation', () => ({ useWidgetTranslation: () => ({ translations: {}, locale: 'en' }) }));
-jest.mock('../../../../lib/api', () => ({ trackEvent: jest.fn(() => Promise.resolve()), embedOriginHeader: jest.fn(() => ({})), API: { assistant: (id: string) => `/api/assistants/${id}`, widgetConfig: (id: string) => `/api/config/${id}`, sessions: () => '/api/sessions', sessionMessages: (id: string) => `/api/sessions/${id}/messages`, session: (id: string) => `/api/sessions/${id}`, sessionFeedback: (id: string) => `/api/sessions/${id}/feedback` } }));
+jest.mock('../../../../lib/api', () => ({ trackEvent: jest.fn(() => Promise.resolve()), embedOriginHeader: jest.fn(() => ({})), API: { agent: (id: string) => `/api/agents/${id}`, widgetConfig: (id: string) => `/api/config/${id}`, sessions: () => '/api/sessions', sessionMessages: (id: string) => `/api/sessions/${id}/messages`, session: (id: string) => `/api/sessions/${id}`, sessionFeedback: (id: string) => `/api/sessions/${id}/feedback` } }));
 jest.mock('../../../../lib/logger', () => ({ logError: jest.fn(), logPerf: jest.fn() }));
 jest.mock('../../../../lib/cssValidator', () => ({ sanitizeCss: (s: string) => s }));
 jest.mock('../../../../src/lib/offline', () => ({

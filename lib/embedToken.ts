@@ -5,7 +5,7 @@ export type EmbedTokenClaims = {
   iss?: string;
   aud?: string | string[];
   assistantId?: string;
-  assistant_id?: string;
+  agent_id?: string;
   [key: string]: unknown;
 };
 
@@ -54,7 +54,7 @@ function isAudienceValid(aud: string | string[] | undefined, requiredAudience?: 
 
 function readAssistantClaim(claims: EmbedTokenClaims): string | undefined {
   if (typeof claims.assistantId === 'string') return claims.assistantId;
-  if (typeof claims.assistant_id === 'string') return claims.assistant_id;
+  if (typeof claims.agent_id === 'string') return claims.agent_id;
   return undefined;
 }
 

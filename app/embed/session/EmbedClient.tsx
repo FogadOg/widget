@@ -1480,7 +1480,7 @@ export default function EmbedClient({
               ...embedHeaders,
             },
             body: JSON.stringify({
-              assistant_id: agentId,
+              agent_id: agentId,
               visitor_id: visitorId,
               locale: activeLocale,
               widget_config_id: activeConfig?.id ?? undefined,
@@ -1823,7 +1823,7 @@ export default function EmbedClient({
   async function fetchAssistantDetails(assistantId: string, token: string) {
     const start = Date.now();
     try {
-      const response = await fetch(API.assistant(assistantId), {
+      const response = await fetch(API.agent(assistantId), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -308,7 +308,7 @@ describe('EmbedClient Component', () => {
     // Setup fetch mock with complete responses
     mockFetch = jest.fn((url: string) => {
       // Assistant details
-      if (url.includes('/assistants/') && !url.includes('/sessions')) {
+      if (url.includes('/agents/') && !url.includes('/sessions')) {
         return Promise.resolve({
           ok: true,
           status: 200,
@@ -534,7 +534,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -610,7 +610,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -665,7 +665,7 @@ describe('EmbedClient Component', () => {
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining('/assistants/test-assistant'),
+          expect.stringContaining('/agents/test-assistant'),
           expect.any(Object)
         );
       });
@@ -708,7 +708,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -758,7 +758,7 @@ describe('EmbedClient Component', () => {
 
     test('handles agent fetch error', async () => {
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: false,
             status: 404,
@@ -777,7 +777,7 @@ describe('EmbedClient Component', () => {
 
     test('handles widget config fetch error', async () => {
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -838,7 +838,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -914,7 +914,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -989,7 +989,7 @@ describe('EmbedClient Component', () => {
 
     test('createSession: handles timeout error', async () => {
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -1018,7 +1018,7 @@ describe('EmbedClient Component', () => {
 
     test('createSession: handles server error (500)', async () => {
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -1049,7 +1049,7 @@ describe('EmbedClient Component', () => {
 
     test('createSession: handles invalid response format', async () => {
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -1152,7 +1152,7 @@ describe('EmbedClient Component', () => {
 
     test('handleSubmit: handles session expiry (410)', async () => {
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -1378,7 +1378,7 @@ describe('EmbedClient Component', () => {
     test.skip('processes initial flow when config has initial_flow_id', async () => {
       // TODO: Initial flow processing not yet implemented in component
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -1478,7 +1478,7 @@ describe('EmbedClient Component', () => {
     test('submits positive feedback successfully', async () => {
       // Setup mocks for feedback submission
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -1550,7 +1550,7 @@ describe('EmbedClient Component', () => {
       });
 
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -1594,7 +1594,7 @@ describe('EmbedClient Component', () => {
       });
 
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -1639,7 +1639,7 @@ describe('EmbedClient Component', () => {
   describe('Widget Config Application (lines 235-284)', () => {
     test('applies config with various settings combinations', async () => {
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -1689,7 +1689,7 @@ describe('EmbedClient Component', () => {
       const createAuthErrorSpy = jest.spyOn(errorHandling, 'createAuthError');
 
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -1734,7 +1734,7 @@ describe('EmbedClient Component', () => {
   describe('Error Handling and Edge Cases', () => {
     test('handles fetch errors during session creation', async () => {
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -1761,7 +1761,7 @@ describe('EmbedClient Component', () => {
 
     test('handles invalid JSON in responses', async () => {
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'fail', error: 'Invalid data' }),
@@ -1877,7 +1877,7 @@ describe('EmbedClient Component', () => {
       });
 
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -1942,7 +1942,7 @@ describe('EmbedClient Component', () => {
       });
 
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -2149,7 +2149,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -2217,7 +2217,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -2278,7 +2278,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -2350,7 +2350,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -2405,7 +2405,7 @@ describe('EmbedClient Component', () => {
       const createSessionErrorSpy = jest.spyOn(errorHandling, 'createSessionError');
 
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -2454,7 +2454,7 @@ describe('EmbedClient Component', () => {
       const createSessionErrorSpy = jest.spyOn(errorHandling, 'createSessionError');
 
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -2508,7 +2508,7 @@ describe('EmbedClient Component', () => {
       });
 
       mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -2588,7 +2588,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -2638,7 +2638,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -2699,7 +2699,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -2750,7 +2750,7 @@ describe('EmbedClient Component', () => {
         if (url.includes('/sessions/session-err/feedback')) {
           return Promise.reject(new Error('Feedback failure'));
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -2909,7 +2909,7 @@ describe('EmbedClient Component', () => {
           });
         }
         // Default responses for other calls
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -2953,7 +2953,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success' }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3007,7 +3007,7 @@ describe('EmbedClient Component', () => {
           });
         }
         // Default responses
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3061,7 +3061,7 @@ describe('EmbedClient Component', () => {
           return Promise.reject(new Error('Network error'));
         }
         // Default responses
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3129,7 +3129,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3175,7 +3175,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3222,7 +3222,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3278,7 +3278,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3334,7 +3334,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3390,7 +3390,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3446,7 +3446,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3509,7 +3509,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3569,7 +3569,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3622,7 +3622,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3678,7 +3678,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3729,7 +3729,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3783,7 +3783,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3831,7 +3831,7 @@ describe('EmbedClient Component', () => {
         if (url.includes('/sessions') && !url.includes('/messages')) {
           return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'Server error' }) });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { name: 'Test' } }) });
         }
         if (url.includes('/widget-config/')) {
@@ -3879,7 +3879,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -3956,7 +3956,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4025,7 +4025,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4096,7 +4096,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'error' }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4159,7 +4159,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4214,7 +4214,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ error: 'Session expired' }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4274,7 +4274,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ error: 'Internal server error' }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4337,7 +4337,7 @@ describe('EmbedClient Component', () => {
           abortError.name = 'AbortError';
           return Promise.reject(abortError);
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4416,7 +4416,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4488,7 +4488,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4551,7 +4551,7 @@ describe('EmbedClient Component', () => {
         if (url.includes('/messages') && options?.method === 'POST') {
           return Promise.reject(new Error('Network failure'));
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4614,7 +4614,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ error: 'Session expired' }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4683,7 +4683,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4755,7 +4755,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4816,7 +4816,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4888,7 +4888,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -4945,7 +4945,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -5019,7 +5019,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -5076,7 +5076,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -5146,7 +5146,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -5196,7 +5196,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -5592,7 +5592,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } })
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { name: 'Test' } }) });
         }
         if (url.includes('/widget-config/')) {
@@ -5648,7 +5648,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } })
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { name: 'Test' } }) });
         }
         if (url.includes('/widget-config/')) {
@@ -5692,7 +5692,7 @@ describe('EmbedClient Component', () => {
       // Override mockFetch to return a string edge_offset, covering the
       // `if (typeof raw === 'string')` branch in getNormalizedEdgeOffset
       mockFetch = jest.fn((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -5729,7 +5729,7 @@ describe('EmbedClient Component', () => {
     test('renders correctly when widget config returns a non-numeric string edge_offset', async () => {
       // Covers the `if (Number.isFinite(parsed))` false branch → falls through to return 20
       mockFetch = jest.fn((url: string) => {
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
@@ -5793,7 +5793,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { messages: [] } }),
           });
         }
-        if (url.includes('/assistants/')) {
+        if (url.includes('/agents/')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { name: 'Test' } }),

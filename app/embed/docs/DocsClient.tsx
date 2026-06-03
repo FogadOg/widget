@@ -292,7 +292,7 @@ export default function DocsClient({ clientId, assistantId, configId, locale: in
       const visitorId = helpersGetVisitorId(clientId);
 
             const requestBody: Record<string, unknown> = {
-        assistant_id: assistantId,
+        agent_id: assistantId,
         visitor_id: visitorId,
         locale: activeLocale,
         ...(variantInfo?.variant_id ? { metadata: { variant_id: variantInfo.variant_id, variant_name: variantInfo.variant_name } } : {}),

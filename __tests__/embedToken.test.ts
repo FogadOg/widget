@@ -51,7 +51,7 @@ describe('embed token verification', () => {
   });
 
   test('rejects agent mismatch when claim is present', () => {
-    const token = createToken({ exp: nowSeconds + 600, assistant_id: 'assistant-a' }, secret);
+    const token = createToken({ exp: nowSeconds + 600, agent_id: 'agent-a' }, secret);
     const claims = verifyEmbedToken(token, secret, {
       assistantId: 'assistant-b',
       nowSeconds,
