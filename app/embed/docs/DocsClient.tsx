@@ -732,7 +732,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                               <MessageBranchContent>
                                 {versions.map((version) => (
                                   <Message
-                                    from={message.from}
+                                    from={message.from === 'agent' ? 'assistant' : message.from}
                                     key={`${message.key}-${version.id}`}
                                   >
                                     <div>
@@ -783,7 +783,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                                 ))}
                               </MessageBranchContent>
                               {versions.length > 1 && (
-                                <MessageBranchSelector from={message.from}>
+                                <MessageBranchSelector from={message.from === 'agent' ? 'assistant' : message.from}>
                                   <MessageBranchPrevious />
                                   <MessageBranchPage />
                                   <MessageBranchNext />
