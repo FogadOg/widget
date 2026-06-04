@@ -135,6 +135,12 @@ const nextConfig = {
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          // The bootstrap stub injects this versioned loader with
+          // crossorigin="anonymous", which makes it a CORS request — CORP is
+          // not enough, the response also needs Access-Control-Allow-Origin.
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, OPTIONS' },
+          { key: 'Timing-Allow-Origin', value: '*' },
         ],
       },
       {
@@ -142,6 +148,9 @@ const nextConfig = {
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, OPTIONS' },
+          { key: 'Timing-Allow-Origin', value: '*' },
         ],
       },
       // Unversioned aliases: short TTL so the stable-channel pointer can be
@@ -152,6 +161,9 @@ const nextConfig = {
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=300' },
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, OPTIONS' },
+          { key: 'Timing-Allow-Origin', value: '*' },
         ],
       },
       {
@@ -159,6 +171,9 @@ const nextConfig = {
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=300' },
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, OPTIONS' },
+          { key: 'Timing-Allow-Origin', value: '*' },
         ],
       },
       {
