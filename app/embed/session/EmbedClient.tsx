@@ -2326,8 +2326,11 @@ export default function EmbedClient({
         }]);
       }
 
-      // Check if agent requested a human handoff
-      if (messageData?.assistant_message?.metadata?.handoff === true && !hasEscalated) {
+      // Check if agent requested a human handoff. Only offer it when the org's
+      // plan includes support tickets — otherwise creating the ticket would 403.
+      // A missing flag (older config) defaults to enabled for backward compat.
+      const supportTicketsEnabled = widgetConfig?.support_tickets_enabled !== false;
+      if (messageData?.assistant_message?.metadata?.handoff === true && !hasEscalated && supportTicketsEnabled) {
         setLastUserMessage(message);
         setHasEscalated(true);
         handoffConversationIdRef.current = messageData.conversation_id ?? null;

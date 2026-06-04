@@ -638,9 +638,11 @@ export default function EmbedShell({
                   </button>
                 </div>
               </form>
+              {!widgetConfig?.hide_branding && (
               <div className="p-2 text-center text-xs text-gray-500">
                 {poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">{COMPANY_NAME}</a>
               </div>
+              )}
             </div>
           </div>
           )}
@@ -935,9 +937,11 @@ export default function EmbedShell({
                     </button>
                   </div>
                 </form>
+                {!widgetConfig?.hide_branding && (
                 <div className="p-2 text-center text-xs text-gray-500">
                   {poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">{COMPANY_NAME}</a>
                 </div>
+                )}
               </div>
             </div>
           )}

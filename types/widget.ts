@@ -110,6 +110,11 @@ export type WidgetConfig = {
   // Analytics
   /** Google Analytics measurement ID (e.g. "G-XXXXXXXXXX") — sent to host page via postMessage */
   ga_measurement_id?: string | null;
+  // Plan-derived flags (resolved server-side from the org's plan in the public config)
+  /** When true, hide the "Powered by" badge (remove_branding plan feature). */
+  hide_branding?: boolean;
+  /** When false, the org's plan doesn't include support tickets — the human-handoff flow is disabled. */
+  support_tickets_enabled?: boolean;
 };
 
 /**
