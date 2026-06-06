@@ -98,6 +98,8 @@ jest.mock('../components/EmbedShell', () => {
 
   return function MockEmbedShell(props: any) {
 
+    (global as any).__lastEmbedShellProps = props;
+
     return (
 
       <div data-testid="embed-shell">
@@ -1014,7 +1016,7 @@ describe('EmbedClient Component', () => {
 
             ok: true,
 
-            json: async () => ({ status: 'success', data: {} }),
+            json: async () => ({ status: 'success', data: { support_tickets_enabled: true } }),
 
           });
 
@@ -1152,7 +1154,7 @@ describe('EmbedClient Component', () => {
 
             ok: true,
 
-            json: async () => ({ status: 'success', data: {} }),
+            json: async () => ({ status: 'success', data: { support_tickets_enabled: true } }),
 
           });
 
@@ -6278,6 +6280,210 @@ describe('EmbedClient Component', () => {
 
     });
 
+    test('renders English-only greeting content when backend strips other locales by plan', async () => {
+
+      const useWidgetTranslation = require('../hooks/useWidgetTranslation').useWidgetTranslation;
+
+      useWidgetTranslation.mockReturnValue({
+
+        translations: {},
+
+        locale: 'fr',
+
+      });
+
+      mockFetch.mockImplementation((url: string) => {
+
+        if (url.includes('/widget-config/')) {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({
+
+              status: 'success',
+
+              data: {
+
+                greeting_message: {
+
+                  flows: [{
+
+                    trigger: 'flow-action',
+
+                    responses: [{
+
+                      text: { en: 'English only greeting' },
+
+                      buttons: [{ label: { en: 'Only button' }, action: 'noop' }]
+
+                    }]
+
+                  }]
+
+                },
+
+                default_language: 'de'
+
+              }
+
+            }),
+
+          });
+
+        }
+
+        if (url.includes('/agents/')) {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({ status: 'success', data: { name: 'Test' } }),
+
+          });
+
+        }
+
+        if (url.includes('/sessions')) {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({ status: 'success', data: { session_id: 'sess-1' } }),
+
+          });
+
+        }
+
+        return Promise.resolve({
+
+          ok: true,
+
+          json: async () => ({ status: 'success', data: {} }),
+
+        });
+
+      });
+
+      render(<EmbedClient {...defaultProps} locale="fr" startOpen={true} />);
+
+      await waitFor(() => {
+
+        expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
+
+      });
+
+      fireEvent.click(screen.getByTestId('followup-handler-btn'));
+
+      await waitFor(() => {
+
+        expect(screen.getByTestId('flow-responses')).toBeInTheDocument();
+
+      });
+
+      expect(screen.getByText('English only greeting')).toBeInTheDocument();
+
+      expect(screen.getByText('Only button')).toBeInTheDocument();
+
+    });
+
+  });
+
+  describe('Plan-enforced widget config', () => {
+
+    test('does not emit GA init when backend strips ga_measurement_id', async () => {
+
+      const postMessageSpy = jest.fn();
+
+      Object.defineProperty(window, 'parent', {
+
+        value: { postMessage: postMessageSpy },
+
+        writable: true,
+
+      });
+
+      mockFetch.mockImplementation((url: string) => {
+
+        if (url.includes('/widget-config/')) {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({
+
+              status: 'success',
+
+              data: {
+
+                greeting_message: { flows: [] },
+
+                default_language: 'en'
+
+              }
+
+            }),
+
+          });
+
+        }
+
+        if (url.includes('/agents/')) {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({ status: 'success', data: { name: 'Test' } }),
+
+          });
+
+        }
+
+        if (url.includes('/sessions')) {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({ status: 'success', data: { session_id: 'sess-1' } }),
+
+          });
+
+        }
+
+        return Promise.resolve({
+
+          ok: true,
+
+          json: async () => ({ status: 'success', data: {} }),
+
+        });
+
+      });
+
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
+
+      await waitFor(() => {
+
+        expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
+
+      });
+
+      const gaInitCalls = postMessageSpy.mock.calls.filter(
+
+        ([payload]: [Record<string, unknown>]) => payload?.type === 'WIDGET_GA_INIT'
+
+      );
+
+      expect(gaInitCalls).toHaveLength(0);
+
+    });
+
   });
 
   describe('processWidgetFlow', () => {
@@ -10307,6 +10513,130 @@ describe('EmbedClient Component', () => {
         expect(screen.getByText('Talk to our team')).toBeInTheDocument();
 
       }, { timeout: 3000 });
+
+    });
+
+    test('does not render handoff modal when support tickets are not enabled by plan', async () => {
+
+      mockFetch.mockImplementation((url: string, options?: any) => {
+
+        if (url.includes('/messages') && options?.method === 'POST') {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({
+
+              status: 'success',
+
+              data: {
+
+                session_id: 'sess-handoff-disabled',
+
+                conversation_id: 'conv-handoff-disabled',
+
+                user_message: { id: 'um-2', content: 'help', sender: 'user', created_at: new Date().toISOString() },
+
+                assistant_message: {
+
+                  id: 'am-2',
+
+                  content: 'Let me connect you.',
+
+                  sender: 'assistant',
+
+                  created_at: new Date().toISOString(),
+
+                  metadata: { handoff: true },
+
+                },
+
+              },
+
+            }),
+
+          });
+
+        }
+
+        if (url.includes('/messages')) {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({ status: 'success', data: { messages: [] } }),
+
+          });
+
+        }
+
+        if (url.includes('/agents/')) {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({ status: 'success', data: { name: 'Test' } }),
+
+          });
+
+        }
+
+        if (url.includes('/widget-config/')) {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({ status: 'success', data: { support_tickets_enabled: false } }),
+
+          });
+
+        }
+
+        if (url.includes('/sessions')) {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({ status: 'success', data: { session_id: 'sess-handoff-disabled', expires_at: '2099-01-01T00:00:00Z' } }),
+
+          });
+
+        }
+
+        return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: {} }) });
+
+      });
+
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
+
+      await waitFor(() => {
+
+        expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
+
+      });
+
+      await act(async () => {
+
+        await new Promise((r) => setTimeout(r, 200));
+
+      });
+
+      fireEvent.change(screen.getByTestId('input'), { target: { value: 'talk to a human' } });
+
+      fireEvent.click(screen.getByTestId('submit-btn'));
+
+      await waitFor(() => {
+
+        expect(screen.getByText('Let me connect you.')).toBeInTheDocument();
+
+      }, { timeout: 3000 });
+
+      expect(screen.queryByText('Talk to our team')).not.toBeInTheDocument();
 
     });
 

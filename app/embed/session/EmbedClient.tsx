@@ -472,6 +472,7 @@ export default function EmbedClient({
   const [lastUserMessage, setLastUserMessage] = useState('');
   const [hasEscalated, setHasEscalated] = useState(false);
   const handoffConversationIdRef = useRef<string | null>(null);
+  const supportTicketsEnabled = widgetConfig?.support_tickets_enabled === true;
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
   const postedShowUnreadBadge = useRef<boolean | undefined>(undefined);
@@ -2327,9 +2328,8 @@ export default function EmbedClient({
       }
 
       // Check if agent requested a human handoff. Only offer it when the org's
-      // plan includes support tickets — otherwise creating the ticket would 403.
-      // A missing flag (older config) defaults to enabled for backward compat.
-      const supportTicketsEnabled = widgetConfig?.support_tickets_enabled !== false;
+      // plan explicitly includes support tickets — otherwise creating the ticket
+      // would 403. Missing/unknown flags are treated as disabled.
       if (messageData?.assistant_message?.metadata?.handoff === true && !hasEscalated && supportTicketsEnabled) {
         setLastUserMessage(message);
         setHasEscalated(true);
@@ -2861,7 +2861,7 @@ export default function EmbedClient({
         onShowUnsureModal={() => setShowUnsureModal(true)}
         hideCloseButton={isPersistent}
         isPersistent={isPersistent}
-        handoffModal={showHandoffModal ? (
+        handoffModal={showHandoffModal && supportTicketsEnabled ? (
           <HandoffModal
             lastUserMessage={lastUserMessage}
             translations={{
@@ -2874,6 +2874,7 @@ export default function EmbedClient({
               handoffError: String(t.handoffError),
             }}
             onSubmit={async (name, email, handoffMessage) => {
+              if (!supportTicketsEnabled) return;
               await createSupportTicket(authToken ?? '', {
                 name,
                 email,
