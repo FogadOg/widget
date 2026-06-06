@@ -11,14 +11,14 @@ import { GET } from '../app/api/health/route';
 
 describe('GET /api/health', () => {
   it('returns status ok', async () => {
-    const response = GET();
+    const response = await GET();
     const body = await response.json();
     expect(body.status).toBe('ok');
   });
 
   it('returns a timestamp', async () => {
     const before = Date.now();
-    const response = GET();
+    const response = await GET();
     const after = Date.now();
     const body = await response.json();
     const ts = new Date(body.timestamp).getTime();
@@ -26,8 +26,15 @@ describe('GET /api/health', () => {
     expect(ts).toBeLessThanOrEqual(after);
   });
 
-  it('returns 200', () => {
-    const response = GET();
+  it('returns 200', async () => {
+    const response = await GET();
     expect(response.status).toBe(200);
+  });
+
+  it('returns app and upstream checks', async () => {
+    const response = await GET();
+    const body = await response.json();
+    expect(body.checks.app.status).toBe('ok');
+    expect(['ok', 'error', 'skipped']).toContain(body.checks.upstreamApi.status);
   });
 });
