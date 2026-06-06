@@ -49,9 +49,16 @@ self.addEventListener('fetch', (evt) => {
         if (cached && !cached.redirected) return cached;
         return fetch(evt.request).then((response) => {
           if (response && response.ok && !response.redirected) {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(evt.request, response.clone());
-            });
+            // Never let cache failures break the network response path.
+            try {
+              const cacheable = response.clone();
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(evt.request, cacheable).catch(() => {});
+              }).catch(() => {});
+            } catch {
+              // Some responses cannot be cloned once consumed by the browser;
+              // skip cache write in that case and still return the response.
+            }
           }
           return response;
         });

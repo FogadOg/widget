@@ -348,5 +348,43 @@ describe('Docs page server component', () => {
 
   });
 
+  test('resolves JWT-like clientId to token sub when enforcement is disabled', async () => {
+
+    process.env.WIDGET_EMBED_ENFORCE_JWT = 'false';
+
+    const token = createToken({ sub: 'docs-resolved-client', exp: 4_102_444_800, agentId: 'a1' }, 'arbitrary-secret');
+
+    const element = await (DocsPage as any)({
+
+      searchParams: Promise.resolve({
+
+        clientId: token,
+
+        agentId: 'a1',
+
+        configId: 'cfg',
+
+        locale: 'en',
+
+      }),
+
+    });
+
+    const html = renderToStaticMarkup(element);
+
+    const m = html.match(/data-props="([^"]*)"/);
+
+    expect(m).toBeTruthy();
+
+    const raw = m ? m[1] : '';
+
+    const decoded = raw.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+
+    const props = JSON.parse(decoded);
+
+    expect(props.clientId).toBe('docs-resolved-client');
+
+  });
+
 });
 

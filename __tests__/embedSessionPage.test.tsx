@@ -634,5 +634,83 @@ describe('Embed session page', () => {
 
   });
 
+  test('resolves JWT-like clientId to token sub when enforcement is disabled', async () => {
+
+    process.env.WIDGET_EMBED_ENFORCE_JWT = 'false';
+
+    const embedClientPath = require.resolve('../app/embed/session/EmbedClient');
+
+    const errorBoundaryPath = require.resolve('../components/ErrorBoundary');
+
+    const i18nPath = require.resolve('../lib/i18n');
+
+    jest.doMock(embedClientPath, () => ({
+
+      __esModule: true,
+
+      default: (props: any) => React.createElement('div', { 'data-embed-client': '1', 'data-props': JSON.stringify(props) })
+
+    }));
+
+    jest.doMock(errorBoundaryPath, () => ({
+
+      __esModule: true,
+
+      default: ({ children }: any) => React.createElement('div', { 'data-error-boundary': '1' }, children)
+
+    }));
+
+    jest.doMock(i18nPath, () => ({
+
+      getLocaleDirection: () => 'ltr',
+
+      getTranslations: () => ({
+
+        widgetConfigError: 'Widget Configuration Error',
+
+        widgetConfigMissingParams: 'Missing required parameters. Please ensure your widget script includes:',
+
+        widgetConfigOurDocumentation: 'our documentation',
+
+      }),
+
+    }));
+
+    const token = createToken({ sub: 'resolved-client-id', exp: 4_102_444_800, agentId: 'agent-1' }, 'arbitrary-secret');
+
+    const page = require('../app/embed/session/page').default;
+
+    const element = await page({
+
+      searchParams: Promise.resolve({
+
+        clientId: token,
+
+        agentId: 'agent-1',
+
+        configId: 'config-1',
+
+        locale: 'en',
+
+      }),
+
+    });
+
+    const html = renderToStaticMarkup(element as any);
+
+    const m = html.match(/data-props="([^"]*)"/);
+
+    expect(m).toBeTruthy();
+
+    const raw = m ? m[1] : '';
+
+    const decoded = raw.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+
+    const props = JSON.parse(decoded);
+
+    expect(props.clientId).toBe('resolved-client-id');
+
+  });
+
 });
 
