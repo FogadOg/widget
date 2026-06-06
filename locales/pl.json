@@ -72,6 +72,8 @@
   "feedbackThumbsUp": "Kciuk w górę",
   "feedbackThumbsDown": "Kciuk w dół",
   "feedbackSubmittedMessage": "Opinia wysłana",
+  "safetyFallback": "Odpowiedź bezpieczeństwa",
+  "safetyPolicyApplied": "Zastosowano politykę bezpieczeństwa",
   "openChat": "Otwórz czat",
   "minimizeChat": "Zminimalizuj czat",
   "copyMessage": "Kopiuj wiadomość",

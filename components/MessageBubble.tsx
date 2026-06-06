@@ -18,6 +18,10 @@ type Message = {
   from: 'user' | 'agent';
   timestamp?: number;
   sources?: Source[];
+  metadata?: {
+    safety_policy_action?: string;
+    safety_decision_reason?: string;
+  };
   pending?: boolean;
 };
 
@@ -55,6 +59,8 @@ function linkifyText(text: string): string {
 export default function MessageBubble({ message, widgetConfig, agentName, showMessageAvatars = true, textColor = '#111', fontStyles = {}, messageBubbleRadius = 8, onSubmitMessageFeedback, messageFeedbackSubmitted = new Set(), showTimestamps = true }: Props) {
   const { locale } = useWidgetTranslation();
   const hasFeedback = messageFeedbackSubmitted.has(message.id);
+  const safetyAction = message.metadata?.safety_policy_action || '';
+  const showSafetyFallback = message.from === 'agent' && /fallback|forbidden_topic_block|escalation_handoff/.test(safetyAction);
 
   const [copied, setCopied] = useState(false);
   const [ReactMarkdown, setReactMarkdown] = useState<React.ComponentType<any> | null>(() => {
@@ -300,6 +306,22 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.737 3h4.017c.163 0 .326.02.485.06L17 4m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m6-10h-2" /></svg>
               </button>
             </div>
+          )}
+          {showSafetyFallback && (
+            <span
+              className="mt-1 text-[11px]"
+              style={{
+                marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0',
+                color: '#92400e',
+                backgroundColor: '#fef3c7',
+                border: '1px solid #fde68a',
+                borderRadius: '999px',
+                padding: '2px 8px',
+              }}
+              title={message.metadata?.safety_decision_reason || translate(locale, 'safetyPolicyApplied')}
+            >
+              {translate(locale, 'safetyFallback')}
+            </span>
           )}
           {hasFeedback && (
             <span className="mt-1 text-xs opacity-50" style={{ color: textColor, marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>{translate(locale, 'feedbackSubmitted')}</span>

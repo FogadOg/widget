@@ -149,6 +149,7 @@ export async function loadSessionMessages(
         sender: 'user' | 'assistant';
         created_at?: string;
         sources?: unknown[];
+        metadata?: Message['metadata'];
       };
       const loaded: Message[] = (data.data.messages as unknown[]).map((msg: unknown) => {
         const m = msg as ApiMessage;
@@ -158,6 +159,7 @@ export async function loadSessionMessages(
           from: m.sender === 'assistant' ? 'agent' : m.sender,
           timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
           sources: (m.sources as SourceData[]) || [],
+          metadata: m.metadata,
         };
       });
       if (setMessagesFn) setMessagesFn(loaded);

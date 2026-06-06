@@ -18,6 +18,16 @@ export type Message = {
   timestamp?: number;
   hasFeedback?: boolean;
   sources?: SourceData[];
+  metadata?: {
+    assistant_unsure?: boolean;
+    handoff?: boolean;
+    safety_policy_action?: string;
+    safety_decision_reason?: string;
+    citation_validation_passed?: boolean;
+    citation_validation_reason?: string;
+    confidence_score?: number;
+    confidence_threshold?: number;
+  };
   pending?: boolean;
 };
 
@@ -162,6 +172,13 @@ export type MessageData = {
     sources?: SourceData[];
     metadata?: {
       assistant_unsure?: boolean;
+      handoff?: boolean;
+      safety_policy_action?: string;
+      safety_decision_reason?: string;
+      citation_validation_passed?: boolean;
+      citation_validation_reason?: string;
+      confidence_score?: number;
+      confidence_threshold?: number;
     };
   };
 };

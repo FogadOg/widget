@@ -65,6 +65,8 @@
   "feedbackThumbsUp": "Pulgar arriba",
   "feedbackThumbsDown": "Pulgar abajo",
   "feedbackSubmittedMessage": "Gracias por tus comentarios",
+  "safetyFallback": "Respuesta de seguridad",
+  "safetyPolicyApplied": "Se aplicó la política de seguridad",
   "openChat": "Abrir chat",
   "minimizeChat": "Minimizar chat",
   "copyMessage": "Copiar mensaje",

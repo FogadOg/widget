@@ -107,6 +107,21 @@ describe('MessageBubble', () => {
     expect(container.querySelector('ul.space-y-1')).not.toBeInTheDocument();
   });
 
+  test('renders localized safety fallback chip when policy action indicates fallback', () => {
+    const message = {
+      id: 'a-safety',
+      text: 'safe response',
+      from: 'agent' as const,
+      metadata: {
+        safety_policy_action: 'low_confidence_fallback',
+      },
+    };
+
+    render(<MessageBubble message={message as any} showTimestamps={false} />);
+
+    expect(screen.getByText('safetyFallback')).toBeInTheDocument();
+  });
+
   test('renders pending user message with offline status when attempts is 0', () => {
     const message = {
       id: 'u-offline',

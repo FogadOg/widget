@@ -65,6 +65,8 @@
   "feedbackThumbsUp": "Tummen upp",
   "feedbackThumbsDown": "Tummen ner",
   "feedbackSubmittedMessage": "Tack för din feedback",
+  "safetyFallback": "Säkerhetssvar",
+  "safetyPolicyApplied": "Säkerhetspolicy tillämpad",
   "openChat": "Öppna chatt",
   "minimizeChat": "Minimera chatt",
   "copyMessage": "Kopiera meddelande",

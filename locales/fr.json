@@ -65,6 +65,8 @@
   "feedbackThumbsUp": "Pouce levé",
   "feedbackThumbsDown": "Pouce baissé",
   "feedbackSubmittedMessage": "Merci pour votre retour",
+  "safetyFallback": "Réponse de sécurité",
+  "safetyPolicyApplied": "La politique de sécurité a été appliquée",
   "openChat": "Ouvrir le chat",
   "minimizeChat": "Réduire le chat",
   "copyMessage": "Copier le message",

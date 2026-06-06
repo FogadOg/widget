@@ -65,6 +65,8 @@
   "feedbackThumbsUp": "Tommel opp",
   "feedbackThumbsDown": "Tommel ned",
   "feedbackSubmittedMessage": "Takk for tilbakemeldingen",
+  "safetyFallback": "Sikkerhetsfallback",
+  "safetyPolicyApplied": "Sikkerhetspolicy brukt",
   "openChat": "Åpne chat",
   "minimizeChat": "Minimer chat",
   "copyMessage": "Kopier melding",

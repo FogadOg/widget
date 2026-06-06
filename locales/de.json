@@ -64,6 +64,8 @@
   "feedbackThumbsUp": "Daumen hoch",
   "feedbackThumbsDown": "Daumen runter",
   "feedbackSubmittedMessage": "Danke für dein Feedback",
+  "safetyFallback": "Sicherheits-Fallback",
+  "safetyPolicyApplied": "Sicherheitsrichtlinie angewendet",
   "openChat": "Chat öffnen",
   "minimizeChat": "Chat minimieren",
   "copyMessage": "Nachricht kopieren",

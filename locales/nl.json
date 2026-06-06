@@ -65,6 +65,8 @@
   "feedbackThumbsUp": "Duim omhoog",
   "feedbackThumbsDown": "Duim omlaag",
   "feedbackSubmittedMessage": "Bedankt voor je feedback",
+  "safetyFallback": "Veiligheidsfallback",
+  "safetyPolicyApplied": "Veiligheidsbeleid toegepast",
   "openChat": "Chat openen",
   "minimizeChat": "Chat minimaliseren",
   "copyMessage": "Bericht kopiëren",

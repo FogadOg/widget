@@ -1365,6 +1365,7 @@ export default function EmbedClient({
               sender: string;
               created_at?: string;
               sources?: unknown[];
+              metadata?: Message['metadata'];
             };
             return {
               id: m.id,
@@ -1372,6 +1373,7 @@ export default function EmbedClient({
               from: (m.sender === 'assistant' ? 'agent' : m.sender) as 'user' | 'agent',
               timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
               sources: (m.sources as SourceData[]) || [],
+              metadata: m.metadata,
             };
           });
 
@@ -2362,6 +2364,7 @@ export default function EmbedClient({
             from: 'agent' as const,
             timestamp: serverAgent.created_at ? new Date(serverAgent.created_at).getTime() : Date.now(),
             sources: (serverAgent.sources as SourceData[]) || [],
+            metadata: serverAgent.metadata,
           });
         }
         return next.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));

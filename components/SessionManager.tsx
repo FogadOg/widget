@@ -83,6 +83,7 @@ export default function SessionManager({
             from: msg.sender === 'assistant' ? 'agent' : msg.sender as 'user' | 'agent',
             timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
             sources: msg.sources || [],
+            metadata: msg.metadata,
           }));
 
         onMessagesLoaded(loadedMessages);

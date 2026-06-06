@@ -72,6 +72,8 @@
   "feedbackThumbsUp": "Thumbs up",
   "feedbackThumbsDown": "Thumbs down",
   "feedbackSubmittedMessage": "Feedback submitted",
+  "safetyFallback": "Safety fallback",
+  "safetyPolicyApplied": "Safety policy applied",
   "openChat": "Open Chat",
   "minimizeChat": "Minimize Chat",
   "copyMessage": "Copy message",
