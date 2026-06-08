@@ -137,5 +137,6 @@
   "docsTitleFallback": "Documentation Agent",
   "docsSubtitleFallback": "How can we help you today?",
   "docsInitialGreeting": "Hello! I'm your documentation agent. How can I help you today?",
-  "agentTyping": "Customer Support AI Agent is typing"
+  "agentTyping": "Customer Support AI Agent is typing",
+  "jumpToLatest": "Jump to latest"
 }

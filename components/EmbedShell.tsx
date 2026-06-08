@@ -29,7 +29,7 @@ type Props = {
   streamingMessage?: string | null;
   input: string;
   setInput: (v: string) => void;
-  handleSubmit: (e: React.FormEvent) => void;
+  handleSubmit: (e: React.FormEvent, messageText?: string, skipAddingUserMessage?: boolean) => void;
   error?: string | null;
   title?: string;
   agentName?: string;
@@ -67,6 +67,158 @@ function ChatSkeleton() {
         </div>
       ))}
     </div>
+  );
+}
+
+// Suggested-prompt chips shown before the first user message.
+function Suggestions({
+  suggestions,
+  onSelect,
+  primaryColor,
+  buttonBorderRadius,
+  fontStyles,
+  indent,
+}: {
+  suggestions: string[];
+  onSelect: (text: string) => void;
+  primaryColor: string;
+  buttonBorderRadius: number;
+  fontStyles: React.CSSProperties;
+  indent: string;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2" style={{ marginInlineStart: indent }}>
+      {suggestions.map((text, i) => (
+        <button
+          key={`${i}-${text}`}
+          type="button"
+          onClick={() => onSelect(text)}
+          className="px-3 py-1.5 text-sm border bg-white/80 hover:bg-white transition-colors"
+          style={{
+            borderRadius: `${buttonBorderRadius}px`,
+            borderColor: primaryColor,
+            color: primaryColor,
+            ...fontStyles,
+          }}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// "Jump to latest" pill, shown when the user has scrolled up away from the bottom.
+function JumpToLatest({
+  onClick,
+  label,
+  primaryColor,
+}: {
+  onClick: () => void;
+  label: string;
+  primaryColor: string;
+}) {
+  return (
+    <div className="sticky bottom-1 z-10 flex justify-center pointer-events-none">
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        className="pointer-events-auto flex items-center gap-1 rounded-full px-3 py-1.5 text-xs text-white shadow-lg transition-opacity hover:opacity-90 animate-fade-in"
+        style={{ backgroundColor: primaryColor }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points="6,9 12,15 18,9" />
+        </svg>
+        {label}
+      </button>
+    </div>
+  );
+}
+
+// Shared message composer: auto-growing textarea with Enter-to-send /
+// Shift+Enter for a newline, and a 16px font size to avoid iOS focus zoom.
+function Composer({
+  input,
+  setInput,
+  onSubmit,
+  isTyping,
+  primaryColor,
+  buttonBorderRadius,
+  fontStyles,
+  placeholder,
+  ariaLabel,
+  sendLabel,
+  inputRef,
+}: {
+  input: string;
+  setInput: (v: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  isTyping: boolean;
+  primaryColor: string;
+  buttonBorderRadius: number;
+  fontStyles: React.CSSProperties;
+  placeholder: string;
+  ariaLabel: string;
+  sendLabel: string;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
+}) {
+  const autoGrow = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  };
+  const canSend = !!input.trim() && !isTyping;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (canSend) onSubmit(e as unknown as React.FormEvent);
+    }
+  };
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (canSend) onSubmit(e);
+      }}
+      className="p-3 border-t"
+    >
+      <div className="flex items-end space-x-2">
+        <textarea
+          ref={inputRef}
+          rows={1}
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            autoGrow(e.target);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          aria-label={ariaLabel}
+          className="flex-1 resize-none overflow-y-auto p-2 border focus:outline-none focus:ring-2"
+          style={{
+            maxHeight: '120px',
+            borderRadius: `${buttonBorderRadius}px`,
+            borderColor: primaryColor,
+            ...fontStyles,
+            fontSize: '16px',
+          }}
+          disabled={isTyping}
+        />
+        <button
+          type="submit"
+          disabled={!canSend}
+          style={{
+            backgroundColor: primaryColor,
+            borderRadius: `${buttonBorderRadius}px`,
+            ...fontStyles,
+          }}
+          className="px-4 py-2 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {sendLabel}
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -120,7 +272,11 @@ export default function EmbedShell({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Ref for input (for focus management)
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // "Jump to latest" affordance: shown when the user has scrolled up so new
+  // messages don't yank them back to the bottom mid-read.
+  const [showJumpButton, setShowJumpButton] = useState(false);
 
   // Robust Escape-to-close and modal Escape handling
   useEffect(() => {
@@ -160,14 +316,45 @@ export default function EmbedShell({
     return el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
   };
 
-  // Auto-scroll to bottom only if user is at/near bottom
+  // Auto-scroll to bottom only if user is at/near bottom; otherwise surface the
+  // "jump to latest" pill so the user knows new content arrived.
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
     if (shouldAutoScroll()) {
       el.scrollTop = el.scrollHeight;
+      setShowJumpButton(false);
+    } else {
+      setShowJumpButton(true);
     }
   }, [messages, flowResponses, isTyping, streamingMessage]);
+
+  const handleScroll = useCallback(() => {
+    setShowJumpButton(!shouldAutoScroll());
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    setShowJumpButton(false);
+  }, []);
+
+  // Move focus into the composer when the widget opens, and after each send,
+  // so keyboard and screen-reader users aren't stranded on the host page.
+  useEffect(() => {
+    if (isCollapsed) return;
+    const id = window.setTimeout(() => inputRef.current?.focus(), 60);
+    return () => window.clearTimeout(id);
+  }, [isCollapsed]);
+
+  const handleFormSubmit = useCallback(
+    (e: React.FormEvent, messageText?: string) => {
+      handleSubmit(e, messageText);
+      // Keep focus in the composer after sending (textarea is not unmounted).
+      window.setTimeout(() => inputRef.current?.focus(), 0);
+    },
+    [handleSubmit]
+  );
 
   // Skeleton loading state for chat
   const [showSkeleton, setShowSkeleton] = useState(
@@ -257,6 +444,21 @@ export default function EmbedShell({
   const interactionButtons = (widgetConfig?.greeting_message?.buttons || []).filter(isVisibleInLocale);
   const showButtons = interactionButtons.length > 0;
 
+  // Suggested prompts (conversation starters). Config may provide a flat list
+  // or a per-locale map; fall back to English. Only shown before the visitor's
+  // first message so they have an idea of what to ask.
+  const rawSuggestions = widgetConfig?.suggestions;
+  const suggestionList: string[] = Array.isArray(rawSuggestions)
+    ? rawSuggestions
+    : rawSuggestions
+      ? rawSuggestions[locale] || rawSuggestions[locale.split('-')[0]] || rawSuggestions.en || []
+      : [];
+  const hasUserMessage = messages.some((m) => m.from === 'user');
+  const showSuggestions = suggestionList.length > 0 && !hasUserMessage && !isTyping;
+  const handleSuggestionClick = (text: string) => {
+    handleFormSubmit({ preventDefault: () => {} } as React.FormEvent, text);
+  };
+
   // Merge messages and flow responses, then sort by timestamp
   const mergedContent = [
     ...messages.map(msg => ({ type: 'message' as const, data: msg, timestamp: msg.timestamp || 0 })),
@@ -269,6 +471,10 @@ export default function EmbedShell({
   const closeChatLabel = translate(locale, 'chatControl', { context: 'close' });
   const minimizeChatLabel = translate(locale, 'chatControl', { context: 'minimize' });
   const poweredByLabel = typeof t?.poweredBy === 'string' ? t.poweredBy : '';
+  const jumpToLatestLabel = translate(locale, 'jumpToLatest');
+  const placeholderText = (getText(widgetConfig?.placeholder) || t.typeYourMessage || translate(locale, 'typeYourMessage')) as unknown as string;
+  const composerAriaLabel = (t.typeYourMessageLabel || translate(locale, 'typeYourMessageLabel')) as unknown as string;
+  const sendLabel = translate(locale, 'send');
 
   return (
     <>
@@ -286,6 +492,8 @@ export default function EmbedShell({
               type="button"
               onClick={toggleCollapsed}
               aria-label={openChatLabel}
+              aria-expanded={!isCollapsed}
+              aria-haspopup="dialog"
               style={{
                 position: 'fixed',
                 top: '50%',
@@ -431,6 +639,7 @@ export default function EmbedShell({
 
               <div
                 ref={scrollContainerRef}
+                onScroll={handleScroll}
                 className="flex-1 overflow-y-auto p-3 space-y-3"
                 role="log"
                 aria-live="polite"
@@ -468,6 +677,17 @@ export default function EmbedShell({
                           getLocalizedText={getText}
                         />
                       </div>
+                    )}
+
+                    {showSuggestions && (
+                      <Suggestions
+                        suggestions={suggestionList}
+                        onSelect={handleSuggestionClick}
+                        primaryColor={primaryColor}
+                        buttonBorderRadius={buttonBorderRadius}
+                        fontStyles={fontStyles}
+                        indent={(showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0'}
+                      />
                     )}
 
                     {mergedContent.map((item, index) => {
@@ -576,6 +796,9 @@ export default function EmbedShell({
                     ))}
                   </>
                 )}
+                {showJumpButton && (
+                  <JumpToLatest onClick={scrollToBottom} label={jumpToLatestLabel} primaryColor={primaryColor} />
+                )}
               </div>
 
               {/* Feedback Dialog Overlay for Embedded View */}
@@ -605,39 +828,19 @@ export default function EmbedShell({
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="p-3 border-t">
-                <div className="flex space-x-2">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder={(getText(widgetConfig?.placeholder) || t.typeYourMessage || translate(locale, 'typeYourMessage')) as unknown as string}
-                    aria-label={(t.typeYourMessageLabel || translate(locale, 'typeYourMessageLabel')) as unknown as string}
-                    className="flex-1 p-2 border focus:outline-none focus:ring-2"
-                    style={{
-                      borderRadius: `${buttonBorderRadius}px`,
-                      borderColor: primaryColor,
-                      ...fontStyles
-                    }}
-                    disabled={isTyping}
-                    tabIndex={0}
-                  />
-                  <button
-                    type="submit"
-                    disabled={!input.trim() || isTyping}
-                    style={{
-                      backgroundColor: primaryColor,
-                      borderRadius: `${buttonBorderRadius}px`,
-                      ...fontStyles
-                    }}
-                    className="px-4 py-2 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                    tabIndex={0}
-                  >
-                    {translate(locale, 'send')}
-                  </button>
-                </div>
-              </form>
+              <Composer
+                input={input}
+                setInput={setInput}
+                onSubmit={handleFormSubmit}
+                isTyping={isTyping}
+                primaryColor={primaryColor}
+                buttonBorderRadius={buttonBorderRadius}
+                fontStyles={fontStyles}
+                placeholder={placeholderText}
+                ariaLabel={composerAriaLabel}
+                sendLabel={sendLabel}
+                inputRef={inputRef}
+              />
               {!widgetConfig?.hide_branding && (
               <div className="p-2 text-center text-xs text-gray-500">
                 {poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">{COMPANY_NAME}</a>
@@ -654,6 +857,8 @@ export default function EmbedShell({
               type="button"
               onClick={toggleCollapsed}
               aria-label={openChatLabel}
+              aria-expanded={!isCollapsed}
+              aria-haspopup="dialog"
               style={{
                 position: 'fixed',
                 top: '50%',
@@ -780,6 +985,17 @@ export default function EmbedShell({
                     </div>
                   )}
 
+                  {showSuggestions && (
+                    <Suggestions
+                      suggestions={suggestionList}
+                      onSelect={handleSuggestionClick}
+                      primaryColor={primaryColor}
+                      buttonBorderRadius={buttonBorderRadius}
+                      fontStyles={fontStyles}
+                      indent={widgetConfig?.bot_avatar ? '40px' : '0'}
+                    />
+                  )}
+
                   {mergedContent.map((item, index) => {
                     if (item.type === 'message') {
                       const message = item.data;
@@ -878,6 +1094,9 @@ export default function EmbedShell({
                       </div>
                     </div>
                   ))}
+                  {showJumpButton && (
+                    <JumpToLatest onClick={scrollToBottom} label={jumpToLatestLabel} primaryColor={primaryColor} />
+                  )}
                 </div>
 
                 {/* Feedback Dialog Overlay */}
@@ -907,36 +1126,19 @@ export default function EmbedShell({
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="p-3 border-t">
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder={(getText(widgetConfig?.placeholder) || t.typeYourMessage || translate(locale, 'typeYourMessage')) as unknown as string}
-                      aria-label={(t.typeYourMessageLabel || translate(locale, 'typeYourMessageLabel')) as unknown as string}
-                      className="flex-1 p-2 border focus:outline-none focus:ring-2"
-                      style={{
-                        borderRadius: `${buttonBorderRadius}px`,
-                        borderColor: primaryColor,
-                        ...fontStyles
-                      }}
-                      disabled={isTyping}
-                    />
-                    <button
-                      type="submit"
-                      disabled={!input.trim() || isTyping}
-                      style={{
-                        backgroundColor: primaryColor,
-                        borderRadius: `${buttonBorderRadius}px`,
-                        ...fontStyles
-                      }}
-                      className="px-4 py-2 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {translate(locale, 'send')}
-                    </button>
-                  </div>
-                </form>
+                <Composer
+                  input={input}
+                  setInput={setInput}
+                  onSubmit={handleFormSubmit}
+                  isTyping={isTyping}
+                  primaryColor={primaryColor}
+                  buttonBorderRadius={buttonBorderRadius}
+                  fontStyles={fontStyles}
+                  placeholder={placeholderText}
+                  ariaLabel={composerAriaLabel}
+                  sendLabel={sendLabel}
+                  inputRef={inputRef}
+                />
                 {!widgetConfig?.hide_branding && (
                 <div className="p-2 text-center text-xs text-gray-500">
                   {poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">{COMPANY_NAME}</a>
