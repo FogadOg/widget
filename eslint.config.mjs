@@ -50,6 +50,7 @@ const eslintConfig = defineConfig([
     "coverage/lcov-report/**",
     // Generated public assets that are linted during build but not authored here
     "public/docs-widget.js",
+    "public/docs-widget-*.js",
     "public/widget.js",
     "public/sw.js",
     // Source for the generated embed scripts — plain browser JS, not TypeScript

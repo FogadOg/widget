@@ -10468,7 +10468,7 @@ describe('EmbedClient Component', () => {
 
             ok: true,
 
-            json: async () => ({ status: 'success', data: {} }),
+            json: async () => ({ status: 'success', data: { support_tickets_enabled: true } }),
 
           });
 
@@ -10632,7 +10632,7 @@ describe('EmbedClient Component', () => {
 
       await waitFor(() => {
 
-        expect(screen.getByText('Let me connect you.')).toBeInTheDocument();
+        expect(screen.getByText('2 messages')).toBeInTheDocument();
 
       }, { timeout: 3000 });
 

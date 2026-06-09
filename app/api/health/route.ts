@@ -50,12 +50,9 @@ async function checkUpstreamApi(url: string): Promise<{ ok: boolean; detail?: st
 
 export async function GET() {
   const upstreamUrl = resolveUpstreamHealthUrl();
-  const upstreamCheck =
-    upstreamUrl === null
-      ? { status: 'skipped' as const, detail: 'NEXT_PUBLIC_API_BASE_URL or HEALTHCHECK_UPSTREAM_URL not configured' }
-      : await checkUpstreamApi(upstreamUrl);
+  const upstreamCheck = upstreamUrl === null ? null : await checkUpstreamApi(upstreamUrl);
 
-  const degraded = upstreamUrl !== null && !upstreamCheck.ok;
+  const degraded = upstreamCheck !== null && !upstreamCheck.ok;
 
   return NextResponse.json(
     {
@@ -65,14 +62,14 @@ export async function GET() {
       checks: {
         app: { status: 'ok' },
         upstreamApi:
-          upstreamUrl === null
+          upstreamCheck === null
             ? {
                 status: 'skipped',
-                detail: upstreamCheck.detail,
+                detail: 'NEXT_PUBLIC_API_BASE_URL or HEALTHCHECK_UPSTREAM_URL not configured',
               }
             : {
                 status: upstreamCheck.ok ? 'ok' : 'error',
-                url: upstreamUrl,
+                url: upstreamUrl!,
                 ...(upstreamCheck.detail ? { detail: upstreamCheck.detail } : {}),
               },
       },

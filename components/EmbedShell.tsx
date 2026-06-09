@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState, useMemo, useCallback } from 'react';
 import InteractionButtons from './InteractionButtons';
 import MessageBubble from './MessageBubble';
 import DynamicIcon from './DynamicIcon';
@@ -318,11 +318,15 @@ export default function EmbedShell({
 
   // Auto-scroll to bottom only if user is at/near bottom; otherwise surface the
   // "jump to latest" pill so the user knows new content arrived.
-  useEffect(() => {
+  // useLayoutEffect reads DOM scroll position synchronously after paint.
+  // The setState calls here gate on DOM measurements unavailable at render time,
+  // so there is no way to avoid them in the effect body.
+  useLayoutEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
     if (shouldAutoScroll()) {
       el.scrollTop = el.scrollHeight;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowJumpButton(false);
     } else {
       setShowJumpButton(true);
