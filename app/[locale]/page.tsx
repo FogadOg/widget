@@ -34,7 +34,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
           </Link>
           <Link
             className="flex h-12 items-center justify-center rounded-lg border border-solid border-zinc-300 px-6 font-medium text-zinc-900 transition-colors hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
-            href="/preview"
+            href={`/${locale}/docs/getting-started`}
           >
             {t.viewDemo}
           </Link>

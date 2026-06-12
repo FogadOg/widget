@@ -1,7 +1,7 @@
 'use client';
 import { useWidgetAuth } from '../../../hooks/useWidgetAuth';
 import { useWidgetTranslation } from '../../../hooks/useWidgetTranslation';
-import { getLocaleDirection } from '../../../lib/i18n';
+import { getLocaleDirection, t as tFn } from '../../../lib/i18n';
 import type {
   Message,
   WidgetConfig,
@@ -297,8 +297,9 @@ export default function EmbedClient({
     return () => window.removeEventListener('message', handler);
   }, [initialConsentRequired]);
 
-  // Allow the host page to toggle debug mode via postMessage.
+  // Allow the host page to toggle debug mode via postMessage (non-production only).
   useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
     const handler = (event: MessageEvent) => {
       const t = event?.data?.type;
       if (t === 'WIDGET_DEBUG_ENABLE') enableDebug();
@@ -325,6 +326,9 @@ export default function EmbedClient({
   const [isTyping, setIsTyping] = useState(false);
   // Streaming state: holds the partial agent message being streamed
   const [streamingMessage, setStreamingMessage] = useState<string | null>(null);
+  const streamAbortControllerRef = useRef<AbortController | null>(null);
+  const streamAccumulatedRef = useRef<string>('');
+  const streamUserAbortedRef = useRef(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
 
   // emit widget_load telemetry when widget mounts, but only once per
@@ -775,134 +779,10 @@ export default function EmbedClient({
     };
   }, [getAuthToken, initialAgentId, initialClientId, initialConfigId, initialParentOrigin, sessionStorageKey]);
 
-  // --- Streaming sendMessage handler ---
-  // Supports SSE with: AbortController timeout, up to 2 retries with backoff,
-  // SSE reconnect via Last-Event-ID, and a graceful agent fallback on failure.
-  const sendMessageWithStreaming = async (userMessage: string) => {
-    if (!sessionId || !authToken) return;
-    setIsTyping(true);
-    setStreamingMessage('');
-
-    let lastEventId: string | null = null;
-    let accumulatedText = '';
-
-    const attemptStream = async (): Promise<void> => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
-
-      try {
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-          'Accept': 'text/event-stream, application/json',
-          ...embedHeaders,
-        };
-        // Resume SSE stream from where it left off on reconnect
-        if (lastEventId) {
-          headers['Last-Event-ID'] = lastEventId;
-        }
-
-        const response = await fetch(API.sessionMessages(sessionId ?? undefined), {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ content: userMessage, stream: true }),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          if (response.status === 429) {
-            const retryAfterSec = response.headers.get('Retry-After');
-            const waitSec = retryAfterSec ? parseInt(retryAfterSec, 10) : 0;
-            const msg = waitSec > 0
-              ? `Too many messages. Please wait ${waitSec} second${waitSec !== 1 ? 's' : ''}.`
-              : 'Too many messages. Please wait a moment.';
-            const err = createNetworkError(msg, WidgetErrorCode.NETWORK_RATE_LIMITED);
-            err.retryable = false;
-            err.userMessage = msg;
-            throw err;
-          }
-          throw createNetworkError(`Server error: ${response.status}`, WidgetErrorCode.NETWORK_SERVER_ERROR);
-        }
-
-        if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
-          const reader = response.body.getReader();
-          let done = false;
-          while (!done) {
-            const { value, done: doneReading } = await reader.read();
-            done = doneReading;
-            if (value) {
-              const chunk = textDecoder ? textDecoder.decode(value) : new TextDecoder().decode(value);
-              chunk.split(/\n/).forEach(line => {
-                if (line.startsWith('id:')) {
-                  // Track SSE event ID so we can resume on reconnect
-                  lastEventId = line.replace(/^id:/, '').trim();
-                } else if (line.startsWith('data:')) {
-                  const data = line.replace(/^data:/, '').trim();
-                  if (data === '[DONE]') return;
-                  accumulatedText += data;
-                  setStreamingMessage(accumulatedText);
-                }
-              });
-            }
-          }
-          setMessages(prev => [...prev, {
-            id: `agent-${Date.now()}`,
-            text: accumulatedText,
-            from: 'agent',
-            timestamp: Date.now(),
-          }]);
-          setStreamingMessage(null);
-        } else {
-          // Non-streaming fallback: parse as JSON
-          const data = await response.json();
-          if (data.status === 'success' && data.data?.message) {
-            setMessages(prev => [...prev, {
-              id: `agent-${Date.now()}`,
-              text: data.data.message,
-              from: 'agent',
-              timestamp: Date.now(),
-            }]);
-          }
-          setStreamingMessage(null);
-        }
-      } catch (err: unknown) {
-        clearTimeout(timeoutId);
-        const e = err as { name?: string };
-        if (e.name === 'AbortError') {
-          throw createNetworkError('Response timed out', WidgetErrorCode.NETWORK_TIMEOUT);
-        }
-        throw err;
-      }
-    };
-
-    try {
-      await retryWithBackoff(attemptStream, {
-        maxRetries: 2,
-        initialDelay: 1500,
-        maxDelay: 8000,
-        onRetry: (attempt, err) => {
-          logError(err as Error, { action: 'sendMessageWithStreaming', attempt });
-        },
-      });
-    } catch (err) {
-      setStreamingMessage(null);
-      // Show a graceful agent message rather than a raw error string
-      const fallbackText = String(t.failedToSendMessage) || "I'm having trouble responding right now. Please try again in a moment.";
-      setMessages(prev => [...prev, {
-        id: `agent-err-${Date.now()}`,
-        text: fallbackText,
-        from: 'agent' as const,
-        timestamp: Date.now(),
-      }]);
-      logError(err as Error, { action: 'sendMessageWithStreaming' });
-    } finally {
-      setIsTyping(false);
-    }
-  };
-
-  // --- END streaming sendMessage handler ---
+  const handleStopStreaming = useCallback(() => {
+    streamUserAbortedRef.current = true;
+    streamAbortControllerRef.current?.abort();
+  }, []);
 
   // Listen for queued-message events dispatched by PromptInput when offline
   useEffect(() => {
@@ -1434,12 +1314,10 @@ export default function EmbedClient({
       if (!isInitial) {
         throw err;
       }
-      try {
-        console.error('EmbedClient.loadSessionMessages error', err, { sessionId, isInitial });
-      } catch {}
+      logError(err instanceof Error ? (err.message || 'Unknown error') : String(err), { sessionId, isInitial, source: 'loadSessionMessages' });
       logError(err instanceof Error ? (err.message || 'Unknown error') : String(err), { sessionId, isInitial, action: 'loadSessionMessages' });
       if (isInitial) {
-        setError('Failed to load conversation history');
+        setError(String(t.loadHistoryError));
       }
     } finally {
       setIsTyping(false);
@@ -1844,7 +1722,7 @@ export default function EmbedClient({
             throw createAuthError('Invalid agent response', WidgetErrorCode.AUTH_TOKEN_FAILED);
           }
         } else {
-          const errorMessage = `Agent not found or access denied (${response.status})`;
+          const errorMessage = String(t.agentUnavailable);
           throw createAuthError(errorMessage, WidgetErrorCode.AUTH_TOKEN_FAILED);
         }
     } catch (err) {
@@ -1871,7 +1749,7 @@ export default function EmbedClient({
       });
 
       if (!response.ok) {
-        const errorMessage = `Widget config not found or access denied (${response.status})`;
+        const errorMessage = String(t.configUnavailable);
         throw createAuthError(errorMessage, WidgetErrorCode.INVALID_CONFIG);
       }
 
@@ -2146,6 +2024,8 @@ export default function EmbedClient({
       const messageData = await retryWithBackoff(
         async () => {
           const controller = new AbortController();
+          streamAbortControllerRef.current = controller;
+          streamAccumulatedRef.current = '';
           const timeoutId = setTimeout(() => controller.abort(), 30000);
 
           try {
@@ -2216,8 +2096,8 @@ export default function EmbedClient({
                 const retryAfterSec = response.headers.get('Retry-After');
                 const waitSec = retryAfterSec ? parseInt(retryAfterSec, 10) : 0;
                 const rateLimitMsg = waitSec > 0
-                  ? `Too many messages. Please wait ${waitSec} second${waitSec !== 1 ? 's' : ''} before trying again.`
-                  : 'Too many messages. Please wait a moment before trying again.';
+                  ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
+                  : String(t.rateLimitGeneric);
                 const rateLimitErr = createNetworkError(rateLimitMsg, WidgetErrorCode.NETWORK_RATE_LIMITED);
                 rateLimitErr.retryable = false;
                 rateLimitErr.userMessage = rateLimitMsg;
@@ -2264,6 +2144,7 @@ export default function EmbedClient({
                   try { evt = JSON.parse(payloadStr); } catch { continue; }
                   if (evt.type === 'token') {
                     accumulated += evt.text;
+                    streamAccumulatedRef.current = accumulated;
                     setStreamingMessage(accumulated);
                   } else if (evt.type === 'done') {
                     finalData = evt.data;
@@ -2274,7 +2155,7 @@ export default function EmbedClient({
               }
               setStreamingMessage(null);
               if (!finalData) {
-                throw createNetworkError('Stream ended unexpectedly', WidgetErrorCode.NETWORK_SERVER_ERROR);
+                throw createNetworkError(String(t.streamInterrupted), WidgetErrorCode.NETWORK_SERVER_ERROR);
               }
               trackEvent('message_sent', initialAgentId, { message }, initialClientId, authToken ?? undefined, embedHeaders).catch(() => {});
               return finalData;
@@ -2285,10 +2166,10 @@ export default function EmbedClient({
             try {
               data = await response.json();
             } catch {
-              throw new Error('Invalid response from message server');
+              throw new Error(String(t.invalidServerResponse));
             }
             if (data.status !== 'success') {
-              throw new Error(parseApiError(data, 'Failed to send message'));
+              throw new Error(parseApiError(data, String(t.failedToSendMessage)));
             }
 
             // record telemetry for message sent
@@ -2301,7 +2182,7 @@ export default function EmbedClient({
             const fe = fetchError as unknown as { name?: string };
             if (fe.name === 'AbortError') {
               throw createNetworkError(
-                'Message send timed out',
+                String(t.messageSendTimeout),
                 WidgetErrorCode.NETWORK_TIMEOUT
               );
             }
@@ -2381,6 +2262,20 @@ export default function EmbedClient({
         helpers.storeSession(baseSessionKey, refreshedSessionId, refreshedExpiresAt);
       }
     } catch (err: unknown) {
+      if (streamUserAbortedRef.current) {
+        streamUserAbortedRef.current = false;
+        const partial = streamAccumulatedRef.current;
+        setStreamingMessage(null);
+        if (partial) {
+          setMessages(prev => [...prev, {
+            id: `agent-stop-${Date.now()}`,
+            text: partial,
+            from: 'agent',
+            timestamp: Date.now(),
+          }]);
+        }
+        return;
+      }
       const e = err as unknown as { userMessage?: string; message?: string; code?: string | WidgetErrorCode; name?: string };
       const errMsg = (e.message || '').toLowerCase();
       const isNetworkError = !navigator.onLine ||
@@ -2434,6 +2329,7 @@ export default function EmbedClient({
       // Clear any partial streamed text (e.g. if the stream errored mid-flight)
       // so a stale half-message never lingers in the UI.
       setStreamingMessage(null);
+      streamAbortControllerRef.current = null;
     }
   }, [
     input,
@@ -2815,6 +2711,7 @@ export default function EmbedClient({
         toggleCollapsed={toggleCollapsed}
         messages={messages}
         isTyping={isTyping}
+        onStopStreaming={handleStopStreaming}
         streamingMessage={streamingMessage}
         input={input}
         setInput={setInput}
@@ -2875,7 +2772,12 @@ export default function EmbedClient({
               handoffSubmitButton: String(t.handoffSubmitButton),
               handoffSubmittingButton: String(t.handoffSubmittingButton),
               handoffError: String(t.handoffError),
+              dismiss: String(t.dismiss),
             }}
+            primaryColor={widgetConfig?.primary_color || '#111827'}
+            backgroundColor={widgetConfig?.background_color || '#ffffff'}
+            textColor={widgetConfig?.text_color || '#1f2937'}
+            borderRadius={widgetConfig?.border_radius || 8}
             onSubmit={async (name, email, handoffMessage) => {
               if (!supportTicketsEnabled) return;
               await createSupportTicket(authToken ?? '', {
@@ -2944,11 +2846,11 @@ function UnsureMessagesModal({ messages, onClose, primaryColor, backgroundColor,
             {messages.map((msg, index) => (
               <div key={index} className="border rounded p-3" style={{ borderColor: primaryColor + "20" }}>
                 <div className="mb-2">
-                  <span className="text-xs text-gray-500">User:</span>
+                  <span className="text-xs text-gray-500">{t.uncertaintyLogUser as string}</span>
                   <p className="text-sm mt-1">{msg.userMessage}</p>
                 </div>
                 <div>
-                  <span className="text-xs text-gray-500">Agent:</span>
+                  <span className="text-xs text-gray-500">{t.uncertaintyLogAgent as string}</span>
                   <p className="text-sm mt-1 italic">{msg.agentMessage}</p>
                 </div>
                 <div className="text-xs text-gray-400 mt-2">
@@ -2966,7 +2868,7 @@ function UnsureMessagesModal({ messages, onClose, primaryColor, backgroundColor,
           className="w-full py-2 px-4 rounded text-white hover:opacity-90"
           style={{ backgroundColor: primaryColor, borderRadius: `${borderRadius}px` }}
         >
-          Close
+          {t.close as string}
         </button>
       </div>
     </div>

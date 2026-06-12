@@ -56,8 +56,6 @@ import FeedbackDialog from "../components/FeedbackDialog";
 import InteractionButtons from "../components/InteractionButtons";
 import MessageBubble from "../components/MessageBubble";
 import MessageInput from "../components/MessageInput";
-import SessionManager from "../components/SessionManager";
-import WidgetConfigManager from "../components/WidgetConfigManager";
 
 import Conversation from "../components/ai-elements/conversation";
 import Message from "../components/ai-elements/message";
@@ -94,8 +92,6 @@ describe("widget-app basic smoke render", () => {
         />
         <MessageBubble message={{ id: 'm1', text: 'hello', from: 'agent', timestamp: Date.now() }} />
         <MessageInput />
-        <SessionManager />
-        <WidgetConfigManager />
       </div>
     );
 

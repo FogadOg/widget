@@ -16,7 +16,7 @@ import type {
 } from '../types/widget';
 import { useClickedButtons, ButtonLike } from '../hooks/useClickedButtons';
 import { useWidgetStyles } from '../hooks/useWidgetStyles';
-import { hexToRgb } from '../lib/colors';
+import { hexToRgb, getReadableTextColor, getRelativeLuminance } from '../lib/colors';
 import { COMPANY_NAME } from '../lib/constants';
 
 type Props = {
@@ -30,6 +30,7 @@ type Props = {
   input: string;
   setInput: (v: string) => void;
   handleSubmit: (e: React.FormEvent, messageText?: string, skipAddingUserMessage?: boolean) => void;
+  onStopStreaming?: () => void;
   error?: string | null;
   title?: string;
   agentName?: string;
@@ -142,6 +143,7 @@ function Composer({
   input,
   setInput,
   onSubmit,
+  onStop,
   isTyping,
   primaryColor,
   buttonBorderRadius,
@@ -154,6 +156,7 @@ function Composer({
   input: string;
   setInput: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
+  onStop?: () => void;
   isTyping: boolean;
   primaryColor: string;
   buttonBorderRadius: number;
@@ -168,6 +171,7 @@ function Composer({
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   };
+  // Allow typing even while the agent is responding; only block submission.
   const canSend = !!input.trim() && !isTyping;
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -203,20 +207,42 @@ function Composer({
             ...fontStyles,
             fontSize: '16px',
           }}
-          disabled={isTyping}
         />
-        <button
-          type="submit"
-          disabled={!canSend}
-          style={{
-            backgroundColor: primaryColor,
-            borderRadius: `${buttonBorderRadius}px`,
-            ...fontStyles,
-          }}
-          className="px-4 py-2 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {sendLabel}
-        </button>
+        {isTyping && onStop ? (
+          <button
+            type="button"
+            onClick={onStop}
+            style={{
+              backgroundColor: primaryColor,
+              borderRadius: `${buttonBorderRadius}px`,
+              ...fontStyles,
+            }}
+            className="px-4 py-2 text-white hover:opacity-90"
+            aria-label="Stop"
+          >
+            <span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: 'white', borderRadius: '2px' }} aria-hidden="true" />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={!canSend}
+            style={{
+              backgroundColor: primaryColor,
+              borderRadius: `${buttonBorderRadius}px`,
+              ...fontStyles,
+            }}
+            className="px-4 py-2 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-busy={isTyping}
+          >
+            {isTyping ? (
+              <span className="flex items-center gap-1" aria-hidden="true">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" style={{ animationDelay: '0.15s' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" style={{ animationDelay: '0.3s' }} />
+              </span>
+            ) : sendLabel}
+          </button>
+        )}
       </div>
     </form>
   );
@@ -228,6 +254,7 @@ export default function EmbedShell({
   toggleCollapsed,
   messages,
   isTyping,
+  onStopStreaming,
   streamingMessage = null,
   input,
   setInput,
@@ -413,6 +440,16 @@ export default function EmbedShell({
 
   const { width: btnWidth, height: btnHeight, icon: btnIcon } = getButtonSizeClasses;
 
+  // Readable text color for the header which uses primaryColor as background.
+  // Prevents white-on-light unreadable headers when a customer picks a light brand color.
+  const headerTextColor = getReadableTextColor(primaryColor);
+
+  // Agent bubble background derived from the widget's background color so it
+  // stays legible in both light and dark themes.
+  const agentBubbleBg = getRelativeLuminance(backgroundColor) > 0.4
+    ? 'rgba(0,0,0,0.07)'
+    : 'rgba(255,255,255,0.1)';
+
 
 
 
@@ -572,14 +609,14 @@ export default function EmbedShell({
                   ...fontStyles
                 }}
               >
-              <div className="text-white p-3 flex items-center justify-between" style={{ backgroundColor: primaryColor }}>
+              <div className="p-3 flex items-center justify-between" style={{ backgroundColor: primaryColor, color: headerTextColor }}>
                 <div className="flex items-center gap-3">
                   {widgetConfig?.logo && (
                     <img src={widgetConfig.logo} alt={(getText(widgetConfig?.title) || title || 'logo') + ' logo'} className="w-10 h-10 object-contain rounded" />
                   )}
                   <div className="flex flex-col">
                     <h3 className="font-semibold">{getText(widgetConfig?.title) || title || translate(locale, 'chat')}</h3>
-                    <p className="text-sm text-gray-300">{getText(widgetConfig?.subtitle)}</p>
+                    <p className="text-sm opacity-80">{getText(widgetConfig?.subtitle)}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -628,7 +665,7 @@ export default function EmbedShell({
                   <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6zm-1 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                   </svg>
-                  <span><strong className="mr-1">You&apos;re offline.</strong>Messages will be sent when your connection is restored.</span>
+                  <span><strong className="mr-1">{translate(locale, 'offlineBannerTitle')}</strong>{translate(locale, 'offlineBannerDesc')}</span>
                 </div>
               )}
 
@@ -662,7 +699,7 @@ export default function EmbedShell({
                           {showMessageAvatars && widgetConfig?.bot_avatar && (
                             <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
                           )}
-                          <div className="max-w-[80%] p-2 rounded-lg bg-gray-200" style={{ color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
+                          <div className="max-w-[80%] p-2 rounded-lg" style={{ backgroundColor: agentBubbleBg, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
                             {greetingText}
                           </div>
                         </div>
@@ -705,6 +742,7 @@ export default function EmbedShell({
                               agentName={agentName}
                               showMessageAvatars={showMessageAvatars}
                               textColor={textColor}
+                              agentBubbleBg={agentBubbleBg}
                               fontStyles={fontStyles}
                               messageBubbleRadius={messageBubbleRadius}
                               onSubmitMessageFeedback={onSubmitMessageFeedback}
@@ -724,6 +762,7 @@ export default function EmbedShell({
                                 agentName={agentName}
                                 showMessageAvatars={showMessageAvatars}
                                 textColor={textColor}
+                                agentBubbleBg={agentBubbleBg}
                                 fontStyles={fontStyles}
                                 messageBubbleRadius={messageBubbleRadius}
                                 showTimestamps={false}
@@ -774,6 +813,7 @@ export default function EmbedShell({
                           agentName={agentName}
                           showMessageAvatars={showMessageAvatars}
                           textColor={textColor}
+                          agentBubbleBg={agentBubbleBg}
                           fontStyles={fontStyles}
                           messageBubbleRadius={messageBubbleRadius}
                           showTimestamps={false}
@@ -785,7 +825,7 @@ export default function EmbedShell({
                           {showMessageAvatars && widgetConfig?.bot_avatar && (
                             <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
                           )}
-                          <div className="p-3" style={{ backgroundColor: '#e5e7eb', color: textColor, borderRadius: `${messageBubbleRadius}px` }}>
+                          <div className="p-3" style={{ backgroundColor: agentBubbleBg, color: textColor, borderRadius: `${messageBubbleRadius}px` }}>
                             <span style={{ position: 'absolute', left: '-9999px' }}>{translate(locale, 'agentTyping')}</span>
                             {/* Animated dots for standard motion; static ellipsis for reduced-motion users */}
                             <div className="flex space-x-1 motion-reduce:hidden" aria-hidden="true">
@@ -836,6 +876,7 @@ export default function EmbedShell({
                 input={input}
                 setInput={setInput}
                 onSubmit={handleFormSubmit}
+                onStop={onStopStreaming}
                 isTyping={isTyping}
                 primaryColor={primaryColor}
                 buttonBorderRadius={buttonBorderRadius}
@@ -904,14 +945,14 @@ export default function EmbedShell({
               }}
             >
               <div className="h-full flex flex-col overflow-hidden" style={{ backgroundColor: `rgba(${hexToRgb(backgroundColor)}, ${backgroundOpacity})`, ...fontStyles }}>
-                <div className="text-white p-3 flex items-center justify-between" style={{ backgroundColor: primaryColor, borderRadius: `${borderRadius}px` }}>
+                <div className="p-3 flex items-center justify-between" style={{ backgroundColor: primaryColor, color: headerTextColor, borderRadius: `${borderRadius}px` }}>
                   <div className="flex items-center gap-3">
                     {widgetConfig?.logo && (
                       <img src={widgetConfig.logo} alt={(getText(widgetConfig?.title) || title || 'logo') + ' logo'} className="w-10 h-10 object-contain rounded" />
                     )}
                     <div className="flex flex-col">
                       <h3 className="font-semibold">{getText(widgetConfig?.title) || title || translate(locale, 'chat')}</h3>
-                      <p className="text-sm text-gray-300">{getText(widgetConfig?.subtitle)}</p>
+                      <p className="text-sm opacity-80">{getText(widgetConfig?.subtitle)}</p>
                     </div>
                   </div>
                   <button
@@ -939,7 +980,7 @@ export default function EmbedShell({
                     <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6zm-1 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                     </svg>
-                    <span><strong className="mr-1">You&apos;re offline.</strong>Messages will be sent when your connection is restored.</span>
+                    <span><strong className="mr-1">{translate(locale, 'offlineBannerTitle')}</strong>{translate(locale, 'offlineBannerDesc')}</span>
                   </div>
                 )}
 
@@ -968,7 +1009,7 @@ export default function EmbedShell({
                         {widgetConfig?.bot_avatar && (
                           <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
                         )}
-                        <div className="max-w-[80%] p-2 bg-gray-200" style={{ color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
+                        <div className="max-w-[80%] p-2" style={{ backgroundColor: agentBubbleBg, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
                           {greetingText}
                         </div>
                       </div>
@@ -1134,6 +1175,7 @@ export default function EmbedShell({
                   input={input}
                   setInput={setInput}
                   onSubmit={handleFormSubmit}
+                  onStop={onStopStreaming}
                   isTyping={isTyping}
                   primaryColor={primaryColor}
                   buttonBorderRadius={buttonBorderRadius}
@@ -1153,7 +1195,6 @@ export default function EmbedShell({
           )}
         </>
       )}
-      {unsureModal}
     </>
   );
 }

@@ -14,7 +14,7 @@ function buildSnippets(src: string, integrityAttr: string): Record<TabKey, strin
 
   return {
 
-    'HTML / JS': `<script\n  src="${src}"${integrityLine}\n  data-client-id="YOUR_CLIENT_ID"\n  data-agent-id="YOUR_AGENT_ID"\n  data-config-id="YOUR_CONFIG_ID"\n  data-locale="en"\n  async>\n<\/script>\n<script>\n  window.ChatWidgetConfig = {\n    primaryColor: '#6366f1',\n    position: 'bottom-right',\n    greetingMessage: 'Hi! How can I help you today?',\n  };\n<\/script>`,
+    'HTML / JS': `<script\n  src="${src}"${integrityLine}\n  data-client-id="YOUR_CLIENT_ID"\n  data-agent-id="YOUR_AGENT_ID"\n  data-config-id="YOUR_CONFIG_ID"\n  data-locale="en"\n  async>\n<\/script>`,
 
     'Next.js': `// app/layout.tsx (or pages/_app.tsx)
 

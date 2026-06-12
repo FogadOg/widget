@@ -138,5 +138,22 @@
   "sessionExpiredBody": "We've started a fresh session so you can keep chatting.",
   "sessionExpiredDismiss": "Dismiss",
   "agentTyping": "Customer Support AI Agent is typing",
-  "jumpToLatest": "Gå til nyeste"
+  "jumpToLatest": "Gå til nyeste",
+  "serverError": "Noe gikk galt. Vennligst prøv igjen.",
+  "agentUnavailable": "Kan ikke få tilgang til denne agenten. Vennligst sjekk konfigurasjonen din.",
+  "configUnavailable": "Kan ikke laste inn widgetkonfigurasjon. Vennligst sjekk innstillingene dine.",
+  "streamInterrupted": "Responsen ble avbrutt. Vennligst prøv igjen.",
+  "messageSendTimeout": "Meldingen har timed ut. Vennligst prøv igjen.",
+  "loadHistoryError": "Kunne ikke laste samtalehistorikk.",
+  "invalidMessage": "Vennligst skriv inn en gyldig melding.",
+  "rateLimitWait": {
+    "one": "For mange meldinger. Vennligst vent {count} sekunder før du prøver igjen.",
+    "other": "For mange meldinger. Vennligst vent {count} sekunder før du prøver igjen."
+  },
+  "rateLimitGeneric": "For mange meldinger. Vennligst vent et øyeblikk før du prøver igjen.",
+  "invalidServerResponse": "Mottok et ugyldig svar. Vennligst prøv igjen.",
+  "dismiss": "Avvis",
+  "uncertaintyLogUser": "Vennligst gi meg teksten du ønsker å oversette.",
+  "uncertaintyLogAgent": "Agent:",
+  "close": "Lukk"
 }

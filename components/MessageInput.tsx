@@ -58,7 +58,7 @@ export default function MessageInput({
     // Validate and sanitize input
     const validation = validateMessageInput(message);
     if (!validation.isValid) {
-      onError(validation.error || 'Invalid message');
+      onError(validation.error || translate(locale, 'invalidMessage'));
       return;
     }
 
@@ -66,7 +66,7 @@ export default function MessageInput({
 
     // Check if we have a session and auth token
     if (!sessionId || !authToken) {
-      const errorMsg = 'Session or authentication error';
+      const errorMsg = translate(locale, 'sessionOrAuthError');
       onError(errorMsg);
       logError('Missing session or auth token', {
         hasSession: !!sessionId,
@@ -79,7 +79,7 @@ export default function MessageInput({
     const rl = checkAndConsume(sessionId);
     if (!rl.allowed) {
       const secs = Math.ceil((rl.retryAfterMs || 0) / 1000) || 1;
-      onError(`You're sending messages too quickly. Try again in ${secs} second${secs > 1 ? 's' : ''}.`);
+      onError(translate(locale, 'rateLimitWait', { count: secs }));
       return;
     }
 
@@ -123,7 +123,7 @@ export default function MessageInput({
             try {
               data = await response.json();
             } catch (parseError) {
-              throw new Error('Invalid response from message server');
+              throw new Error(translate(locale, 'invalidServerResponse'));
             }
 
             if (!response.ok) {
@@ -179,7 +179,7 @@ export default function MessageInput({
       // Reload all messages from server to get the agent's response
       await loadLatestMessages();
     } catch (err: any) {
-      const errorMessage = err.userMessage || err.message || 'Failed to send message';
+      const errorMessage = err.userMessage || err.message || translate(locale, 'failedToSendMessage');
       onError(errorMessage);
       logError(err, { message: sanitizedMessage, sessionId, action: 'handleSubmit' });
 

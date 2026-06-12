@@ -8,6 +8,7 @@ interface HandoffTranslations {
   handoffSubmitButton: string;
   handoffSubmittingButton: string;
   handoffError: string;
+  dismiss: string;
 }
 
 interface HandoffModalProps {
@@ -15,9 +16,13 @@ interface HandoffModalProps {
   translations: HandoffTranslations;
   onSubmit: (name: string, email: string, message: string) => Promise<void>;
   onDismiss: () => void;
+  primaryColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  borderRadius?: number;
 }
 
-export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDismiss }: HandoffModalProps) {
+export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDismiss, primaryColor = '#111827', backgroundColor = '#ffffff', textColor = '#1f2937', borderRadius = 12 }: HandoffModalProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState(lastUserMessage);
@@ -40,19 +45,20 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
   return (
     <div
       style={{
-        backgroundColor: '#fff',
-        borderRadius: 12,
+        backgroundColor,
+        color: textColor,
+        borderRadius,
         padding: 24,
         width: '100%',
         maxWidth: 340,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-          position: 'relative',
-        }}
-      >
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+        position: 'relative',
+      }}
+    >
         <button
           type="button"
           onClick={onDismiss}
-          aria-label="Dismiss"
+          aria-label={tr.dismiss}
           style={{
             position: 'absolute',
             top: 12,
@@ -61,13 +67,14 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
             border: 'none',
             fontSize: 18,
             cursor: 'pointer',
-            color: '#6b7280',
+            color: textColor,
+            opacity: 0.6,
           }}
         >
           ×
         </button>
 
-        <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600 }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600, color: textColor }}>
           {tr.handoffTitle}
         </h2>
 
@@ -144,16 +151,16 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
             type="submit"
             disabled={submitting}
             style={{
-              padding: '10px 0',
-              backgroundColor: '#3b82f6',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              opacity: submitting ? 0.7 : 1,
-            }}
+            padding: '10px 0',
+            backgroundColor: primaryColor,
+            color: '#ffffff',
+            border: 'none',
+            borderRadius,
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: submitting ? 'not-allowed' : 'pointer',
+            opacity: submitting ? 0.7 : 1,
+          }}
           >
             {submitting ? tr.handoffSubmittingButton : tr.handoffSubmitButton}
           </button>

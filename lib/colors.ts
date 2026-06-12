@@ -1,5 +1,28 @@
 // Utility functions for color manipulation and validation
 
+// WCAG relative luminance helpers
+const sRGBtoLinear = (c: number): number => {
+  const s = c / 255;
+  return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+};
+
+export const getRelativeLuminance = (hex: string): number => {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!m) return 0;
+  return 0.2126 * sRGBtoLinear(parseInt(m[1], 16))
+       + 0.7152 * sRGBtoLinear(parseInt(m[2], 16))
+       + 0.0722 * sRGBtoLinear(parseInt(m[3], 16));
+};
+
+// Returns '#000000' or '#ffffff', whichever achieves the higher contrast ratio
+// against the given background. Uses WCAG relative-luminance formula.
+export const getReadableTextColor = (bg: string): '#000000' | '#ffffff' => {
+  const L = getRelativeLuminance(bg);
+  const whiteContrast = 1.05 / (L + 0.05);
+  const blackContrast = (L + 0.05) / 0.05;
+  return whiteContrast >= blackContrast ? '#ffffff' : '#000000';
+};
+
 // Validates a hex color and returns the normalized value or a fallback
 export const normalizeHexColor = (color: string | undefined, fallback: string): string => {
   if (typeof color !== 'string') return fallback;

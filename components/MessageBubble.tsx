@@ -31,6 +31,7 @@ type Props = {
   agentName?: string;
   showMessageAvatars?: boolean;
   textColor?: string;
+  agentBubbleBg?: string;
   fontStyles?: Record<string, unknown>;
   messageBubbleRadius?: number;
   onSubmitMessageFeedback?: (messageId: string, feedbackType?: string) => void;
@@ -56,7 +57,7 @@ function linkifyText(text: string): string {
   return text;
 }
 
-export default function MessageBubble({ message, widgetConfig, agentName, showMessageAvatars = true, textColor = '#111', fontStyles = {}, messageBubbleRadius = 8, onSubmitMessageFeedback, messageFeedbackSubmitted = new Set(), showTimestamps = true }: Props) {
+export default function MessageBubble({ message, widgetConfig, agentName, showMessageAvatars = true, textColor = '#111', agentBubbleBg = 'rgba(0,0,0,0.07)', fontStyles = {}, messageBubbleRadius = 8, onSubmitMessageFeedback, messageFeedbackSubmitted = new Set(), showTimestamps = true }: Props) {
   const { locale } = useWidgetTranslation();
   const hasFeedback = messageFeedbackSubmitted.has(message.id);
   const safetyAction = message.metadata?.safety_policy_action || '';
@@ -200,7 +201,7 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
               {showMessageAvatars && widgetConfig?.bot_avatar && (
               <img src={widgetConfig.bot_avatar} alt={(agentName || widgetConfig?.title?.en || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
             )}
-            <div className={`max-w-[80%] p-2 group relative`} style={{ backgroundColor: '#e5e7eb', color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
+            <div className={`max-w-[80%] p-2 group relative`} style={{ backgroundColor: agentBubbleBg, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
               {/* Copy button — appears on hover */}
               <button
                 type="button"

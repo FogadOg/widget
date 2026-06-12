@@ -138,5 +138,22 @@
   "sessionExpiredBody": "We've started a fresh session so you can keep chatting.",
   "sessionExpiredDismiss": "Dismiss",
   "agentTyping": "Customer Support AI Agent is typing",
-  "jumpToLatest": "Hoppa till senaste"
+  "jumpToLatest": "Hoppa till senaste",
+  "serverError": "Något gick fel. Vänligen försök igen.",
+  "agentUnavailable": "Kan inte få åtkomst till denna agent. Vänligen kontrollera din konfiguration.",
+  "configUnavailable": "Kunde inte ladda widgetkonfiguration. Vänligen kontrollera dina inställningar.",
+  "streamInterrupted": "Svaret avbröts. Vänligen försök igen.",
+  "messageSendTimeout": "Meddelandet har tidsbegränsats. Vänligen försök igen.",
+  "loadHistoryError": "Misslyckades med att ladda konversationshistorik.",
+  "invalidMessage": "Vänligen ange ett giltigt meddelande.",
+  "rateLimitWait": {
+    "one": "För många meddelanden. Vänligen vänta {count} sekund innan du försöker igen.",
+    "other": "För många meddelanden. Vänligen vänta {count} sekunder innan du försöker igen."
+  },
+  "rateLimitGeneric": "För många meddelanden. Vänligen vänta ett ögonblick innan du försöker igen.",
+  "invalidServerResponse": "Mottog ett ogiltigt svar. Vänligen försök igen.",
+  "dismiss": "Avvisa",
+  "uncertaintyLogUser": "Användare:",
+  "uncertaintyLogAgent": "Agent:",
+  "close": "Stäng"
 }

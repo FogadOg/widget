@@ -91,7 +91,7 @@ export const SIZE_PRESETS: Record<string, { w: number; h: number }> = {
 
 // Supported locales
 export const SUPPORTED_LOCALES = [
-  'en', 'de', 'es', 'fr', 'pt', 'sv', 'nl', 'nb', 'it'
+  'en', 'de', 'es', 'fr', 'pt', 'sv', 'nl', 'nb', 'it', 'pl'
 ] as const;
 
 // Input validation

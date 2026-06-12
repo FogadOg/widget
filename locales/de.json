@@ -138,5 +138,22 @@
   "sessionExpiredBody": "We've started a fresh session so you can keep chatting.",
   "sessionExpiredDismiss": "Dismiss",
   "agentTyping": "Customer Support AI Agent is typing",
-  "jumpToLatest": "Zum Neuesten springen"
+  "jumpToLatest": "Zum Neuesten springen",
+  "serverError": "Etwas ist schiefgegangen. Bitte versuchen Sie es erneut.",
+  "agentUnavailable": "Zugriff auf diesen Agenten nicht möglich. Bitte überprüfen Sie Ihre Konfiguration.",
+  "configUnavailable": "Widget-Konfiguration kann nicht geladen werden. Bitte überprüfen Sie Ihre Einstellungen.",
+  "streamInterrupted": "Die Antwort wurde unterbrochen. Bitte versuchen Sie es erneut.",
+  "messageSendTimeout": "Nachricht ist abgelaufen. Bitte versuchen Sie es erneut.",
+  "loadHistoryError": "Fehler beim Laden des Gesprächsverlaufs.",
+  "invalidMessage": "Bitte geben Sie eine gültige Nachricht ein.",
+  "rateLimitWait": {
+    "one": "Zu viele Nachrichten. Bitte warten Sie {count} Sekunden, bevor Sie es erneut versuchen.",
+    "other": "Zu viele Nachrichten. Bitte warten Sie {count} Sekunden, bevor Sie es erneut versuchen."
+  },
+  "rateLimitGeneric": "Zu viele Nachrichten. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
+  "invalidServerResponse": "Erhalten Sie eine ungültige Antwort. Bitte versuchen Sie es erneut.",
+  "dismiss": "Ablehnen",
+  "uncertaintyLogUser": "Benutzer:",
+  "uncertaintyLogAgent": "Agent:",
+  "close": "Schließen"
 }

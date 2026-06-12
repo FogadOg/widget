@@ -47,6 +47,7 @@ export type DevPanelTab = 'events' | 'errors' | 'timings';
  *     (set via NEXT_PUBLIC_WIDGET_DEV=true in the *host* app, e.g. the agent)
  */
 export function detectDebugMode(): boolean {
+  if (process.env.NODE_ENV === 'production') return false;
   if (typeof window === 'undefined') return false;
   try {
     const params = new URLSearchParams(window.location.search);
@@ -91,6 +92,7 @@ const DEBUG_CHANGE_EVENT = 'companin:debug:change';
  *   window.CompaninWidget.enableDebug = enableDebug;
  */
 export function enableDebug(): void {
+  if (process.env.NODE_ENV === 'production') return;
   try { localStorage.setItem(DEBUG_STORAGE_KEY, '1'); } catch { /* ignore */ }
   try {
     window.dispatchEvent(
@@ -105,6 +107,7 @@ export function enableDebug(): void {
  * Clears the localStorage key and fires `'companin:debug:change'`.
  */
 export function disableDebug(): void {
+  if (process.env.NODE_ENV === 'production') return;
   try { localStorage.removeItem(DEBUG_STORAGE_KEY); } catch { /* ignore */ }
   try {
     window.dispatchEvent(

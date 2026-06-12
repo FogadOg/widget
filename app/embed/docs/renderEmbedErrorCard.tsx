@@ -1,5 +1,6 @@
 import Script from 'next/script';
 import { getLocaleDirection } from '../../../lib/i18n';
+import { logError } from '../../../lib/logger';
 
 export function renderDocsEmbedErrorCard(
   locale: string,
@@ -23,7 +24,7 @@ export function renderDocsEmbedErrorCard(
   };
   const encodedPayload = encodeURIComponent(JSON.stringify(payload));
 
-  console.error('[Companin Docs Embed Error]', {
+  logError('[Companin Docs Embed Error]', {
     errorType,
     title,
     message: consoleMessage,

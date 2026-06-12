@@ -65,7 +65,11 @@ export const getLocaleDirection = (locale?: string | null): "ltr" | "rtl" => {
   const normalized = normalizeLocale(locale);
   if (!normalized) return "ltr";
   const short = normalized.split("-")[0];
-  return RTL_LOCALES.has(short) ? "rtl" : "ltr";
+  // Only flip dir when we have a translation for this locale. Showing an RTL
+  // layout with English-fallback text is worse than leaving it LTR-English.
+  if (!RTL_LOCALES.has(short)) return "ltr";
+  if (!(short in LOCALES)) return "ltr";
+  return "rtl";
 };
 
 // Maps alternate/regional codes to the project's supported locale code

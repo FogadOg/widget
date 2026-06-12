@@ -138,5 +138,22 @@
   "sessionExpiredBody": "We've started a fresh session so you can keep chatting.",
   "sessionExpiredDismiss": "Dismiss",
   "agentTyping": "Customer Support AI Agent is typing",
-  "jumpToLatest": "Naar nieuwste"
+  "jumpToLatest": "Naar nieuwste",
+  "serverError": "Er is iets misgegaan. Probeer het alstublieft opnieuw.",
+  "agentUnavailable": "Kan deze agent niet bereiken. Controleer uw configuratie.",
+  "configUnavailable": "Kan de widgetconfiguratie niet laden. Controleer uw instellingen.",
+  "streamInterrupted": "De reactie werd onderbroken. Probeer het opnieuw.",
+  "messageSendTimeout": "Bericht is verlopen. Probeer het opnieuw.",
+  "loadHistoryError": "Kon niet laden van gespreksgeschiedenis.",
+  "invalidMessage": "Voer een geldig bericht in.",
+  "rateLimitWait": {
+    "one": "Te veel berichten. Gelieve {count} seconde te wachten voordat u het opnieuw probeert.",
+    "other": "Te veel berichten. Gelieve {count} seconden te wachten voordat u het opnieuw probeert."
+  },
+  "rateLimitGeneric": "Te veel berichten. Gelieve even te wachten voordat u het opnieuw probeert.",
+  "invalidServerResponse": "Ontvangen een ongeldige reactie. Probeer het opnieuw.",
+  "dismiss": "Afwijzen",
+  "uncertaintyLogUser": "Gebruiker:",
+  "uncertaintyLogAgent": "Agent:",
+  "close": "Sluiten"
 }

@@ -138,5 +138,22 @@
   "docsSubtitleFallback": "How can we help you today?",
   "docsInitialGreeting": "Hello! I'm your documentation agent. How can I help you today?",
   "agentTyping": "Customer Support AI Agent is typing",
-  "jumpToLatest": "Jump to latest"
+  "jumpToLatest": "Jump to latest",
+  "serverError": "Something went wrong. Please try again.",
+  "agentUnavailable": "Unable to access this agent. Please check your configuration.",
+  "configUnavailable": "Unable to load widget configuration. Please check your settings.",
+  "streamInterrupted": "Response was interrupted. Please try again.",
+  "messageSendTimeout": "Message timed out. Please try again.",
+  "loadHistoryError": "Failed to load conversation history.",
+  "invalidMessage": "Please enter a valid message.",
+  "rateLimitWait": {
+    "one": "Too many messages. Please wait {count} second before trying again.",
+    "other": "Too many messages. Please wait {count} seconds before trying again."
+  },
+  "rateLimitGeneric": "Too many messages. Please wait a moment before trying again.",
+  "invalidServerResponse": "Received an invalid response. Please try again.",
+  "dismiss": "Dismiss",
+  "uncertaintyLogUser": "User:",
+  "uncertaintyLogAgent": "Agent:",
+  "close": "Close"
 }
