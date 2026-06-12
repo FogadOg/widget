@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useRef, useEffect, useLayoutEffect, useState, useMemo, useCallback } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState, useMemo, useCallback, memo } from 'react';
 import InteractionButtons from './InteractionButtons';
 import MessageBubble from './MessageBubble';
 import DynamicIcon from './DynamicIcon';
@@ -19,6 +19,38 @@ import { useWidgetStyles } from '../hooks/useWidgetStyles';
 import { hexToRgb, getReadableTextColor, getRelativeLuminance } from '../lib/colors';
 import { COMPANY_NAME } from '../lib/constants';
 
+const FOCUSABLE = 'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+const FocusTrap = memo(function FocusTrap({ children, onEscape }: { children: React.ReactNode; onEscape?: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const savedFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    savedFocus.current = document.activeElement as HTMLElement;
+    const el = ref.current;
+    if (!el) return;
+    (el.querySelector<HTMLElement>(FOCUSABLE))?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onEscape?.(); return; }
+      if (e.key !== 'Tab') return;
+      const focusable = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus();
+      }
+    };
+    el.addEventListener('keydown', onKey);
+    return () => {
+      el.removeEventListener('keydown', onKey);
+      savedFocus.current?.focus();
+    };
+  }, [onEscape]);
+  return <div ref={ref}>{children}</div>;
+});
+
 type Props = {
   isEmbedded: boolean;
   isCollapsed: boolean;
@@ -31,6 +63,8 @@ type Props = {
   setInput: (v: string) => void;
   handleSubmit: (e: React.FormEvent, messageText?: string, skipAddingUserMessage?: boolean) => void;
   onStopStreaming?: () => void;
+  onCloseUnsureModal?: () => void;
+  onDismissHandoff?: () => void;
   error?: string | null;
   title?: string;
   agentName?: string;
@@ -275,6 +309,8 @@ export default function EmbedShell({
   handoffModal,
   unsureMessages = [],
   onShowUnsureModal,
+  onCloseUnsureModal,
+  onDismissHandoff,
   unreadCount = 0,
   hideCloseButton = false,
   isPersistent = false,
@@ -309,14 +345,14 @@ export default function EmbedShell({
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        // If a modal is open, close it first
-        if (unsureModal && typeof unsureModal === 'object' && onShowUnsureModal) {
-          onShowUnsureModal();
+        // Close the topmost open modal, then fall through to collapsing the widget
+        if (unsureModal && onCloseUnsureModal) {
+          onCloseUnsureModal();
           e.stopPropagation();
           return;
         }
-        if (handoffModal) {
-          // Handoff modal should provide a close prop (handled by parent)
+        if (handoffModal && onDismissHandoff) {
+          onDismissHandoff();
           e.stopPropagation();
           return;
         }
@@ -333,7 +369,7 @@ export default function EmbedShell({
     };
     window.addEventListener('keydown', handleGlobalKeyDown, true);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown, true);
-  }, [isCollapsed, hideCloseButton, toggleCollapsed, unsureModal, onShowUnsureModal, handoffModal, showFeedbackDialog, feedbackDialog]);
+  }, [isCollapsed, hideCloseButton, toggleCollapsed, unsureModal, onCloseUnsureModal, handoffModal, onDismissHandoff, showFeedbackDialog, feedbackDialog]);
 
   // Helper: should auto-scroll if user is at or near bottom
   const shouldAutoScroll = () => {
@@ -848,27 +884,33 @@ export default function EmbedShell({
               {/* Feedback Dialog Overlay for Embedded View */}
               {showFeedbackDialog && feedbackDialog && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
-                  <div className="max-w-md w-full">
-                    {feedbackDialog}
-                  </div>
+                  <FocusTrap>
+                    <div className="max-w-md w-full">
+                      {feedbackDialog}
+                    </div>
+                  </FocusTrap>
                 </div>
               )}
 
               {/* Unsure Messages Modal Overlay for Embedded View */}
               {unsureModal && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
-                  <div className="max-w-md w-full">
-                    {unsureModal}
-                  </div>
+                  <FocusTrap onEscape={onCloseUnsureModal}>
+                    <div className="max-w-md w-full">
+                      {unsureModal}
+                    </div>
+                  </FocusTrap>
                 </div>
               )}
 
               {/* Handoff Modal Overlay for Embedded View */}
               {handoffModal && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                  <div className="max-w-md w-full">
-                    {handoffModal}
-                  </div>
+                  <FocusTrap onEscape={onDismissHandoff}>
+                    <div className="max-w-md w-full">
+                      {handoffModal}
+                    </div>
+                  </FocusTrap>
                 </div>
               )}
 
@@ -1147,27 +1189,33 @@ export default function EmbedShell({
                 {/* Feedback Dialog Overlay */}
                 {showFeedbackDialog && feedbackDialog && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
-                    <div className="max-w-md w-full">
-                      {feedbackDialog}
-                    </div>
+                    <FocusTrap>
+                      <div className="max-w-md w-full">
+                        {feedbackDialog}
+                      </div>
+                    </FocusTrap>
                   </div>
                 )}
 
                 {/* Unsure Messages Modal Overlay */}
                 {unsureModal && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
-                    <div className="max-w-md w-full">
-                      {unsureModal}
-                    </div>
+                    <FocusTrap onEscape={onCloseUnsureModal}>
+                      <div className="max-w-md w-full">
+                        {unsureModal}
+                      </div>
+                    </FocusTrap>
                   </div>
                 )}
 
                 {/* Handoff Modal Overlay */}
                 {handoffModal && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="max-w-md w-full">
-                      {handoffModal}
-                    </div>
+                    <FocusTrap onEscape={onDismissHandoff}>
+                      <div className="max-w-md w-full">
+                        {handoffModal}
+                      </div>
+                    </FocusTrap>
                   </div>
                 )}
 

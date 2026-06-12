@@ -329,6 +329,8 @@ export default function EmbedClient({
   const streamAbortControllerRef = useRef<AbortController | null>(null);
   const streamAccumulatedRef = useRef<string>('');
   const streamUserAbortedRef = useRef(false);
+  const streamPartialDroppedRef = useRef(false);
+  const isSubmittingRef = useRef(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
 
   // emit widget_load telemetry when widget mounts, but only once per
@@ -856,6 +858,8 @@ export default function EmbedClient({
 
   // Client-mediated flush: when the page comes online or SW asks to flush,
   // read the IndexedDB queue and POST messages using sessionId+authToken.
+  const MAX_QUEUE_ATTEMPTS = 5;
+
   const flushQueuedMessages = useCallback(async () => {
     const storedSession = helpers.getStoredSession(sessionStorageKey);
     const sid = sessionIdRef.current || sessionId || storedSession?.sessionId || null;
@@ -866,6 +870,15 @@ export default function EmbedClient({
       if (!queued || queued.length === 0) return;
 
       for (const item of queued.sort((a, b) => (a.seq || 0) - (b.seq || 0))) {
+        const currentAttempts = item.attempts || 0;
+        if (currentAttempts >= MAX_QUEUE_ATTEMPTS) {
+          // Permanently failed — remove from queue, mark as failed in UI
+          try { await removeQueuedMessage(item.id); } catch {}
+          setMessages(prev => prev.map(m =>
+            m.id === item.id ? { ...m, pending: false, failed: true } : m
+          ));
+          continue;
+        }
         try {
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 30000);
@@ -883,14 +896,26 @@ export default function EmbedClient({
           clearTimeout(timeout);
 
           if (!resp.ok) {
+            const newAttempts = currentAttempts + 1;
             try { await incrementAttempt(item.id); } catch {}
+            setMessages(prev => prev.map(m => m.id === item.id ? { ...m, attempts: newAttempts } : m));
+            if (newAttempts >= MAX_QUEUE_ATTEMPTS) {
+              try { await removeQueuedMessage(item.id); } catch {}
+              setMessages(prev => prev.map(m => m.id === item.id ? { ...m, pending: false, failed: true } : m));
+            }
             break;
           }
 
           await removeQueuedMessage(item.id);
           await loadSessionMessages(sid, token);
         } catch (err) {
+          const newAttempts = currentAttempts + 1;
           try { await incrementAttempt(item.id); } catch {}
+          setMessages(prev => prev.map(m => m.id === item.id ? { ...m, attempts: newAttempts } : m));
+          if (newAttempts >= MAX_QUEUE_ATTEMPTS) {
+            try { await removeQueuedMessage(item.id); } catch {}
+            setMessages(prev => prev.map(m => m.id === item.id ? { ...m, pending: false, failed: true } : m));
+          }
           break;
         }
       }
@@ -976,6 +1001,25 @@ export default function EmbedClient({
     return () => window.removeEventListener('companin:retry-queued', onRetry as EventListener);
   }, [activeLocale, initialParentOrigin, loadSessionMessages, sessionStorageKey]);
 
+  // Multi-tab session sync: when another tab creates or refreshes the session,
+  // pick up the new sessionId so both tabs share the same conversation.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== sessionStorageKey || !e.newValue) return;
+      try {
+        const parsed = JSON.parse(e.newValue);
+        const newSid = parsed?.sessionId;
+        if (newSid && newSid !== sessionIdRef.current) {
+          sessionIdRef.current = newSid;
+          setSessionId(newSid);
+          const token = authTokenRef.current || authToken;
+          if (token) loadSessionMessages(newSid, token);
+        }
+      } catch {}
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [sessionStorageKey, authToken, loadSessionMessages]);
 
   // Proactive open trigger: delay-based and/or scroll-depth-based auto-open.
   // Reads auto_open_delay (ms) and auto_open_scroll_depth (0-100 %) from widgetConfig.
@@ -1941,6 +1985,8 @@ export default function EmbedClient({
     e.preventDefault();
     const message = messageText || input;
     if (!message.trim()) return;
+    if (isSubmittingRef.current && !skipAddingUserMessage) return;
+    isSubmittingRef.current = true;
 
     // Check if we have a session and auth token. If missing, attempt silent recovery
     // and continue sending if recovery succeeds.
@@ -2155,6 +2201,7 @@ export default function EmbedClient({
               }
               setStreamingMessage(null);
               if (!finalData) {
+                if (accumulated) streamPartialDroppedRef.current = true;
                 throw createNetworkError(String(t.streamInterrupted), WidgetErrorCode.NETWORK_SERVER_ERROR);
               }
               trackEvent('message_sent', initialAgentId, { message }, initialClientId, authToken ?? undefined, embedHeaders).catch(() => {});
@@ -2276,6 +2323,20 @@ export default function EmbedClient({
         }
         return;
       }
+      if (streamPartialDroppedRef.current) {
+        streamPartialDroppedRef.current = false;
+        const partial = streamAccumulatedRef.current;
+        setStreamingMessage(null);
+        if (partial) {
+          setMessages(prev => [...prev, {
+            id: `agent-partial-${Date.now()}`,
+            text: partial,
+            from: 'agent',
+            timestamp: Date.now(),
+          }]);
+        }
+        return;
+      }
       const e = err as unknown as { userMessage?: string; message?: string; code?: string | WidgetErrorCode; name?: string };
       const errMsg = (e.message || '').toLowerCase();
       const isNetworkError = !navigator.onLine ||
@@ -2330,6 +2391,7 @@ export default function EmbedClient({
       // so a stale half-message never lingers in the UI.
       setStreamingMessage(null);
       streamAbortControllerRef.current = null;
+      isSubmittingRef.current = false;
     }
   }, [
     input,
@@ -2759,6 +2821,8 @@ export default function EmbedClient({
         }
         unsureMessages={unsureMessages}
         onShowUnsureModal={() => setShowUnsureModal(true)}
+        onCloseUnsureModal={() => setShowUnsureModal(false)}
+        onDismissHandoff={() => setShowHandoffModal(false)}
         hideCloseButton={isPersistent}
         isPersistent={isPersistent}
         handoffModal={showHandoffModal && supportTicketsEnabled ? (
