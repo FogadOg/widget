@@ -1272,8 +1272,10 @@ export default function EmbedClient({
         const loadedMessages: Message[] = (data.data.messages as unknown[])
           .filter((msg: unknown) => {
             // ...existing code...
-            const m = msg as { sender?: string };
+            const m = msg as { sender?: string; id?: string };
             if (m.sender === 'assistant') {
+              // Greeting messages are always shown regardless of user message count
+              if (typeof m.id === 'string' && m.id.startsWith('greeting-')) return true;
               const userMessages = (data.data.messages as unknown[]).filter(
                 (m2: unknown) => (m2 as { sender?: string }).sender === 'user'
               );
@@ -1652,7 +1654,10 @@ export default function EmbedClient({
             .filter((msg: unknown) => {
               const apiMsg = msg as ApiMessage & { from?: string; text?: string };
               const sender = (apiMsg.sender || (apiMsg as any).from) as string | undefined;
+              const id = (apiMsg as any).id as string | undefined;
               if (sender === 'assistant') {
+                // Greeting messages are always shown regardless of user message count
+                if (typeof id === 'string' && id.startsWith('greeting-')) return true;
                 const userMessages = (data.data.messages as unknown[]).filter((m2: unknown) => ((m2 as any).sender || (m2 as any).from) === 'user');
                 return userMessages.length > 0;
               }
@@ -1662,7 +1667,8 @@ export default function EmbedClient({
               const apiMsg = apiMsgRaw as ApiMessage & { from?: string; text?: string };
               const id = (apiMsg as any).id || ((apiMsg as any).message_id ?? '');
               const text = (apiMsg as any).content ?? (apiMsg as any).text ?? '';
-              const from = (apiMsg as any).sender ?? (apiMsg as any).from ?? 'user';
+              const rawFrom = ((apiMsg as any).sender ?? (apiMsg as any).from ?? 'user') as string;
+              const from = rawFrom === 'assistant' ? 'agent' : rawFrom;
               const timestamp = apiMsg.created_at ? new Date(apiMsg.created_at).getTime() : ((apiMsg as any).timestamp || Date.now());
               return {
                 id,
@@ -1927,12 +1933,14 @@ export default function EmbedClient({
     if (textObj == null) return '';
     if (typeof textObj === 'string') return textObj;
 
-    // Priority: user's locale -> widget's default language -> English -> first available
+    // Priority: user's locale -> base locale -> widget's default language -> English -> first available
     const userLocale = activeLocale || 'en';
+    const baseLocale = userLocale.split('-')[0];
     const defaultLang = widgetConfig?.default_language || 'en';
 
-    // Try user's locale first
+    // Try user's locale first (e.g. 'nb-NO'), then base code (e.g. 'nb')
     if (textObj[userLocale]) return textObj[userLocale];
+    if (baseLocale !== userLocale && textObj[baseLocale]) return textObj[baseLocale];
 
     // Fall back to widget's default language
     if (textObj[defaultLang]) return textObj[defaultLang];

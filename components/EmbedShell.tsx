@@ -505,8 +505,8 @@ export default function EmbedShell({
     onButtonClickInternal(button, onFollowUpButtonClick);
   };
 
-  // Show greeting message and buttons always (not just when no user messages)
-  const hasGreetingMessage = messages.some(m => m.id.startsWith('greeting-'));
+  // Suppress the static greeting once the session has any real agent message
+  const hasGreetingMessage = messages.some(m => m.from === 'agent');
   const showGreeting = widgetConfig?.greeting_message && !hasGreetingMessage;
   const greetingText = showGreeting ? getText(widgetConfig.greeting_message.text) : '';
   // Only show interaction buttons whose `languages` whitelist includes the
@@ -516,7 +516,9 @@ export default function EmbedShell({
     if (!item) return false;
     const langs = item.languages;
     if (!langs || langs.length === 0) return true;
-    return langs.includes(locale);
+    // Match full locale ('nb-NO') or base language code ('nb')
+    const baseLocale = locale.split('-')[0];
+    return langs.includes(locale) || langs.includes(baseLocale);
   };
   const interactionButtons = (widgetConfig?.greeting_message?.buttons || []).filter(isVisibleInLocale);
   const showButtons = interactionButtons.length > 0;
@@ -729,7 +731,7 @@ export default function EmbedShell({
                   <ChatSkeleton />
                 ) : (
                   <>
-                    {showGreeting && (
+                    {showGreeting && greetingText && (
                       <div className="flex flex-col items-start w-full">
                         <div className="flex items-start gap-2">
                           {showMessageAvatars && widgetConfig?.bot_avatar && (
@@ -743,7 +745,7 @@ export default function EmbedShell({
                     )}
 
                     {showButtons && (
-                      <div className="flex flex-col gap-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>
+                      <div className="flex flex-col gap-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar && greetingText) ? '40px' : '0' }}>
                         <InteractionButtons
                           buttons={interactionButtons}
                           clickedButtons={clickedButtons}
@@ -1045,10 +1047,10 @@ export default function EmbedShell({
                   aria-label={translate(locale, 'chatMessages')}
                 >
 
-                  {showGreeting && (
+                  {showGreeting && greetingText && (
                     <div className="flex flex-col items-start w-full">
                       <div className="flex items-start gap-2">
-                        {widgetConfig?.bot_avatar && (
+                        {showMessageAvatars && widgetConfig?.bot_avatar && (
                           <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
                         )}
                         <div className="max-w-[80%] p-2" style={{ backgroundColor: agentBubbleBg, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
@@ -1059,7 +1061,7 @@ export default function EmbedShell({
                   )}
 
                   {showButtons && (
-                    <div className="flex flex-col gap-2" style={{ marginInlineStart: widgetConfig?.bot_avatar ? '40px' : '0' }}>
+                    <div className="flex flex-col gap-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar && greetingText) ? '40px' : '0' }}>
                       <InteractionButtons
                         buttons={interactionButtons}
                         clickedButtons={clickedButtons}
@@ -1079,7 +1081,7 @@ export default function EmbedShell({
                       primaryColor={primaryColor}
                       buttonBorderRadius={buttonBorderRadius}
                       fontStyles={fontStyles}
-                      indent={widgetConfig?.bot_avatar ? '40px' : '0'}
+                      indent={(showMessageAvatars && widgetConfig?.bot_avatar && greetingText) ? '40px' : '0'}
                     />
                   )}
 
@@ -1189,33 +1191,27 @@ export default function EmbedShell({
                 {/* Feedback Dialog Overlay */}
                 {showFeedbackDialog && feedbackDialog && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
-                    <FocusTrap>
-                      <div className="max-w-md w-full">
-                        {feedbackDialog}
-                      </div>
-                    </FocusTrap>
+                    <div className="max-w-md w-full">
+                      {feedbackDialog}
+                    </div>
                   </div>
                 )}
 
                 {/* Unsure Messages Modal Overlay */}
                 {unsureModal && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
-                    <FocusTrap onEscape={onCloseUnsureModal}>
-                      <div className="max-w-md w-full">
-                        {unsureModal}
-                      </div>
-                    </FocusTrap>
+                    <div className="max-w-md w-full">
+                      {unsureModal}
+                    </div>
                   </div>
                 )}
 
                 {/* Handoff Modal Overlay */}
                 {handoffModal && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <FocusTrap onEscape={onDismissHandoff}>
-                      <div className="max-w-md w-full">
-                        {handoffModal}
-                      </div>
-                    </FocusTrap>
+                    <div className="max-w-md w-full">
+                      {handoffModal}
+                    </div>
                   </div>
                 )}
 
