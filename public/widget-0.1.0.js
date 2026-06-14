@@ -49,6 +49,28 @@
     return window[REGISTRY_KEY];
   };
 
+  // Loader-wide dev/debug gate. When false (the default in production) the
+  // widget must fail INVISIBLY: a chat widget crashing on a customer's site
+  // should silently disappear, never paint a red error card over their page.
+  // Opt back in with data-dev="true" on the script tag or ?widget_debug=1 in
+  // the URL so support/QA can still see failures. Computed independently of
+  // selectAndBindScript() so it is available to the hoisted error helpers
+  // regardless of when (or whether) a script tag is bound.
+  const IS_DEV = (function () {
+    try {
+      if (new URLSearchParams(window.location.search).get('widget_debug') === '1') return true;
+    } catch (e) {}
+    try {
+      const tags = document.querySelectorAll(
+        'script[data-client-id],script[data-agent-id],#companin-widget-script,[id^="companin-widget-script"]'
+      );
+      for (let i = 0; i < tags.length; i++) {
+        if (tags[i].getAttribute && tags[i].getAttribute('data-dev') === 'true') return true;
+      }
+    } catch (e) {}
+    return false;
+  })();
+
   // Error tracking
   const errors = [];
   const logError = (message, context) => {
@@ -1011,6 +1033,14 @@
                 }
                 break;
 
+              case 'WIDGET_HMR_RELOAD':
+                // Dev-only: Next.js HMR fired inside the iframe. Reload just the
+                // iframe so the host page doesn't have to be hard-refreshed.
+                if (isDev) {
+                  try { iframe.src = iframe.src; } catch (e) {}
+                }
+                break;
+
               default:
                 break;
             }
@@ -1097,10 +1127,27 @@
     return footer;
   }
 
+  // Production fail-silent: remove any mounted widget container(s) and stray
+  // error card so the widget vanishes from the host page without a trace.
+  function hideWidgetSilently() {
+    try {
+      const nodes = document.querySelectorAll('[id^="' + WIDGET_SCRIPT_ID + '-container"], #' + WIDGET_SCRIPT_ID + '-error');
+      for (let i = 0; i < nodes.length; i++) {
+        try { nodes[i].remove(); } catch (e) {}
+      }
+    } catch (e) {}
+  }
+
   // Helper function to show error in a styled widget. Uses textContent for the
   // dynamic title/message values so callers can't introduce HTML injection if
   // they ever pass untrusted input.
   function showErrorWidget(title, message) {
+    // In production, never render the error card on a customer's page — the
+    // failure is already captured via logError(). Just remove the widget.
+    if (!IS_DEV) {
+      hideWidgetSilently();
+      return;
+    }
     try {
       const _errShadowHost = null;
       const errorContainer = document.createElement("div");
@@ -1173,6 +1220,14 @@
   // Helper to show error in existing container. Same defense as above: any
   // dynamic string goes through textContent.
   function showErrorInContainer(container, message) {
+    // In production, hide the widget instead of painting a load-failure card.
+    if (!IS_DEV) {
+      try {
+        while (container.firstChild) container.removeChild(container.firstChild);
+        container.style.display = 'none';
+      } catch (e) {}
+      return;
+    }
     try {
       while (container.firstChild) container.removeChild(container.firstChild);
 

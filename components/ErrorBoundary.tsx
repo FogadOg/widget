@@ -52,7 +52,14 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
         return this.props.fallback;
       }
 
-      // Default error UI
+      // Production: silently disappear. The widget lives on a customer's site,
+      // so a crash must never paint a red error card over their page — the
+      // error was already reported to monitoring in componentDidCatch.
+      if (process.env.NODE_ENV === 'production') {
+        return null;
+      }
+
+      // Development: show full error details
       return (
         <div style={{
           padding: '24px',

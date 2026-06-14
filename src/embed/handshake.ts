@@ -74,6 +74,48 @@ export type WidgetMessage =
   | PongMessage
   | ErrorMessage;
 
+/**
+ * Whether postMessage traffic should be logged to the console.
+ *
+ * The iframe↔host boundary is the hardest part of the widget to debug because
+ * browser DevTools don't surface postMessage traffic. We log every message in
+ * non-production builds, and in production only when the operator opts in via
+ * `?widget_debug=1` or `localStorage.widget_debug = '1'` (mirrors
+ * DevOverlay.detectDebugMode, but kept dependency-free so this module stays
+ * lightweight). Reads are wrapped in try/catch for sandboxed contexts.
+ */
+function isHandshakeDebugActive(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (process.env.NODE_ENV !== 'production') return true;
+  try {
+    if (new URLSearchParams(window.location.search).get('widget_debug') === '1') return true;
+  } catch {
+    // ignore
+  }
+  try {
+    if (localStorage.getItem('widget_debug') === '1') return true;
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
+/** Pretty-print a single postMessage in a collapsed console group. */
+function logHandshakeMessage(direction: '→' | '←', data: unknown): void {
+  if (!isHandshakeDebugActive()) return;
+  try {
+    const type = (data as { type?: unknown } | null)?.type ?? 'UNKNOWN';
+    // eslint-disable-next-line no-console
+    console.groupCollapsed(`[Widget postMessage] ${direction} ${String(type)}`);
+    // eslint-disable-next-line no-console
+    console.log(data);
+    // eslint-disable-next-line no-console
+    console.groupEnd();
+  } catch {
+    // never let logging break the handshake
+  }
+}
+
 function generateToken(): string {
   const arr = new Uint8Array(24);
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
@@ -121,6 +163,7 @@ export function createHandshake(options: { allowedOrigins: string[] }) {
   }
 
   function handleMessage(event: MessageEvent) {
+    logHandshakeMessage('←', event.data);
     if (!allowedOrigins.includes(event.origin)) {
       console.warn('[handshake] Rejected message from origin:', event.origin);
       return;
@@ -140,11 +183,13 @@ export function createHandshake(options: { allowedOrigins: string[] }) {
       handshakeToken,
       version: process.env.NEXT_PUBLIC_WIDGET_VERSION ?? '1',
     };
+    logHandshakeMessage('→', msg);
     window.parent.postMessage(msg, '*');
   }
 
   function sendResize(height: number) {
     const msg: ResizeMessage = { type: 'RESIZE', height };
+    logHandshakeMessage('→', msg);
     window.parent.postMessage(msg, '*');
   }
 
@@ -176,6 +221,7 @@ export function createHostHandshake(options: {
   function handleMessage(event: MessageEvent) {
     if (event.origin !== widgetOrigin) return;
     if (!isValidMessage(event.data)) return;
+    logHandshakeMessage('←', event.data);
     const msg = event.data as WidgetMessage;
     const handlers = listeners.get(msg.type) ?? [];
     for (const h of handlers) h(msg);
@@ -183,6 +229,7 @@ export function createHostHandshake(options: {
 
   function sendInit(handshakeToken: string, config: Record<string, unknown>) {
     const msg: InitMessage = { type: 'INIT', handshakeToken, config };
+    logHandshakeMessage('→', msg);
     iframe.contentWindow?.postMessage(msg, widgetOrigin);
   }
 

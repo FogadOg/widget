@@ -102,4 +102,26 @@ function WidgetShell({ config }: { config: EmbedConfig }) {
   );
 }
 
+// Development only: when webpack HMR re-applies this module inside the iframe,
+// signal the host page so it can reload just the iframe instead of leaving a
+// stale widget on screen. Uses the webpack `module.hot` API (a plain identifier,
+// so it parses under jest's CommonJS transform); no-ops where HMR is absent
+// (production, Turbopack, tests), and only posts when actually framed.
+if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+  const mod = (typeof module !== 'undefined' ? module : undefined) as
+    | { hot?: { addStatusHandler: (cb: (status: string) => void) => void } }
+    | undefined;
+  if (mod?.hot) {
+    mod.hot.addStatusHandler((status: string) => {
+      if (status === 'idle' && window.parent !== window) {
+        try {
+          window.parent.postMessage({ type: 'WIDGET_HMR_RELOAD' }, '*');
+        } catch {
+          // host page may be navigating
+        }
+      }
+    });
+  }
+}
+
 export default EmbedEntry;

@@ -32,7 +32,7 @@ import { getQueuedMessages, removeQueuedMessage, queueMessage, incrementAttempt 
 import { onInitConfig } from './events';
 import { sanitizeCss } from '../../../lib/cssValidator';
 import { validateConfig } from '../../../lib/validateConfig';
-import { enableDebug, disableDebug } from '../../../src/components/DevOverlay';
+import { enableDebug, disableDebug, useDebugMode, reportDevState, DevOverlay } from '../../../src/components/DevOverlay';
 import {
   registerInstance,
   deregisterInstance,
@@ -2729,8 +2729,43 @@ export default function EmbedClient({
   }, [parentTargetOrigin, isCollapsed, toggleCollapsed, handleSubmit]);
 
 
+  // Developer overlay: only active in non-production when debug mode is on
+  // (?widget_debug=1, localStorage, data-dev, or CompaninWidget.enableDebug()).
+  const isDebug = useDebugMode();
+
+  // Feed the live state snapshot to the DevOverlay "State" tab. No-op cost when
+  // not debugging — the overlay isn't mounted so there are no listeners.
+  useEffect(() => {
+    if (!isDebug) return;
+    reportDevState({
+      sessionId,
+      clientId: initialClientId,
+      agentId: initialAgentId,
+      configId: initialConfigId,
+      messageCount: messages.length,
+      offline: isOffline,
+      handshake: isBootstrapping ? 'INIT' : sessionId ? 'CONNECTED' : 'READY',
+      authTokenExpiresAt:
+        typeof getTokenExpiresAt === 'function' ? getTokenExpiresAt() : null,
+      config: (widgetConfig as unknown as Record<string, unknown>) ?? null,
+    });
+  }, [
+    isDebug,
+    sessionId,
+    messages.length,
+    isOffline,
+    isBootstrapping,
+    widgetConfig,
+    initialClientId,
+    initialAgentId,
+    initialConfigId,
+    getTokenExpiresAt,
+  ]);
+
   if (fatalError) {
     return (
+      <>
+      {isDebug && <DevOverlay />}
       <div style={{
         position: 'fixed',
         bottom: 0,
@@ -2761,6 +2796,7 @@ export default function EmbedClient({
           </div>
         </div>
       </div>
+      </>
     );
   }
 
@@ -2769,7 +2805,9 @@ export default function EmbedClient({
   const safeWidgetConfig: WidgetConfig = widgetConfig || ({} as WidgetConfig);
 
   if (!shouldRender || isBootstrapping) {
-    return null; // Don't render the widget at all if shouldRender is false
+    // Still surface the overlay while bootstrapping so the handshake/auth
+    // sequence is observable — this is the most useful time to debug.
+    return isDebug ? <DevOverlay /> : null;
   }
 
   return (

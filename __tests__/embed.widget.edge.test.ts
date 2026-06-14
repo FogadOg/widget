@@ -6,6 +6,10 @@ describe('widget edge cases', () => {
 
     jest.resetModules();
 
+    // Error UI is dev-gated; reset the URL so an opt-in ?widget_debug=1 from one
+    // test doesn't leak into the next.
+    try { window.history.pushState({}, '', '/'); } catch (e) {}
+
     document.documentElement.innerHTML = '<head></head><body></body>';
 
     try { Object.defineProperty(document, 'body', { value: document.getElementsByTagName('body')[0], configurable: true, writable: true }); } catch (e) {}
@@ -99,6 +103,8 @@ describe('widget edge cases', () => {
   });
 
   test('iframe onerror triggers error UI', async () => {
+
+    window.history.pushState({}, '', '/?widget_debug=1');
 
     addBootScript({ 'data-client-id': 'c3', 'data-agent-id': 'a3', 'data-config-id': 'cfg3' });
 
@@ -337,6 +343,8 @@ describe('widget edge cases', () => {
     jest.useFakeTimers();
 
     try {
+
+      window.history.pushState({}, '', '/?widget_debug=1');
 
       addBootScript({ 'data-client-id': 'c9', 'data-agent-id': 'a9', 'data-config-id': 'cfg9' });
 

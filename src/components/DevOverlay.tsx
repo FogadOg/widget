@@ -30,7 +30,30 @@ export type DevEvent = {
   data?: unknown;
 };
 
-export type DevPanelTab = 'events' | 'errors' | 'timings';
+export type DevPanelTab = 'events' | 'timeline' | 'state' | 'errors' | 'timings';
+
+/**
+ * Live widget-state snapshot surfaced in the DevOverlay "State" tab. The widget
+ * (EmbedClient) pushes updates via {@link reportDevState}; the overlay renders
+ * whatever fields are present. All fields optional so callers report partials.
+ */
+export type DevState = {
+  sessionId?: string | null;
+  clientId?: string | null;
+  agentId?: string | null;
+  configId?: string | null;
+  /** Handshake progress, e.g. 'INIT' → 'READY' → 'CONNECTED'. */
+  handshake?: string;
+  /** Epoch-ms expiry of the current auth token (drives the countdown). */
+  authTokenExpiresAt?: number | null;
+  /** Real browser offline state (navigator.onLine === false). */
+  offline?: boolean;
+  /** Number of messages in the current session. */
+  messageCount?: number;
+  /** Config values fetched from the backend (rendered collapsed). */
+  config?: Record<string, unknown> | null;
+  [key: string]: unknown;
+};
 
 // ---------------------------------------------------------------------------
 // Debug mode detection
@@ -167,6 +190,94 @@ function subscribeDevEvents(listener: Listener): () => void {
 }
 
 // ---------------------------------------------------------------------------
+// Live state channel (powers the "State" tab)
+// ---------------------------------------------------------------------------
+
+let currentDevState: DevState = {};
+const stateListeners = new Set<(s: DevState) => void>();
+
+/**
+ * Merge a partial snapshot into the live widget state and notify the overlay.
+ * Call from anywhere in the widget (e.g. EmbedClient) as values change:
+ *
+ *   reportDevState({ sessionId, handshake: 'CONNECTED', messageCount });
+ */
+export function reportDevState(partial: DevState): void {
+  currentDevState = { ...currentDevState, ...partial };
+  stateListeners.forEach((l) => {
+    try {
+      l(currentDevState);
+    } catch {
+      // ignore listener errors
+    }
+  });
+}
+
+/** Read the current state snapshot (used by console helpers / tests). */
+export function getDevState(): DevState {
+  return currentDevState;
+}
+
+function subscribeDevState(listener: (s: DevState) => void): () => void {
+  stateListeners.add(listener);
+  try {
+    listener(currentDevState);
+  } catch {
+    // ignore
+  }
+  return () => {
+    stateListeners.delete(listener);
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Simulated offline mode
+// ---------------------------------------------------------------------------
+//
+// Patches `window.fetch` inside the iframe so the widget's network calls fail
+// as if offline — without DevTools "Offline" mode, which would block the whole
+// host page. Also dispatches the browser online/offline events so the widget's
+// connectivity listeners react exactly as they would for a real disconnect.
+
+const OFFLINE_CHANGE_EVENT = 'companin:offline:change';
+
+let _offlineMode = false;
+let _originalFetch: typeof window.fetch | null = null;
+
+/** Begin simulating an offline connection. Idempotent. */
+export function simulateOffline(): void {
+  if (typeof window === 'undefined' || _offlineMode) return;
+  _originalFetch = window.fetch.bind(window);
+  window.fetch = (() =>
+    Promise.reject(new TypeError('Simulated offline (Widget DevOverlay)'))) as typeof window.fetch;
+  _offlineMode = true;
+  try {
+    window.dispatchEvent(new CustomEvent(OFFLINE_CHANGE_EVENT, { detail: { offline: true } }));
+    window.dispatchEvent(new Event('offline'));
+  } catch {
+    // ignore
+  }
+}
+
+/** Restore the real connection (un-patch fetch). Idempotent. */
+export function restoreOnline(): void {
+  if (typeof window === 'undefined' || !_offlineMode) return;
+  if (_originalFetch) window.fetch = _originalFetch;
+  _offlineMode = false;
+  try {
+    window.dispatchEvent(new CustomEvent(OFFLINE_CHANGE_EVENT, { detail: { offline: false } }));
+    window.dispatchEvent(new Event('online'));
+  } catch {
+    // ignore
+  }
+}
+
+/** Whether the widget is currently in simulated-offline mode. */
+export function isSimulatedOffline(): boolean {
+  return _offlineMode;
+}
+
+// ---------------------------------------------------------------------------
 // DevOverlay component
 // ---------------------------------------------------------------------------
 
@@ -239,9 +350,30 @@ export function DevOverlay(): React.ReactElement | null {
     persisted: false,
   });
   const listRef = useRef<HTMLDivElement>(null);
+  const [devState, setDevState] = useState<DevState>(() => getDevState());
+  const [simOffline, setSimOffline] = useState<boolean>(() => isSimulatedOffline());
+  // Ticking clock so the auth-token countdown in the State tab updates live.
+  const [nowTs, setNowTs] = useState<number>(() => Date.now());
 
   // Subscribe to global event bus
   useEffect(() => subscribeDevEvents((e) => dispatch({ type: 'push', event: e })), []);
+
+  // Subscribe to the live state channel (State tab)
+  useEffect(() => subscribeDevState(setDevState), []);
+
+  // Track simulated-offline toggling (may be flipped from the console too)
+  useEffect(() => {
+    const handler = () => setSimOffline(isSimulatedOffline());
+    window.addEventListener(OFFLINE_CHANGE_EVENT, handler);
+    return () => window.removeEventListener(OFFLINE_CHANGE_EVENT, handler);
+  }, []);
+
+  // Re-tick once a second while the State tab is open and a token expiry is known.
+  useEffect(() => {
+    if (!open || tab !== 'state' || !devState.authTokenExpiresAt) return;
+    const id = window.setInterval(() => setNowTs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [open, tab, devState.authTokenExpiresAt]);
 
   // Auto-scroll to bottom when new events arrive
   useEffect(() => {
@@ -353,13 +485,120 @@ export function DevOverlay(): React.ReactElement | null {
     );
   }
 
-  const visible = tab === 'events' ? state.events : tab === 'errors' ? errors : timings;
+  // ── Timeline ────────────────────────────────────────────────────────────
+  // A single chronological stream of every event, annotated with the time
+  // elapsed since the first event (+Nms) and the gap since the previous one,
+  // with a collapsible payload. Easier to see "what happened in what order"
+  // than flipping between the events/errors tabs.
+  const timelineStart = state.events.length > 0 ? state.events[0].at : 0;
+
+  function fmtDelta(ms: number): string {
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(2)}s`;
+  }
+
+  function renderTimelineEntry(ev: DevEvent, idx: number) {
+    const sinceStart = ev.at - timelineStart;
+    const sincePrev = idx > 0 ? ev.at - state.events[idx - 1].at : 0;
+    return (
+      <div
+        key={ev.id}
+        style={{
+          padding: '4px 10px',
+          borderBottom: '1px solid rgba(255,255,255,0.04)',
+        }}
+      >
+        <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+          <span style={{ color: '#64748b', minWidth: 60 }}>+{fmtDelta(sinceStart)}</span>
+          <span style={{ color: COLORS[ev.kind], minWidth: 80, fontSize: 10, fontWeight: 'bold' }}>
+            {ev.kind}
+          </span>
+          <span style={{ color: '#cbd5e1', wordBreak: 'break-all', flex: 1 }}>{ev.label}</span>
+          {sincePrev > 0 && (
+            <span style={{ color: '#475569', fontSize: 9 }}>Δ{fmtDelta(sincePrev)}</span>
+          )}
+        </div>
+        {typeof ev.data !== 'undefined' && ev.data !== null && (
+          <details style={{ marginTop: 2, marginInlineStart: 68 }}>
+            <summary style={{ cursor: 'pointer', color: '#64748b', fontSize: 9 }}>payload</summary>
+            <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '4px 0 0', color: '#94a3b8' }}>
+              {safeStringify(ev.data)}
+            </pre>
+          </details>
+        )}
+      </div>
+    );
+  }
+
+  // ── State ───────────────────────────────────────────────────────────────
+  const tokenSecondsLeft =
+    typeof devState.authTokenExpiresAt === 'number'
+      ? Math.max(0, Math.round((devState.authTokenExpiresAt - nowTs) / 1000))
+      : null;
+
+  function stateRow(label: string, value: React.ReactNode) {
+    return (
+      <div style={{ display: 'flex', gap: 8, padding: '3px 10px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+        <span style={{ color: '#64748b', minWidth: 120 }}>{label}</span>
+        <span style={{ color: '#e2e8f0', wordBreak: 'break-all', flex: 1 }}>{value}</span>
+      </div>
+    );
+  }
+
+  function renderState() {
+    return (
+      <div>
+        {stateRow('sessionId', devState.sessionId || <em style={{ color: '#475569' }}>none</em>)}
+        {stateRow('clientId', devState.clientId || <em style={{ color: '#475569' }}>—</em>)}
+        {stateRow('agentId', devState.agentId || <em style={{ color: '#475569' }}>—</em>)}
+        {stateRow('configId', devState.configId || <em style={{ color: '#475569' }}>—</em>)}
+        {stateRow('handshake', devState.handshake || <em style={{ color: '#475569' }}>unknown</em>)}
+        {stateRow(
+          'auth expires in',
+          tokenSecondsLeft === null ? (
+            <em style={{ color: '#475569' }}>unknown</em>
+          ) : (
+            <span style={{ color: tokenSecondsLeft < 60 ? '#f87171' : '#34d399' }}>{tokenSecondsLeft}s</span>
+          )
+        )}
+        {stateRow('messages', String(devState.messageCount ?? 0))}
+        {stateRow(
+          'offline',
+          <span style={{ color: devState.offline ? '#f87171' : '#34d399' }}>
+            {devState.offline ? 'yes (browser)' : 'no'}
+          </span>
+        )}
+        {stateRow(
+          'simulated offline',
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: simOffline ? '#fbbf24' : '#94a3b8' }}>{simOffline ? 'ON' : 'off'}</span>
+            <button
+              style={btnStyle}
+              onClick={() => (simOffline ? restoreOnline() : simulateOffline())}
+            >
+              {simOffline ? 'Go online' : 'Simulate offline'}
+            </button>
+          </span>
+        )}
+        {devState.config && (
+          <details style={{ padding: '6px 10px' }}>
+            <summary style={{ cursor: 'pointer', color: '#64748b' }}>config ({Object.keys(devState.config).length} keys)</summary>
+            <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '6px 0 0', color: '#94a3b8' }}>
+              {safeStringify(devState.config)}
+            </pre>
+          </details>
+        )}
+      </div>
+    );
+  }
+
+  const eventList = tab === 'errors' ? errors : tab === 'timings' ? timings : state.events;
 
   return (
     <div style={panelStyle} data-testid="dev-overlay">
       <div style={headerStyle} onClick={() => setOpen((v) => !v)}>
         <span style={{ color: '#818cf8', fontWeight: 'bold' }}>
-          ⚙ Widget DevOverlay
+          ⚙ Widget DevOverlay{simOffline ? ' · 📴' : ''}
         </span>
         <span style={{ color: '#64748b', fontSize: 10 }}>
           {state.events.length} events {open ? '▲' : '▼'}
@@ -369,7 +608,7 @@ export function DevOverlay(): React.ReactElement | null {
       {open && (
         <>
           <div style={tabsStyle}>
-            {(['events', 'errors', 'timings'] as DevPanelTab[]).map((t) => (
+            {(['events', 'timeline', 'state', 'errors', 'timings'] as DevPanelTab[]).map((t) => (
               <button key={t} style={tabStyle(tab === t)} onClick={() => setTab(t)}>
                 {t}
                 {t === 'errors' && errors.length > 0 && (
@@ -382,10 +621,18 @@ export function DevOverlay(): React.ReactElement | null {
           </div>
 
           <div ref={listRef} style={listStyle}>
-            {visible.length === 0 ? (
+            {tab === 'state' ? (
+              renderState()
+            ) : tab === 'timeline' ? (
+              state.events.length === 0 ? (
+                <div style={{ padding: '12px 10px', color: '#475569' }}>No timeline yet.</div>
+              ) : (
+                state.events.map(renderTimelineEntry)
+              )
+            ) : eventList.length === 0 ? (
               <div style={{ padding: '12px 10px', color: '#475569' }}>No {tab} yet.</div>
             ) : (
-              visible.map(renderEvent)
+              eventList.map(renderEvent)
             )}
           </div>
 
@@ -402,6 +649,16 @@ export function DevOverlay(): React.ReactElement | null {
             >
               {state.persisted ? 'Persisting ✓' : 'Persist'}
             </button>
+            <button
+              style={{
+                ...btnStyle,
+                background: simOffline ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.08)',
+              }}
+              onClick={() => (simOffline ? restoreOnline() : simulateOffline())}
+              title="Patch fetch() to simulate an offline connection"
+            >
+              {simOffline ? 'Offline ✓' : 'Offline'}
+            </button>
             <span style={{ marginLeft: 'auto', color: '#475569' }}>
               {errors.length} err · {timings.length} renders
             </span>
@@ -410,6 +667,19 @@ export function DevOverlay(): React.ReactElement | null {
       )}
     </div>
   );
+}
+
+/** JSON.stringify that never throws (handles cycles / non-serializable values). */
+function safeStringify(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    try {
+      return String(value);
+    } catch {
+      return '[unserializable]';
+    }
+  }
 }
 
 export default DevOverlay;

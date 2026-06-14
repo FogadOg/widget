@@ -92,6 +92,10 @@ beforeEach(() => {
 
   document.head.innerHTML = '';
 
+  // Reset the URL so an opt-in ?widget_debug=1 from one test doesn't leak into
+  // the next (error UI is dev-gated and keys off this param).
+  window.history.pushState({}, '', '/');
+
   (window as any).CompaninWidget = undefined;
 
   (window as any).CompaninWidgets = undefined;
@@ -298,13 +302,25 @@ describe('bootstrap — missing attributes', () => {
 
   });
 
-  it('renders error widget div when attrs missing', () => {
+  it('renders error widget div when attrs missing (dev mode)', () => {
+
+    // Error UI is opt-in: enable it via ?widget_debug=1 the way support would.
+    window.history.pushState({}, '', '/?widget_debug=1');
 
     loadWidget({});
 
     const errEl = document.getElementById('companin-widget-error');
 
     expect(errEl).not.toBeNull();
+
+  });
+
+  it('production: missing attrs fail silently (no error card)', () => {
+
+    // No data-dev / widget_debug → the loader must not paint a card on the page.
+    loadWidget({});
+
+    expect(document.getElementById('companin-widget-error')).toBeNull();
 
   });
 
@@ -366,7 +382,9 @@ describe('iframe lifecycle', () => {
 
   });
 
-  it('onerror shows error in container', () => {
+  it('onerror shows error in container (dev mode)', () => {
+
+    window.history.pushState({}, '', '/?widget_debug=1');
 
     const { iframe } = loadWidget(VALID);
 
@@ -375,6 +393,20 @@ describe('iframe lifecycle', () => {
     iframe!.onerror!(new ErrorEvent('error'));
 
     expect(cont.innerHTML).toContain('Failed to load');
+
+  });
+
+  it('production: onerror hides the widget instead of showing a card', () => {
+
+    const { iframe } = loadWidget(VALID);
+
+    const cont = iframe!.parentElement as HTMLElement;
+
+    iframe!.onerror!(new ErrorEvent('error'));
+
+    expect(cont.innerHTML).not.toContain('Failed to load');
+
+    expect(cont.style.display).toBe('none');
 
   });
 

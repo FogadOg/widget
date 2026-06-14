@@ -27,6 +27,8 @@
  */
 
 import { detectDebugMode, enableDebug, disableDebug } from './components/DevOverlay';
+import { simulateOffline, restoreOnline, isSimulatedOffline } from './components/DevOverlay';
+import { listInstances } from './lib/widgetRegistry';
 import { logger } from '../lib/logger';
 
 // ---------------------------------------------------------------------------
@@ -46,11 +48,62 @@ if (typeof window !== 'undefined') {
   const win = window as unknown as Record<string, unknown>;
   const existing = win.CompaninWidget as Record<string, unknown> | undefined;
 
+  /**
+   * Dump a snapshot of live widget state to the console as a table. Lets a
+   * developer inspect every mounted instance without opening React DevTools.
+   */
+  const dumpState = () => {
+    const instances = listInstances();
+    // eslint-disable-next-line no-console
+    console.table(
+      instances.map((w) => ({
+        instanceId: w.instanceId,
+        clientId: w.clientId ?? '',
+        agentId: w.agentId ?? '',
+        state: w.state ?? '',
+      }))
+    );
+    // eslint-disable-next-line no-console
+    console.info('[Widget] instances:', instances.length, '· debugActive:', detectDebugMode(), '· offlineSimulated:', isSimulatedOffline());
+    return instances;
+  };
+
+  /**
+   * Wipe all widget-owned localStorage keys (sessions, visitor IDs, telemetry
+   * flags, unread counters) so the widget starts completely fresh on reload.
+   * Keys are namespaced with the `companin-` / `companin_` prefix.
+   */
+  const clearSession = () => {
+    let removed = 0;
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('companin-') || k.startsWith('companin_'))
+        .forEach((k) => {
+          localStorage.removeItem(k);
+          removed += 1;
+        });
+    } catch {
+      // localStorage may be unavailable in a sandboxed iframe
+    }
+    // eslint-disable-next-line no-console
+    console.info(`[Widget] Session cleared (${removed} keys removed). Reload the page.`);
+    return removed;
+  };
+
   win.CompaninWidget = {
     ...existing,
     enableDebug,
     disableDebug,
     isDebugActive: detectDebugMode,
+    // Console inspection helpers (see DEV_EXPERIENCE.md)
+    dumpState,
+    clearSession,
+    listInstances,
+    // Simulated-offline controls — patch fetch() inside the iframe without
+    // blocking the whole host page the way DevTools "Offline" mode would.
+    simulateOffline,
+    restoreOnline,
+    isSimulatedOffline,
   };
 }
 
