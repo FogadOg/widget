@@ -1461,6 +1461,22 @@ export default function EmbedClient({
           if (!response.ok) {
             const errorMessage = parseApiError(data, 'Failed to create session');
 
+            // 429: the server is explicitly rate-limiting session creation
+            // (5/min, 30/hr per visitor). Retrying with backoff (1s/2s/4s) stays
+            // inside the 60s window and just burns more quota — so mark it
+            // non-retryable and surface a localized "please wait" message.
+            if (response.status === 429) {
+              const retryAfterSec = response.headers.get('Retry-After');
+              const waitSec = retryAfterSec ? parseInt(retryAfterSec, 10) : 0;
+              const rateLimitMsg = waitSec > 0
+                ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
+                : String(t.rateLimitGeneric);
+              const rateLimitErr = createNetworkError(rateLimitMsg, WidgetErrorCode.NETWORK_RATE_LIMITED);
+              rateLimitErr.retryable = false;
+              rateLimitErr.userMessage = rateLimitMsg;
+              throw rateLimitErr;
+            }
+
             if (response.status >= 500) {
               throw createNetworkError(
                 errorMessage,
