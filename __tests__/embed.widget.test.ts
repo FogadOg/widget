@@ -360,13 +360,13 @@ describe('iframe lifecycle', () => {
 
   });
 
-  it('onload forwards ChatWidgetConfig to iframe', () => {
+  it('onload forwards WidgetConfig to iframe', () => {
 
     const { iframe } = loadWidget(VALID);
 
     const cw = mockCW(iframe!);
 
-    (window as any).ChatWidgetConfig = { theme: 'dark' };
+    (window as any).WidgetConfig = { theme: 'dark' };
 
     iframe!.onload!(new Event('load'));
 
@@ -378,7 +378,7 @@ describe('iframe lifecycle', () => {
 
     );
 
-    delete (window as any).ChatWidgetConfig;
+    delete (window as any).WidgetConfig;
 
   });
 

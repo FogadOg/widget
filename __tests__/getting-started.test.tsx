@@ -105,7 +105,7 @@ describe('FrameworkTabs', () => {
     jest.useRealTimers()
   })
 
-  it('HTML snippet includes ChatWidgetConfig fields', () => {
+  it('HTML snippet includes WidgetConfig fields', () => {
     render(<FrameworkTabs />)
     const pre = screen.getByText(/YOUR_CONFIG_ID/).closest('pre')
     expect(pre?.textContent).toContain('primaryColor')

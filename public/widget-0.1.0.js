@@ -506,16 +506,16 @@
           }
         }, 1200);
         try {
-          // If the host page provided an inline ChatWidgetConfig, forward it into the iframe
+          // If the host page provided an inline WidgetConfig, forward it into the iframe
           let iframeWindow = null;
           try {
             iframeWindow = iframe.contentWindow;
           } catch (err) {
             logError('Failed to access iframe contentWindow', { error: err && err.message });
           }
-          if (window.ChatWidgetConfig && iframeWindow) {
+          if (window.WidgetConfig && iframeWindow) {
             iframeWindow.postMessage(
-              { type: 'WIDGET_INIT_CONFIG', data: window.ChatWidgetConfig },
+              { type: 'WIDGET_INIT_CONFIG', data: window.WidgetConfig },
               targetOrigin
             );
           }

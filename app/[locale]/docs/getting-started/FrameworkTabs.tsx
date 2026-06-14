@@ -166,7 +166,7 @@ const SNIPPETS: Record<TabKey, string> = {
 
 <script>
 
-  window.ChatWidgetConfig = {
+  window.WidgetConfig = {
 
     primaryColor: '#6366f1',
 

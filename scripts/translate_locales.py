@@ -98,7 +98,7 @@ from openai import OpenAI
 
 # ---------------------------------------------------------------------------
 
-# Load .env file (chatWidget/.env) into os.environ for keys not already set.
+# Load .env file (widget/.env) into os.environ for keys not already set.
 
 # This means an explicit export in the shell always wins over the file.
 
