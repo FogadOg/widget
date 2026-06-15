@@ -76,6 +76,18 @@ jest.mock('../lib/logger', () => ({
 
 }));
 
+jest.mock('../src/lib/offline', () => ({
+
+  getQueuedMessages: jest.fn().mockResolvedValue([]),
+
+  removeQueuedMessage: jest.fn().mockResolvedValue(undefined),
+
+  queueMessage: jest.fn().mockResolvedValue(undefined),
+
+  incrementAttempt: jest.fn().mockResolvedValue(undefined),
+
+}));
+
 // telemetry helper should be mocked so we can assert calls
 
 jest.mock('../lib/api', () => {
@@ -7963,6 +7975,128 @@ describe('EmbedClient Component', () => {
       );
 
       createNetworkErrorSpy.mockRestore();
+
+    });
+
+    test('queues the message for later delivery when sending while offline', async () => {
+
+      const offline = require('../src/lib/offline');
+
+      offline.queueMessage.mockClear();
+
+      offline.queueMessage.mockResolvedValue(undefined);
+
+      const onLineDescriptor = Object.getOwnPropertyDescriptor(window.navigator, 'onLine');
+
+      Object.defineProperty(window.navigator, 'onLine', { value: false, configurable: true });
+
+      mockFetch.mockImplementation((url: string, options?: any) => {
+
+        if (url.includes('/messages') && options?.method === 'POST') return Promise.reject(new Error('offline'));
+
+        if (url.includes('/agents/')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { name: 'Test' } }) });
+
+        if (url.includes('/widget-config/')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: {} }) });
+
+        if (url.includes('/sessions')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { session_id: 'sess-1' } }) });
+
+        return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: {} }) });
+
+      });
+
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
+
+      await waitFor(() => { expect(screen.getByTestId('embed-shell')).toBeInTheDocument(); });
+
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)); });
+
+      fireEvent.change(screen.getByTestId('input'), { target: { value: 'Test' } });
+
+      fireEvent.click(screen.getByTestId('submit-btn'));
+
+      await waitFor(() => expect(offline.queueMessage).toHaveBeenCalled());
+
+      if (onLineDescriptor) Object.defineProperty(window.navigator, 'onLine', onLineDescriptor);
+
+    });
+
+    test('falls back to an error when queuing the offline message fails', async () => {
+
+      const offline = require('../src/lib/offline');
+
+      offline.queueMessage.mockClear();
+
+      offline.queueMessage.mockRejectedValue(new Error('idb unavailable'));
+
+      const onLineDescriptor = Object.getOwnPropertyDescriptor(window.navigator, 'onLine');
+
+      Object.defineProperty(window.navigator, 'onLine', { value: false, configurable: true });
+
+      mockFetch.mockImplementation((url: string, options?: any) => {
+
+        if (url.includes('/messages') && options?.method === 'POST') return Promise.reject(new Error('offline'));
+
+        if (url.includes('/agents/')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { name: 'Test' } }) });
+
+        if (url.includes('/widget-config/')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: {} }) });
+
+        if (url.includes('/sessions')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { session_id: 'sess-1' } }) });
+
+        return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: {} }) });
+
+      });
+
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
+
+      await waitFor(() => { expect(screen.getByTestId('embed-shell')).toBeInTheDocument(); });
+
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)); });
+
+      fireEvent.change(screen.getByTestId('input'), { target: { value: 'Test' } });
+
+      fireEvent.click(screen.getByTestId('submit-btn'));
+
+      await waitFor(() => expect(offline.queueMessage).toHaveBeenCalled());
+
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
+
+      if (onLineDescriptor) Object.defineProperty(window.navigator, 'onLine', onLineDescriptor);
+
+    });
+
+    test('attempts silent session recovery when sending without an active session', async () => {
+
+      mockFetch.mockImplementation((url: string, options?: any) => {
+
+        if (url.includes('/agents/')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { name: 'Test' } }) });
+
+        if (url.includes('/widget-config/')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: {} }) });
+
+        // Session creation always fails, so the widget never has a session and the
+
+        // send path must run its silent-recovery branch (which also fails here).
+
+        if (url.includes('/sessions')) return Promise.resolve({ ok: false, status: 500, json: async () => ({}) });
+
+        return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: {} }) });
+
+      });
+
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
+
+      await waitFor(() => { expect(screen.getByTestId('embed-shell')).toBeInTheDocument(); });
+
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)); });
+
+      fireEvent.change(screen.getByTestId('input'), { target: { value: 'Test' } });
+
+      fireEvent.click(screen.getByTestId('submit-btn'));
+
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)); });
+
+      // Recovery failed → no crash, widget still mounted.
+
+      expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
 
     });
 

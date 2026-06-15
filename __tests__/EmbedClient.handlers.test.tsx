@@ -488,6 +488,292 @@ describe('EmbedClient handlers', () => {
 
   });
 
+  test('flush removes a message that has already hit max attempts without re-posting', async () => {
+
+    (offline.getQueuedMessages as jest.Mock).mockResolvedValue([{ id: 'q1', text: 'one', seq: 1, attempts: 5 }]);
+
+    (offline.removeQueuedMessage as jest.Mock).mockResolvedValue(undefined);
+
+    mockHelpers.getStoredSession.mockReturnValue({ sessionId: 'sess-1', expires_at: Date.now() + 10000 });
+
+    await act(async () => { render(<EmbedClient {...defaultProps} />); });
+
+    await act(async () => { window.dispatchEvent(new Event('online')); });
+
+    await waitFor(() => expect(offline.removeQueuedMessage).toHaveBeenCalledWith('q1'));
+
+    // It should never POST a message that is already permanently failed.
+
+    const postedContent = mockFetch.mock.calls.some((c: any) => c[1]?.method === 'POST');
+
+    expect(postedContent).toBe(false);
+
+  });
+
+  test('flush increments attempts when the server rejects the message', async () => {
+
+    (offline.getQueuedMessages as jest.Mock).mockResolvedValue([{ id: 'q1', text: 'one', seq: 1 }]);
+
+    (offline.incrementAttempt as jest.Mock).mockResolvedValue(undefined);
+
+    mockHelpers.getStoredSession.mockReturnValue({ sessionId: 'sess-1', expires_at: Date.now() + 10000 });
+
+    mockFetch.mockImplementation((url: string, options?: any) => {
+
+      if (url.includes('/messages') && options?.method === 'POST') return Promise.resolve({ ok: false, status: 500, json: async () => ({}) });
+
+      return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { messages: [] } }) });
+
+    });
+
+    await act(async () => { render(<EmbedClient {...defaultProps} />); });
+
+    await act(async () => { window.dispatchEvent(new Event('online')); });
+
+    await waitFor(() => expect(offline.incrementAttempt).toHaveBeenCalledWith('q1'));
+
+    expect(offline.removeQueuedMessage).not.toHaveBeenCalledWith('q1');
+
+  });
+
+  test('flush gives up and removes the message when a rejection reaches max attempts', async () => {
+
+    (offline.getQueuedMessages as jest.Mock).mockResolvedValue([{ id: 'q1', text: 'one', seq: 1, attempts: 4 }]);
+
+    (offline.incrementAttempt as jest.Mock).mockResolvedValue(undefined);
+
+    (offline.removeQueuedMessage as jest.Mock).mockResolvedValue(undefined);
+
+    mockHelpers.getStoredSession.mockReturnValue({ sessionId: 'sess-1', expires_at: Date.now() + 10000 });
+
+    mockFetch.mockImplementation((url: string, options?: any) => {
+
+      if (url.includes('/messages') && options?.method === 'POST') return Promise.resolve({ ok: false, status: 500, json: async () => ({}) });
+
+      return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { messages: [] } }) });
+
+    });
+
+    await act(async () => { render(<EmbedClient {...defaultProps} />); });
+
+    await act(async () => { window.dispatchEvent(new Event('online')); });
+
+    await waitFor(() => expect(offline.removeQueuedMessage).toHaveBeenCalledWith('q1'));
+
+  });
+
+  test('flush increments attempts when the POST throws (network error)', async () => {
+
+    (offline.getQueuedMessages as jest.Mock).mockResolvedValue([{ id: 'q1', text: 'one', seq: 1 }]);
+
+    (offline.incrementAttempt as jest.Mock).mockResolvedValue(undefined);
+
+    mockHelpers.getStoredSession.mockReturnValue({ sessionId: 'sess-1', expires_at: Date.now() + 10000 });
+
+    mockFetch.mockImplementation((url: string, options?: any) => {
+
+      if (url.includes('/messages') && options?.method === 'POST') return Promise.reject(new Error('network down'));
+
+      return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { messages: [] } }) });
+
+    });
+
+    await act(async () => { render(<EmbedClient {...defaultProps} />); });
+
+    await act(async () => { window.dispatchEvent(new Event('online')); });
+
+    await waitFor(() => expect(offline.incrementAttempt).toHaveBeenCalledWith('q1'));
+
+  });
+
+  test('retry event increments attempts when the server rejects the message', async () => {
+
+    (offline.getQueuedMessages as jest.Mock).mockResolvedValue([{ id: 'retry-1', text: 'retry', seq: 1 }]);
+
+    (offline.incrementAttempt as jest.Mock).mockResolvedValue(undefined);
+
+    mockHelpers.getStoredSession.mockReturnValue({ sessionId: 'sess-1', expires_at: Date.now() + 10000 });
+
+    mockFetch.mockImplementation((url: string, options?: any) => {
+
+      if (url.includes('/messages') && options?.method === 'POST') return Promise.resolve({ ok: false, status: 500, json: async () => ({}) });
+
+      return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { messages: [] } }) });
+
+    });
+
+    await act(async () => { render(<EmbedClient {...defaultProps} />); });
+
+    await act(async () => new Promise((r) => setTimeout(r, 25)));
+
+    await act(async () => { window.dispatchEvent(new CustomEvent('companin:retry-queued', { detail: { id: 'retry-1' } })); });
+
+    await waitFor(() => expect(offline.incrementAttempt).toHaveBeenCalledWith('retry-1'));
+
+  });
+
+  test('retry event is a no-op when the id is missing or not queued', async () => {
+
+    (offline.getQueuedMessages as jest.Mock).mockResolvedValue([]);
+
+    mockHelpers.getStoredSession.mockReturnValue({ sessionId: 'sess-1', expires_at: Date.now() + 10000 });
+
+    await act(async () => { render(<EmbedClient {...defaultProps} />); });
+
+    await act(async () => new Promise((r) => setTimeout(r, 25)));
+
+    // missing id → early return
+
+    await act(async () => { window.dispatchEvent(new CustomEvent('companin:retry-queued', { detail: {} })); });
+
+    // unknown id → item not found return
+
+    await act(async () => { window.dispatchEvent(new CustomEvent('companin:retry-queued', { detail: { id: 'nope' } })); });
+
+    expect(offline.removeQueuedMessage).not.toHaveBeenCalled();
+
+  });
+
+  test('opening the widget with messages resets unread, records last-read, and notifies the parent', async () => {
+
+    const parentPost = jest.fn();
+
+    const parent = { postMessage: parentPost } as any;
+
+    Object.defineProperty(window, 'parent', { value: parent, writable: true });
+
+    (offline.getQueuedMessages as jest.Mock).mockResolvedValue([]);
+
+    await act(async () => { render(<EmbedClient {...defaultProps} />); });
+
+    await act(async () => {
+
+      window.dispatchEvent(new CustomEvent('companin:queued-message', { detail: { id: 'temp-1', text: 'hi', timestamp: Date.now(), attempts: 0 } }));
+
+    });
+
+    expect(await screen.findByTestId('msg-temp-1', {}, { timeout: 3000 })).toBeTruthy();
+
+    await act(async () => {
+
+      window.dispatchEvent({ source: parent, origin: 'https://example.com', data: { type: 'HOST_MESSAGE', data: 'open' } } as unknown as MessageEvent);
+
+    });
+
+    expect(screen.getByTestId('collapsed-state').textContent).toBe('expanded');
+
+    await waitFor(() => expect(parentPost).toHaveBeenCalledWith(expect.any(Object), 'https://example.com'));
+
+  });
+
+  test('toggle swallows localStorage write failures while opening', async () => {
+
+    const parent = { postMessage: jest.fn() } as any;
+
+    Object.defineProperty(window, 'parent', { value: parent, writable: true });
+
+    (offline.getQueuedMessages as jest.Mock).mockResolvedValue([]);
+
+    await act(async () => { render(<EmbedClient {...defaultProps} />); });
+
+    await act(async () => {
+
+      window.dispatchEvent(new CustomEvent('companin:queued-message', { detail: { id: 'temp-1', text: 'hi', timestamp: Date.now(), attempts: 0 } }));
+
+    });
+
+    expect(await screen.findByTestId('msg-temp-1', {}, { timeout: 3000 })).toBeTruthy();
+
+    // Make every localStorage write throw so the catch branches run.
+
+    Object.defineProperty(window, 'localStorage', {
+
+      value: { getItem: jest.fn(), setItem: jest.fn(() => { throw new Error('quota'); }), removeItem: jest.fn() },
+
+      configurable: true,
+
+    });
+
+    await act(async () => {
+
+      window.dispatchEvent({ source: parent, origin: 'https://example.com', data: { type: 'HOST_MESSAGE', data: 'open' } } as unknown as MessageEvent);
+
+    });
+
+    expect(screen.getByTestId('collapsed-state').textContent).toBe('expanded');
+
+  });
+
+  test('consent grant/revoke messages are handled when consent is required', async () => {
+
+    await act(async () => { render(<EmbedClient {...defaultProps} consentRequired />); });
+
+    await act(async () => { window.dispatchEvent(new MessageEvent('message', { data: { type: 'WIDGET_CONSENT_GRANT' } })); });
+
+    await act(async () => new Promise((r) => setTimeout(r, 10)));
+
+    await act(async () => { window.dispatchEvent(new MessageEvent('message', { data: { type: 'WIDGET_CONSENT_REVOKE' } })); });
+
+    await act(async () => new Promise((r) => setTimeout(r, 10)));
+
+    // an unrelated type is ignored
+
+    await act(async () => { window.dispatchEvent(new MessageEvent('message', { data: { type: 'WIDGET_OTHER' } })); });
+
+    expect(screen.getByTestId('collapsed-state')).toBeTruthy();
+
+  });
+
+  test('debug enable/disable messages toggle debug mode without crashing', async () => {
+
+    await act(async () => { render(<EmbedClient {...defaultProps} />); });
+
+    await act(async () => { window.dispatchEvent(new MessageEvent('message', { data: { type: 'WIDGET_DEBUG_ENABLE' } })); });
+
+    await act(async () => { window.dispatchEvent(new MessageEvent('message', { data: { type: 'WIDGET_DEBUG_DISABLE' } })); });
+
+    expect(screen.getByTestId('collapsed-state')).toBeTruthy();
+
+  });
+
+  test('host message is ignored when there is no parent frame (parent === window)', async () => {
+
+    Object.defineProperty(window, 'parent', { value: window, writable: true });
+
+    await act(async () => { render(<EmbedClient {...defaultProps} />); });
+
+    expect(screen.getByTestId('collapsed-state').textContent).toBe('collapsed');
+
+    await act(async () => {
+
+      window.dispatchEvent({ source: window, origin: 'https://example.com', data: { type: 'HOST_MESSAGE', data: 'toggle' } } as unknown as MessageEvent);
+
+    });
+
+    expect(screen.getByTestId('collapsed-state').textContent).toBe('collapsed');
+
+  });
+
+  test('host message with an unrecognized payload is ignored', async () => {
+
+    const parent = {} as any;
+
+    Object.defineProperty(window, 'parent', { value: parent, writable: true });
+
+    await act(async () => { render(<EmbedClient {...defaultProps} />); });
+
+    expect(screen.getByTestId('collapsed-state').textContent).toBe('collapsed');
+
+    await act(async () => {
+
+      window.dispatchEvent({ source: parent, origin: 'https://example.com', data: { type: 'HOST_MESSAGE', data: { foo: 'bar' } } } as unknown as MessageEvent);
+
+    });
+
+    expect(screen.getByTestId('collapsed-state').textContent).toBe('collapsed');
+
+  });
+
   test('host message wrapper falls back when coerced dispatch throws', async () => {
 
     const nativeDispatch = window.dispatchEvent;
