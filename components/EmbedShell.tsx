@@ -931,8 +931,10 @@ export default function EmbedShell({
                 inputRef={inputRef}
               />
               {!widgetConfig?.hide_branding && (
-              <div className="p-2 text-center text-xs text-gray-500">
-                {poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">{COMPANY_NAME}</a>
+              <div className="p-2 text-center text-xs text-gray-500 flex items-center justify-center gap-2 flex-wrap">
+                <span title="Hosted in the EU · GDPR compliant">🇪🇺 EU hosted · GDPR</span>
+                <span aria-hidden>·</span>
+                <span>{poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">{COMPANY_NAME}</a></span>
               </div>
               )}
             </div>
