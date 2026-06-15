@@ -46,7 +46,7 @@ describe('app/[locale]/page.tsx', () => {
     const html = renderToStaticMarkup(element as React.ReactElement);
 
     expect(html).toContain('View Demo');
-    expect(html).toContain('href="/preview"');
+    expect(html).toContain('href="/en/docs/getting-started"');
   });
 
   it('renders language switcher with correct locale', async () => {

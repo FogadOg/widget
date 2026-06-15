@@ -105,12 +105,13 @@ describe('FrameworkTabs', () => {
     jest.useRealTimers()
   })
 
-  it('HTML snippet includes WidgetConfig fields', () => {
+  it('HTML snippet includes widget data attributes', () => {
     render(<FrameworkTabs />)
     const pre = screen.getByText(/YOUR_CONFIG_ID/).closest('pre')
-    expect(pre?.textContent).toContain('primaryColor')
-    expect(pre?.textContent).toContain('greetingMessage')
-    expect(pre?.textContent).toContain('position')
+    expect(pre?.textContent).toContain('data-client-id')
+    expect(pre?.textContent).toContain('data-agent-id')
+    expect(pre?.textContent).toContain('data-config-id')
+    expect(pre?.textContent).toContain('data-locale')
   })
 })
 

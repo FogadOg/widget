@@ -106,7 +106,9 @@ describe('Docs page server component', () => {
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
 
-      '[Companin Docs Embed Error]',
+      expect.stringContaining('[Companin Docs Embed Error]'),
+
+      expect.any(String),
 
       expect.objectContaining({
 

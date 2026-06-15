@@ -35,7 +35,7 @@ describe('Home Page', () => {
     const jsx4 = await (Home as any)({ params: Promise.resolve({ locale: 'en' }) });
     render(jsx4);
     const viewDemoLink = screen.getByText('View Demo').closest('a');
-    expect(viewDemoLink).toHaveAttribute('href', '/preview');
+    expect(viewDemoLink).toHaveAttribute('href', '/en/docs/getting-started');
   });
 
   it('renders feature cards', async () => {

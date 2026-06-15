@@ -63,7 +63,7 @@ describe('MessageInput rate limiting', () => {
     await waitFor(() => {
       expect(onError).toHaveBeenCalled();
       const msg = onError.mock.calls[onError.mock.calls.length - 1][0] as string;
-      expect(msg).toMatch(/too quickly/i);
+      expect(msg).toMatch(/too many messages/i);
     });
   });
 

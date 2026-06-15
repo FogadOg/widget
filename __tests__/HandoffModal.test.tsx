@@ -10,6 +10,7 @@ const defaultTranslations = {
   handoffSubmitButton: 'Send Request',
   handoffSubmittingButton: 'Sending...',
   handoffError: 'Something went wrong. Please try again.',
+  dismiss: 'Dismiss',
 };
 
 describe('HandoffModal', () => {

@@ -554,6 +554,8 @@ describe('EmbedClient Component', () => {
 
         handoffConfirmation: 'Your message has been sent. Our team will be in touch.',
 
+        messageSendTimeout: 'Message timed out. Please try again.',
+
       },
 
       locale: 'en',

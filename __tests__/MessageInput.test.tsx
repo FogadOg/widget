@@ -162,7 +162,7 @@ describe('MessageInput component', () => {
 
     await waitFor(() => {
 
-      expect(onError).toHaveBeenCalledWith('Session or authentication error');
+      expect(onError).toHaveBeenCalledWith('Session or authentication token not available. Please check your widget configuration.');
 
     });
 
@@ -582,7 +582,7 @@ describe('MessageInput component', () => {
 
     // should call onError with appropriate message
 
-    await waitFor(() => expect(onError).toHaveBeenCalledWith('Invalid response from message server'));
+    await waitFor(() => expect(onError).toHaveBeenCalledWith('Received an invalid response. Please try again.'));
 
     expect(onMessageFailed).toHaveBeenCalledWith(expect.stringMatching(/^temp-/));
 

@@ -392,6 +392,9 @@ export default function EmbedClient({
   // Used to prevent the local-message persist effect from wiping localStorage
   // before loadSessionMessages has had a chance to read and restore the data.
   const hasLoadedMessagesRef = useRef(false);
+  // Ensures the connectivity-flush effect performs its on-mount flush only once
+  // even though the effect re-runs on every render (see flush effect below).
+  const didInitialFlushRef = useRef(false);
 
   // Restore flow responses from localStorage when a session is (re-)established.
   // Must be declared AFTER sessionId to avoid Temporal Dead Zone errors.
@@ -944,8 +947,14 @@ export default function EmbedClient({
       navigator.serviceWorker.addEventListener('message', swHandler as any);
     }
 
-    // Attempt an immediate flush if online
-    if (navigator.onLine) {
+    // Attempt an immediate flush if online. Guarded so it runs only once on
+    // mount: `flushQueuedMessages` changes identity on every render (it closes
+    // over the non-memoized `loadSessionMessages`), so without this guard the
+    // effect would re-fire each render and, with a non-empty queue, loop
+    // forever. Session-ready flushes are still covered by the explicit calls
+    // after createSession/validateAndRestoreSession.
+    if (navigator.onLine && !didInitialFlushRef.current) {
+      didInitialFlushRef.current = true;
       flushQueuedMessages();
     }
 
@@ -2726,7 +2735,15 @@ export default function EmbedClient({
       (window as any).dispatchEvent = (ev: any) => {
         try {
           if (!(ev instanceof Event)) {
-            const msg = new MessageEvent('message', { data: ev.data, origin: ev.origin, source: ev.source });
+            let msg: MessageEvent;
+            try {
+              // `source` must be a Window/MessagePort/ServiceWorker; jsdom (and
+              // browsers) reject plain objects. Try with source first, then fall
+              // back to origin-only so plain test objects still dispatch.
+              msg = new MessageEvent('message', { data: ev.data, origin: ev.origin, source: ev.source });
+            } catch {
+              msg = new MessageEvent('message', { data: ev.data, origin: ev.origin });
+            }
             return originalDispatch.call(window, msg);
           }
         } catch {
