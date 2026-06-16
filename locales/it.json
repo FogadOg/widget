@@ -152,6 +152,7 @@
     "other": "Tropi messaggi. Attendere {count} secondi prima di riprovare."
   },
   "rateLimitGeneric": "Troppi messaggi. Per favore, aspetta un momento prima di riprovare.",
+  "sessionRateLimitGeneric": "Il widget non è temporaneamente disponibile. Riprova tra un momento.",
   "invalidServerResponse": "Ricevuta una risposta non valida. Per favore riprova.",
   "dismiss": "Licenziare",
   "uncertaintyLogUser": "Please provide the text you would like to have translated.",

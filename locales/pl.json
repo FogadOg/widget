@@ -152,6 +152,7 @@
     "other": "Zbyt wiele wiadomości. Proszę czekać {count} sekund przed ponowną próbą."
   },
   "rateLimitGeneric": "Zbyt wiele wiadomości. Proszę poczekać chwilę przed ponownym spróbowaniem.",
+  "sessionRateLimitGeneric": "Widget jest tymczasowo niedostępny. Spróbuj ponownie za chwilę.",
   "invalidServerResponse": "Otrzymano nieprawidłową odpowiedź. Proszę spróbować ponownie.",
   "dismiss": "Odrzuć",
   "uncertaintyLogUser": "Proszę podać tekst do przetłumaczenia.",

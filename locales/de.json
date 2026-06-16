@@ -152,6 +152,7 @@
     "other": "Zu viele Nachrichten. Bitte warten Sie {count} Sekunden, bevor Sie es erneut versuchen."
   },
   "rateLimitGeneric": "Zu viele Nachrichten. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
+  "sessionRateLimitGeneric": "Das Widget ist vorübergehend nicht verfügbar. Bitte versuchen Sie es in einem Moment erneut.",
   "invalidServerResponse": "Erhalten Sie eine ungültige Antwort. Bitte versuchen Sie es erneut.",
   "dismiss": "Ablehnen",
   "uncertaintyLogUser": "Benutzer:",

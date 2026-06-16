@@ -152,6 +152,7 @@
     "other": "For mange meldinger. Vennligst vent {count} sekunder før du prøver igjen."
   },
   "rateLimitGeneric": "For mange meldinger. Vennligst vent et øyeblikk før du prøver igjen.",
+  "sessionRateLimitGeneric": "Widgeten er midlertidig utilgjengelig. Vennligst prøv igjen om et øyeblikk.",
   "invalidServerResponse": "Mottok et ugyldig svar. Vennligst prøv igjen.",
   "dismiss": "Avvis",
   "uncertaintyLogUser": "Vennligst gi meg teksten du ønsker å oversette.",

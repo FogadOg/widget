@@ -152,6 +152,7 @@
     "other": "Te veel berichten. Gelieve {count} seconden te wachten voordat u het opnieuw probeert."
   },
   "rateLimitGeneric": "Te veel berichten. Gelieve even te wachten voordat u het opnieuw probeert.",
+  "sessionRateLimitGeneric": "De widget is tijdelijk niet beschikbaar. Probeer het over een moment opnieuw.",
   "invalidServerResponse": "Ontvangen een ongeldige reactie. Probeer het opnieuw.",
   "dismiss": "Afwijzen",
   "uncertaintyLogUser": "Gebruiker:",

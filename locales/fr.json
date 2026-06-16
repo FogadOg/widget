@@ -152,6 +152,7 @@
     "other": "Trop de messages. Veuillez attendre {count} secondes avant d'essayer à nouveau."
   },
   "rateLimitGeneric": "Trop de messages. Veuillez patienter un moment avant d'essayer à nouveau.",
+  "sessionRateLimitGeneric": "Le widget est temporairement indisponible. Veuillez réessayer dans un moment.",
   "invalidServerResponse": "Réponse invalide reçue. Veuillez réessayer.",
   "dismiss": "Rejeter",
   "uncertaintyLogUser": "Utilisateur :",

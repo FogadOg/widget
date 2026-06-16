@@ -152,6 +152,7 @@
     "other": "För många meddelanden. Vänligen vänta {count} sekunder innan du försöker igen."
   },
   "rateLimitGeneric": "För många meddelanden. Vänligen vänta ett ögonblick innan du försöker igen.",
+  "sessionRateLimitGeneric": "Widgeten är tillfälligt otillgänglig. Försök igen om ett ögonblick.",
   "invalidServerResponse": "Mottog ett ogiltigt svar. Vänligen försök igen.",
   "dismiss": "Avvisa",
   "uncertaintyLogUser": "Användare:",

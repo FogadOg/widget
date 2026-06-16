@@ -1547,7 +1547,7 @@ export default function EmbedClient({
               const waitSec = retryAfterSec ? parseInt(retryAfterSec, 10) : 0;
               const rateLimitMsg = waitSec > 0
                 ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
-                : String(t.rateLimitGeneric);
+                : String(t.sessionRateLimitGeneric ?? t.rateLimitGeneric);
               const rateLimitErr = createNetworkError(rateLimitMsg, WidgetErrorCode.NETWORK_RATE_LIMITED);
               rateLimitErr.retryable = false;
               rateLimitErr.userMessage = rateLimitMsg;
