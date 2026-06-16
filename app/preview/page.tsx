@@ -10,6 +10,11 @@ type Props = {
   }>;
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
+
 export default async function PreviewPage({ searchParams }: Props) {
   const params = await searchParams;
   const configB64 = params.config ?? '';
@@ -67,7 +72,7 @@ export default async function PreviewPage({ searchParams }: Props) {
             configId="preview"
             previewConfig={configB64}
             locale={locale}
-            startOpen={true}
+            startOpen={false}
           />
         ) : (
           <EmbedClient
@@ -76,7 +81,7 @@ export default async function PreviewPage({ searchParams }: Props) {
             configId="preview"
             previewConfig={configB64}
             locale={locale}
-            startOpen={true}
+            startOpen={false}
           />
         )}
       </ErrorBoundary>
