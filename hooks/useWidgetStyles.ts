@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { DEFAULTS, DEFAULT_COLORS, SHADOW_INTENSITY, SIZE_PRESETS } from '../lib/constants';
 import type { WidgetConfig } from '../types/widget';
-import { normalizeHexColor, getReadableTextColor } from '../lib/colors';
+import { normalizeHexColor, getReadableTextColor, getRelativeLuminance, withAlpha } from '../lib/colors';
 
 export function useWidgetStyles(widgetConfig?: WidgetConfig) {
   const primaryColor = normalizeHexColor(widgetConfig?.primary_color, DEFAULT_COLORS.PRIMARY);
@@ -11,6 +11,18 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
   // WCAG-contrast text color for any surface painted with primaryColor (buttons,
   // user bubbles, etc.) so a light brand color doesn't yield unreadable white. (#10)
   const readableOnPrimary = getReadableTextColor(primaryColor);
+
+  // Theme-aware neutrals derived from the configured colors so secondary text,
+  // hairlines, skeletons and the typing indicator adapt to any brand/dark theme
+  // instead of using hardcoded gray shades. (Monochrome-first: color = meaning only.)
+  const isLightBackground = getRelativeLuminance(backgroundColor) > 0.4;
+  const mutedTextColor = withAlpha(textColor, 0.6);
+  const subtleBorderColor = withAlpha(textColor, 0.12);
+  const skeletonColor = withAlpha(textColor, 0.1);
+  // Agent bubble surface: a faint wash off the page so it reads as a distinct
+  // surface in both light and dark themes (previously computed inline in EmbedShell).
+  const agentBubbleBg = isLightBackground ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)';
+
   const borderRadius = widgetConfig?.border_radius || DEFAULTS.BORDER_RADIUS;
   const fontFamily = widgetConfig?.font_family || DEFAULTS.FONT_FAMILY;
   const fontSize = widgetConfig?.font_size || DEFAULTS.FONT_SIZE;
@@ -60,6 +72,11 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
     backgroundColor,
     textColor,
     readableOnPrimary,
+    mutedTextColor,
+    subtleBorderColor,
+    skeletonColor,
+    agentBubbleBg,
+    isLightBackground,
     borderRadius,
     fontStyles,
     getShadowStyle,

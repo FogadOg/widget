@@ -65,6 +65,18 @@ export const DEFAULT_COLORS = {
   SHADOW: '#000000',
 } as const;
 
+// Semantic status colors — the one place color carries *meaning* in the widget
+// (error / offline / warning), kept theme-independent on purpose so a critical
+// message reads the same on every brand. Mirrors the values previously inlined
+// across EmbedShell/MessageBubble so centralizing them is a no-visual-change move.
+export const STATUS_COLORS = {
+  error:   { bg: '#fee2e2', border: '#ef4444', text: '#b91c1c' },
+  offline: { bg: '#f0f9ff', border: '#7dd3fc', text: '#0c4a6e' },
+  warning: { bg: '#fef3c7', border: '#fcd34d', text: '#78350f' },
+  safety:  { bg: '#fef3c7', border: '#fde68a', text: '#92400e' },
+  danger:  '#ef4444',
+} as const;
+
 // Default values
 export const DEFAULTS = {
   BORDER_RADIUS: 8,

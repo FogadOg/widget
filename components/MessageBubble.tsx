@@ -10,7 +10,8 @@ type MDComponents = Record<string, React.ComponentType<any>>;
 import { t as translate } from '../lib/i18n';
 import { useWidgetTranslation } from '../hooks/useWidgetTranslation';
 import type { WidgetConfig } from '../types/widget';
-import { normalizeHexColor, getReadableTextColor } from '../lib/colors';
+import { normalizeHexColor, getReadableTextColor, withAlpha } from '../lib/colors';
+import { STATUS_COLORS } from '../lib/constants';
 
 type Source = { url?: string; title?: string; snippet?: string };
 type Message = {
@@ -60,6 +61,12 @@ function linkifyText(text: string): string {
 
 export default function MessageBubble({ message, widgetConfig, agentName, showMessageAvatars = true, textColor = '#111', agentBubbleBg = 'rgba(0,0,0,0.07)', fontStyles = {}, messageBubbleRadius = 8, onSubmitMessageFeedback, messageFeedbackSubmitted = new Set(), showTimestamps = true }: Props) {
   const { locale } = useWidgetTranslation();
+  // Theme-aware neutrals derived from the configured text color so secondary
+  // text, hairlines and code surfaces adapt to dark/branded themes instead of
+  // hardcoded grays.
+  const mutedTextColor = withAlpha(textColor, 0.6);
+  const subtleBorderColor = withAlpha(textColor, 0.12);
+  const codeBg = withAlpha(textColor, 0.08);
   const hasFeedback = messageFeedbackSubmitted.has(message.id);
   const safetyAction = message.metadata?.safety_policy_action || '';
   const showSafetyFallback = message.from === 'agent' && /fallback|forbidden_topic_block|escalation_handoff/.test(safetyAction);
@@ -202,15 +209,17 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
               {showMessageAvatars && widgetConfig?.bot_avatar && (
               <img src={widgetConfig.bot_avatar} alt={(agentName || widgetConfig?.title?.en || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
             )}
-            <div className={`max-w-[80%] p-2 group relative`} style={{ backgroundColor: agentBubbleBg, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
+            <div className={`max-w-[80%] px-3.5 py-2.5 border group relative`} style={{ backgroundColor: agentBubbleBg, borderColor: subtleBorderColor, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
               {/* Copy button — appears on hover */}
               <button
                 type="button"
                 onClick={handleCopy}
                 title={copied ? translate(locale, 'copied') : translate(locale, 'copyMessage')}
                 aria-label={copied ? translate(locale, 'copied') : translate(locale, 'copyMessage')}
-                className="absolute top-1 right-1 opacity-40 hover:opacity-100 transition-opacity p-1 rounded hover:bg-black/10"
-                style={{ color: textColor }}
+                className="absolute top-1 right-1 opacity-40 hover:opacity-100 transition-opacity p-1 rounded focus:outline-none focus-visible:ring-2"
+                style={{ color: textColor, backgroundColor: 'transparent', ['--tw-ring-color' as string]: withAlpha(textColor, 0.4) }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = withAlpha(textColor, 0.1); }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
                 {copied ? (
                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -266,11 +275,11 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
                       code: (({ className, children }: { className?: string; children?: React.ReactNode }) => {
                         const isBlock = /language-/.test(className || '');
                         return isBlock ? (
-                          <pre style={{ backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: '4px', padding: '8px', overflowX: 'auto', fontSize: '0.82em', margin: '4px 0' }}>
+                          <pre style={{ backgroundColor: codeBg, borderRadius: '4px', padding: '8px', overflowX: 'auto', fontSize: '0.82em', margin: '4px 0' }}>
                             <code className={className}>{children}</code>
                           </pre>
                         ) : (
-                          <code style={{ backgroundColor: 'rgba(0,0,0,0.08)', borderRadius: '3px', padding: '1px 4px', fontSize: '0.85em' }}>{children}</code>
+                          <code style={{ backgroundColor: codeBg, borderRadius: '3px', padding: '1px 4px', fontSize: '0.85em' }}>{children}</code>
                         );
                       }),
                       ul: (({ children }: { children?: React.ReactNode }) => <ul style={{ paddingInlineStart: '1.2em', margin: '4px 0', listStyleType: 'disc' }}>{children}</ul>),
@@ -283,8 +292,8 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
                       h4: (({ children }: { children?: React.ReactNode }) => <h4 style={{ fontSize: '0.95em', fontWeight: 600, margin: '4px 0 2px' }}>{children}</h4>),
                       h5: (({ children }: { children?: React.ReactNode }) => <h5 style={{ fontSize: '0.9em', fontWeight: 600, margin: '4px 0 2px' }}>{children}</h5>),
                       h6: (({ children }: { children?: React.ReactNode }) => <h6 style={{ fontSize: '0.85em', fontWeight: 600, margin: '4px 0 2px' }}>{children}</h6>),
-                      hr: (() => <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.12)', margin: '6px 0' }} />),
-                      blockquote: (({ children }: { children?: React.ReactNode }) => <blockquote style={{ borderInlineStart: '3px solid rgba(0,0,0,0.2)', paddingInlineStart: '8px', margin: '4px 0', opacity: 0.85 }}>{children}</blockquote>),
+                      hr: (() => <hr style={{ border: 'none', borderTop: `1px solid ${subtleBorderColor}`, margin: '6px 0' }} />),
+                      blockquote: (({ children }: { children?: React.ReactNode }) => <blockquote style={{ borderInlineStart: `3px solid ${withAlpha(textColor, 0.2)}`, paddingInlineStart: '8px', margin: '4px 0', opacity: 0.85 }}>{children}</blockquote>),
                       strong: (({ children }: { children?: React.ReactNode }) => <strong style={{ fontWeight: 700 }}>{children}</strong>),
                       em: (({ children }: { children?: React.ReactNode }) => <em style={{ fontStyle: 'italic' }}>{children}</em>),
                     } as MDComponents)}
@@ -301,10 +310,10 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
           </div>
           {!hasFeedback && onSubmitMessageFeedback && (
             <div className="mt-1 flex gap-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>
-              <button type="button" onClick={() => onSubmitMessageFeedback(message.id, 'thumbs_up')} className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1" style={{ color: textColor }} title={translate(locale, 'feedbackThumbsUp')} aria-label={translate(locale, 'feedbackPositive')}>
+              <button type="button" onClick={() => onSubmitMessageFeedback(message.id, 'thumbs_up')} className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1 rounded p-0.5 focus:outline-none focus-visible:ring-2" style={{ color: textColor, ['--tw-ring-color' as string]: withAlpha(textColor, 0.4) }} title={translate(locale, 'feedbackThumbsUp')} aria-label={translate(locale, 'feedbackPositive')}>
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>
               </button>
-              <button type="button" onClick={() => onSubmitMessageFeedback(message.id, 'thumbs_down')} className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1" style={{ color: textColor }} title={translate(locale, 'feedbackThumbsDown')} aria-label={translate(locale, 'feedbackNegative')}>
+              <button type="button" onClick={() => onSubmitMessageFeedback(message.id, 'thumbs_down')} className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1 rounded p-0.5 focus:outline-none focus-visible:ring-2" style={{ color: textColor, ['--tw-ring-color' as string]: withAlpha(textColor, 0.4) }} title={translate(locale, 'feedbackThumbsDown')} aria-label={translate(locale, 'feedbackNegative')}>
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.737 3h4.017c.163 0 .326.02.485.06L17 4m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m6-10h-2" /></svg>
               </button>
             </div>
@@ -314,9 +323,9 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
               className="mt-1 text-[11px]"
               style={{
                 marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0',
-                color: '#92400e',
-                backgroundColor: '#fef3c7',
-                border: '1px solid #fde68a',
+                color: STATUS_COLORS.safety.text,
+                backgroundColor: STATUS_COLORS.safety.bg,
+                border: `1px solid ${STATUS_COLORS.safety.border}`,
                 borderRadius: '999px',
                 padding: '2px 8px',
               }}
@@ -329,7 +338,7 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
             <span className="mt-1 text-xs opacity-50" style={{ color: textColor, marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>{translate(locale, 'feedbackSubmitted')}</span>
           )}
           {showTimestamps && message.timestamp && (
-            <span className="mt-1 text-xs opacity-50" style={{ color: textColor, marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>{new Date(message.timestamp).toLocaleTimeString()}</span>
+            <span className="mt-1 text-xs" style={{ color: mutedTextColor, marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>{new Date(message.timestamp).toLocaleTimeString()}</span>
           )}
         </div>
       </div>
@@ -345,9 +354,9 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
   const bubbleStyle: React.CSSProperties = isPending
     ? {
         backgroundColor: 'transparent',
-        color: '#374151',
+        color: mutedTextColor,
         borderRadius: `${messageBubbleRadius}px`,
-        border: '1px dashed rgba(31,41,55,0.08)',
+        border: `1px dashed ${subtleBorderColor}`,
         opacity: 0.9,
         ...fontStyles,
       }
@@ -363,21 +372,21 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
   return (
     <div className={`flex w-full justify-end`}>
       <div className="flex flex-col items-end w-full" aria-live={isPending ? 'polite' : undefined}>
-        <div className={`max-w-[80%] p-2`} style={bubbleStyle} data-pending={isPending ? 'true' : 'false'}>
+        <div className={`max-w-[80%] px-3.5 py-2.5`} style={bubbleStyle} data-pending={isPending ? 'true' : 'false'}>
           <div style={{ opacity: isPending ? 0.9 : 1 }}>{message.text}</div>
         </div>
 
         {isPending && (
           <div className="mt-1 flex items-center gap-3">
             {attempts === 0 && (
-              <span className="text-xs opacity-70 flex items-center gap-1" style={{ color: '#6b7280' }}>
+              <span className="text-xs opacity-70 flex items-center gap-1" style={{ color: mutedTextColor }}>
                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
                 <span className="text-xs">{translate(locale, 'offlineStatus')}</span>
               </span>
             )}
 
             {attempts > 0 && attempts < 3 && (
-              <span className="text-xs opacity-70 flex items-center gap-1" style={{ color: '#6b7280' }}>
+              <span className="text-xs opacity-70 flex items-center gap-1" style={{ color: mutedTextColor }}>
                 <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /></svg>
                 <span className="text-xs">{translate(locale, 'deliveringStatus', { vars: { attempt: attempts } })}</span>
               </span>
@@ -385,7 +394,7 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
 
             {attempts >= 3 && (
               <div className="flex items-center gap-2">
-                <span className="text-xs opacity-70" style={{ color: '#ef4444' }}>{translate(locale, 'failedSend')}</span>
+                <span className="text-xs opacity-70" style={{ color: STATUS_COLORS.danger }}>{translate(locale, 'failedSend')}</span>
                 <button type="button" className="text-xs underline" onClick={() => {
                   try {
                     window.dispatchEvent(new CustomEvent('companin:retry-queued', { detail: { id: message.id } }));
@@ -397,7 +406,7 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
         )}
 
         {showTimestamps && message.timestamp && (
-          <span className="mt-1 text-xs opacity-50" style={{ color: '#6b7280' }}>{new Date(message.timestamp).toLocaleTimeString()}</span>
+          <span className="mt-1 text-xs" style={{ color: mutedTextColor }}>{new Date(message.timestamp).toLocaleTimeString()}</span>
         )}
       </div>
     </div>

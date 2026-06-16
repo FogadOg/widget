@@ -16,10 +16,16 @@ import type {
 } from '../types/widget';
 import { useClickedButtons, ButtonLike } from '../hooks/useClickedButtons';
 import { useWidgetStyles } from '../hooks/useWidgetStyles';
-import { hexToRgb, getReadableTextColor, getRelativeLuminance } from '../lib/colors';
-import { COMPANY_NAME } from '../lib/constants';
+import { hexToRgb, getReadableTextColor, withAlpha } from '../lib/colors';
+import { COMPANY_NAME, STATUS_COLORS } from '../lib/constants';
 
 const FOCUSABLE = 'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+// Shared visible focus affordance (DESIGN_STANDARD §6: every interactive element
+// gets a focus-visible ring). Ring/offset colors are supplied inline per-surface
+// via --tw-ring-color / --tw-ring-offset-color so they contrast with the
+// customer's brand colors instead of a fixed token.
+const FOCUS_RING = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2';
 
 const FocusTrap = memo(function FocusTrap({ children, onEscape }: { children: React.ReactNode; onEscape?: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -92,13 +98,14 @@ type Props = {
 };
 
 
-// Simple chat skeleton loader
-function ChatSkeleton() {
+// Simple chat skeleton loader. Skeleton color is derived from the configured
+// text color so it stays visible on dark/branded backgrounds.
+function ChatSkeleton({ skeletonColor }: { skeletonColor: string }) {
   return (
     <div className="flex flex-col gap-4 p-4 animate-pulse">
       {[...Array(4)].map((_, i) => (
         <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
-          <div className="h-6 w-2/3 rounded-lg bg-gray-200/60" style={{ minWidth: 120 }} />
+          <div className="h-6 w-2/3 rounded-lg" style={{ minWidth: 120, backgroundColor: skeletonColor }} />
         </div>
       ))}
     </div>
@@ -128,18 +135,119 @@ function Suggestions({
           key={`${i}-${text}`}
           type="button"
           onClick={() => onSelect(text)}
-          className="px-3 py-1.5 text-sm border bg-white/80 hover:bg-white transition-colors"
+          className="px-3 py-1.5 text-sm border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
           style={{
             borderRadius: `${buttonBorderRadius}px`,
-            borderColor: primaryColor,
+            borderColor: withAlpha(primaryColor, 0.4),
+            backgroundColor: withAlpha(primaryColor, 0.06),
             color: primaryColor,
             ...fontStyles,
+            ['--tw-ring-color' as string]: withAlpha(primaryColor, 0.5),
           }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = withAlpha(primaryColor, 0.14); }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = withAlpha(primaryColor, 0.06); }}
         >
           {text}
         </button>
       ))}
     </div>
+  );
+}
+
+// Agent typing indicator. Shared by both the embedded and inline render paths so
+// the two never drift (previously one used agentBubbleBg, the other #e5e7eb).
+function TypingIndicator({
+  agentBubbleBg,
+  textColor,
+  mutedTextColor,
+  messageBubbleRadius,
+  showAvatar,
+  avatarSrc,
+  avatarAlt,
+  label,
+}: {
+  agentBubbleBg: string;
+  textColor: string;
+  mutedTextColor: string;
+  messageBubbleRadius: number;
+  showAvatar?: boolean;
+  avatarSrc?: string;
+  avatarAlt?: string;
+  label: string;
+}) {
+  return (
+    <div className="flex justify-start" role="status" aria-live="polite">
+      <div className="flex items-start gap-2">
+        {showAvatar && avatarSrc && (
+          <img src={avatarSrc} alt={avatarAlt} className="w-8 h-8 rounded-full object-cover shrink-0" />
+        )}
+        <div className="px-3.5 py-3" style={{ backgroundColor: agentBubbleBg, color: textColor, borderRadius: `${messageBubbleRadius}px` }}>
+          <span style={{ position: 'absolute', left: '-9999px' }}>{label}</span>
+          <div className="flex gap-1 motion-reduce:hidden" aria-hidden="true">
+            <span className="w-2 h-2 rounded-full animate-typing-dot" style={{ backgroundColor: mutedTextColor }} />
+            <span className="w-2 h-2 rounded-full animate-typing-dot" style={{ backgroundColor: mutedTextColor, animationDelay: '0.15s' }} />
+            <span className="w-2 h-2 rounded-full animate-typing-dot" style={{ backgroundColor: mutedTextColor, animationDelay: '0.3s' }} />
+          </div>
+          <span className="hidden motion-reduce:inline text-sm" style={{ color: mutedTextColor }}>…</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Error / offline / session-expired banners. Shared by both render paths and
+// sourced from the semantic STATUS_COLORS palette (color = meaning only).
+function StatusBanners({
+  error,
+  isOffline,
+  sessionExpired,
+  onDismissSessionExpired,
+  offlineTitle,
+  offlineDesc,
+  sessionExpiredTitle,
+  sessionExpiredBody,
+  sessionExpiredDismiss,
+}: {
+  error?: string | null;
+  isOffline?: boolean;
+  sessionExpired?: boolean;
+  onDismissSessionExpired?: () => void;
+  offlineTitle: string;
+  offlineDesc: string;
+  sessionExpiredTitle: string;
+  sessionExpiredBody: string;
+  sessionExpiredDismiss: string;
+}) {
+  return (
+    <>
+      {error && (
+        <div
+          className="border-l-4 p-3 mx-3 mt-3 rounded"
+          role="alert"
+          style={{ backgroundColor: STATUS_COLORS.error.bg, borderColor: STATUS_COLORS.error.border, color: STATUS_COLORS.error.text }}
+        >
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+
+      {isOffline && (
+        <div role="status" aria-live="polite" className="flex items-center gap-2 mx-3 mt-3 px-3 py-2 rounded text-xs" style={{ background: STATUS_COLORS.offline.bg, border: `1px solid ${STATUS_COLORS.offline.border}`, color: STATUS_COLORS.offline.text }}>
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6zm-1 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+          </svg>
+          <span><strong className="mr-1">{offlineTitle}</strong>{offlineDesc}</span>
+        </div>
+      )}
+
+      {sessionExpired && (
+        <div role="status" aria-live="polite" className="flex items-center justify-between gap-2 mx-3 mt-3 px-3 py-2 rounded text-xs" style={{ background: STATUS_COLORS.warning.bg, border: `1px solid ${STATUS_COLORS.warning.border}`, color: STATUS_COLORS.warning.text }}>
+          <span><strong className="mr-1">{sessionExpiredTitle}</strong>{sessionExpiredBody}</span>
+          {onDismissSessionExpired && (
+            <button type="button" onClick={onDismissSessionExpired} aria-label={sessionExpiredDismiss} style={{ background: 'transparent', border: 'none', color: STATUS_COLORS.warning.text, cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -180,6 +288,8 @@ function Composer({
   onStop,
   isTyping,
   primaryColor,
+  backgroundColor,
+  subtleBorderColor,
   buttonBorderRadius,
   fontStyles,
   placeholder,
@@ -194,6 +304,8 @@ function Composer({
   onStop?: () => void;
   isTyping: boolean;
   primaryColor: string;
+  backgroundColor: string;
+  subtleBorderColor: string;
   buttonBorderRadius: number;
   fontStyles: React.CSSProperties;
   placeholder: string;
@@ -222,6 +334,7 @@ function Composer({
         if (canSend) onSubmit(e);
       }}
       className="p-3 border-t"
+      style={{ borderColor: subtleBorderColor }}
     >
       <div className="flex items-end space-x-2">
         <textarea
@@ -235,11 +348,12 @@ function Composer({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           aria-label={ariaLabel}
-          className="flex-1 resize-none overflow-y-auto p-2 border focus:outline-none focus:ring-2"
+          className="flex-1 resize-none overflow-y-auto px-3 py-2 border transition-shadow focus:outline-none focus-visible:ring-2"
           style={{
             maxHeight: '120px',
             borderRadius: `${buttonBorderRadius}px`,
-            borderColor: primaryColor,
+            borderColor: subtleBorderColor,
+            ['--tw-ring-color' as string]: withAlpha(primaryColor, 0.6),
             ...fontStyles,
             fontSize: '16px',
           }}
@@ -252,10 +366,13 @@ function Composer({
               backgroundColor: primaryColor,
               color: getReadableTextColor(primaryColor),
               borderRadius: `${buttonBorderRadius}px`,
+              ['--tw-ring-color' as string]: primaryColor,
+              ['--tw-ring-offset-color' as string]: backgroundColor,
               ...fontStyles,
             }}
-            className="px-4 py-2 hover:opacity-90"
+            className={`shrink-0 inline-flex items-center justify-center px-4 py-2 hover:opacity-90 ${FOCUS_RING}`}
             aria-label={stopLabel}
+            title={stopLabel}
           >
             <span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: getReadableTextColor(primaryColor), borderRadius: '2px' }} aria-hidden="true" />
           </button>
@@ -267,18 +384,27 @@ function Composer({
               backgroundColor: primaryColor,
               color: getReadableTextColor(primaryColor),
               borderRadius: `${buttonBorderRadius}px`,
+              ['--tw-ring-color' as string]: primaryColor,
+              ['--tw-ring-offset-color' as string]: backgroundColor,
               ...fontStyles,
             }}
-            className="px-4 py-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`shrink-0 inline-flex items-center justify-center px-4 py-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed ${FOCUS_RING}`}
             aria-busy={isTyping}
+            aria-label={sendLabel}
+            title={sendLabel}
           >
             {isTyping ? (
               <span className="flex items-center gap-1" aria-hidden="true">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" style={{ animationDelay: '0.15s' }} />
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" style={{ animationDelay: '0.3s' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-current animate-typing-dot" />
+                <span className="w-1.5 h-1.5 rounded-full bg-current animate-typing-dot" style={{ animationDelay: '0.15s' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-current animate-typing-dot" style={{ animationDelay: '0.3s' }} />
               </span>
-            ) : sendLabel}
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M22 2 11 13" />
+                <path d="M22 2 15 22l-4-9-9-4Z" />
+              </svg>
+            )}
           </button>
         )}
       </div>
@@ -478,6 +604,10 @@ export default function EmbedShell({
     backgroundColor,
     textColor,
     readableOnPrimary,
+    mutedTextColor,
+    subtleBorderColor,
+    skeletonColor,
+    agentBubbleBg,
     borderRadius,
     fontStyles,
     getButtonSizeClasses,
@@ -497,12 +627,6 @@ export default function EmbedShell({
   // Readable text color for the header which uses primaryColor as background.
   // Prevents white-on-light unreadable headers when a customer picks a light brand color.
   const headerTextColor = getReadableTextColor(primaryColor);
-
-  // Agent bubble background derived from the widget's background color so it
-  // stays legible in both light and dark themes.
-  const agentBubbleBg = getRelativeLuminance(backgroundColor) > 0.4
-    ? 'rgba(0,0,0,0.07)'
-    : 'rgba(255,255,255,0.1)';
 
 
 
@@ -573,6 +697,16 @@ export default function EmbedShell({
   const composerAriaLabel = (t.typeYourMessageLabel || translate(locale, 'typeYourMessageLabel')) as unknown as string;
   const sendLabel = translate(locale, 'send');
   const stopLabel = translate(locale, 'stopStreaming');
+  const agentTypingLabel = translate(locale, 'agentTyping');
+  const botAvatarSrc = widgetConfig?.bot_avatar;
+  const botAvatarAlt = (agentName || getText(widgetConfig?.title) || 'agent') + ' avatar';
+  const bannerLabels = {
+    offlineTitle: translate(locale, 'offlineBannerTitle'),
+    offlineDesc: translate(locale, 'offlineBannerDesc'),
+    sessionExpiredTitle: translate(locale, 'sessionExpiredTitle'),
+    sessionExpiredBody: translate(locale, 'sessionExpiredBody'),
+    sessionExpiredDismiss: translate(locale, 'sessionExpiredDismiss'),
+  };
 
   return (
     <>
@@ -601,10 +735,12 @@ export default function EmbedShell({
                 zIndex: 999999,
                 backgroundColor: primaryColor,
                 color: readableOnPrimary,
-                borderRadius: `${buttonBorderRadius * 2}px`,
+                borderRadius: '9999px',
+                ['--tw-ring-color' as string]: primaryColor,
+                ['--tw-ring-offset-color' as string]: 'transparent',
                 ...fontStyles
               }}
-              className={`${btnWidth} ${btnHeight} shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:opacity-90 relative`}
+              className={`${btnWidth} ${btnHeight} shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200 hover:scale-105 hover:opacity-90 relative ${FOCUS_RING}`}
               title={translate(locale, 'chatControl', { context: 'open' })}
             >
                 {widgetConfig?.bot_avatar ? (
@@ -622,7 +758,7 @@ export default function EmbedShell({
                       position: 'absolute',
                       top: '-4px',
                       right: '-4px',
-                      backgroundColor: '#ef4444',
+                      backgroundColor: STATUS_COLORS.danger,
                       color: 'white',
                       borderRadius: '50%',
                       width: unreadCount > 9 ? '24px' : '20px',
@@ -683,8 +819,8 @@ export default function EmbedShell({
                     <button
                       type="button"
                       onClick={onShowUnsureModal}
-                      style={{ backgroundColor: secondaryColor }}
-                      className="px-2 py-1 rounded text-sm flex items-center justify-center hover:opacity-90 relative"
+                      style={{ backgroundColor: secondaryColor, ['--tw-ring-color' as string]: headerTextColor, ['--tw-ring-offset-color' as string]: primaryColor }}
+                      className={`px-2 py-1 rounded text-sm flex items-center justify-center hover:opacity-90 relative ${FOCUS_RING}`}
                       aria-label={translate(locale, 'viewUncertaintyLog')}
                       title={translate(locale, 'uncertaintyResponsesHint')}
                     >
@@ -702,8 +838,8 @@ export default function EmbedShell({
                   <button
                     type="button"
                     onClick={toggleCollapsed}
-                    style={{ backgroundColor: secondaryColor }}
-                    className="px-2 py-1 rounded text-sm flex items-center justify-center hover:opacity-90"
+                    style={{ backgroundColor: secondaryColor, ['--tw-ring-color' as string]: headerTextColor, ['--tw-ring-offset-color' as string]: primaryColor }}
+                    className={`px-2 py-1 rounded text-sm flex items-center justify-center hover:opacity-90 ${FOCUS_RING}`}
                     aria-label={closeChatLabel}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -713,34 +849,18 @@ export default function EmbedShell({
                 </div>
               </div>
 
-              {error && (
-                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mx-3 mt-3 rounded" role="alert">
-                  <p className="text-sm">{error}</p>
-                </div>
-              )}
-
-              {isOffline && (
-                <div role="status" aria-live="polite" className="flex items-center gap-2 mx-3 mt-3 px-3 py-2 rounded text-xs" style={{ background: '#f0f9ff', border: '1px solid #7dd3fc', color: '#0c4a6e' }}>
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6zm-1 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                  </svg>
-                  <span><strong className="mr-1">{translate(locale, 'offlineBannerTitle')}</strong>{translate(locale, 'offlineBannerDesc')}</span>
-                </div>
-              )}
-
-              {sessionExpiredBanner && (
-                <div role="status" aria-live="polite" className="flex items-center justify-between gap-2 mx-3 mt-3 px-3 py-2 rounded text-xs" style={{ background: '#fef3c7', border: '1px solid #fcd34d', color: '#78350f' }}>
-                  <span><strong className="mr-1">{translate(locale, 'sessionExpiredTitle')}</strong>{translate(locale, 'sessionExpiredBody')}</span>
-                  {onDismissSessionExpiredBanner && (
-                    <button type="button" onClick={onDismissSessionExpiredBanner} aria-label={translate(locale, 'sessionExpiredDismiss')} style={{ background: 'transparent', border: 'none', color: '#78350f', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
-                  )}
-                </div>
-              )}
+              <StatusBanners
+                error={error}
+                isOffline={isOffline}
+                sessionExpired={sessionExpiredBanner}
+                onDismissSessionExpired={onDismissSessionExpiredBanner}
+                {...bannerLabels}
+              />
 
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="flex-1 overflow-y-auto p-3 space-y-3"
+                className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-3"
                 role="log"
                 aria-live="polite"
                 aria-relevant="additions text"
@@ -749,7 +869,7 @@ export default function EmbedShell({
                 style={mobileSafeAreaStyle}
               >
                 {showSkeleton ? (
-                  <ChatSkeleton />
+                  <ChatSkeleton skeletonColor={skeletonColor} />
                 ) : (
                   <>
                     {showGreeting && greetingText && (
@@ -758,7 +878,7 @@ export default function EmbedShell({
                           {showMessageAvatars && widgetConfig?.bot_avatar && (
                             <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
                           )}
-                          <div className="max-w-[80%] p-2 rounded-lg" style={{ backgroundColor: agentBubbleBg, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
+                          <div className="max-w-[80%] px-3.5 py-2.5 border" style={{ backgroundColor: agentBubbleBg, borderColor: subtleBorderColor, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
                             {greetingText}
                           </div>
                         </div>
@@ -839,13 +959,15 @@ export default function EmbedShell({
                                       onClick={() => handleFollowUpButtonClickWrapper(button)}
                                       disabled={isClicked}
                                       style={{
-                                        backgroundColor: isClicked ? '#9ca3af' : primaryColor,
-                                        color: getReadableTextColor(isClicked ? '#9ca3af' : primaryColor),
+                                        backgroundColor: isClicked ? withAlpha(textColor, 0.12) : primaryColor,
+                                        color: isClicked ? mutedTextColor : getReadableTextColor(primaryColor),
                                         borderRadius: `${buttonBorderRadius}px`,
+                                        ['--tw-ring-color' as string]: primaryColor,
+                                        ['--tw-ring-offset-color' as string]: backgroundColor,
                                         ...fontStyles
                                       }}
-                                      className={`w-fit px-3 py-2 text-sm transition-opacity flex items-center gap-2 ${
-                                        isClicked ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+                                      className={`w-fit px-3 py-2 text-sm transition-opacity flex items-center gap-2 ${FOCUS_RING} ${
+                                        isClicked ? 'opacity-60 cursor-not-allowed' : 'hover:opacity-90'
                                       }`}
                                     >
                                       {button.icon && (() => {
@@ -880,23 +1002,16 @@ export default function EmbedShell({
                         />
                       </div>
                     ) : (showTypingIndicator && isTyping && (
-                      <div className="flex justify-start" role="status" aria-live="polite">
-                        <div className="flex items-start gap-2">
-                          {showMessageAvatars && widgetConfig?.bot_avatar && (
-                            <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
-                          )}
-                          <div className="p-3" style={{ backgroundColor: agentBubbleBg, color: textColor, borderRadius: `${messageBubbleRadius}px` }}>
-                            <span style={{ position: 'absolute', left: '-9999px' }}>{translate(locale, 'agentTyping')}</span>
-                            {/* Animated dots for standard motion; static ellipsis for reduced-motion users */}
-                            <div className="flex space-x-1 motion-reduce:hidden" aria-hidden="true">
-                              <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
-                              <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                              <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                            </div>
-                            <span className="hidden motion-reduce:inline text-gray-500 text-sm">…</span>
-                          </div>
-                        </div>
-                      </div>
+                      <TypingIndicator
+                        agentBubbleBg={agentBubbleBg}
+                        textColor={textColor}
+                        mutedTextColor={mutedTextColor}
+                        messageBubbleRadius={messageBubbleRadius}
+                        showAvatar={showMessageAvatars}
+                        avatarSrc={botAvatarSrc}
+                        avatarAlt={botAvatarAlt}
+                        label={agentTypingLabel}
+                      />
                     ))}
                   </>
                 )}
@@ -907,7 +1022,7 @@ export default function EmbedShell({
 
               {/* Feedback Dialog Overlay for Embedded View */}
               {showFeedbackDialog && feedbackDialog && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
                   <FocusTrap>
                     <div className="max-w-md w-full">
                       {feedbackDialog}
@@ -918,7 +1033,7 @@ export default function EmbedShell({
 
               {/* Unsure Messages Modal Overlay for Embedded View */}
               {unsureModal && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
                   <FocusTrap onEscape={onCloseUnsureModal}>
                     <div className="max-w-md w-full">
                       {unsureModal}
@@ -929,7 +1044,7 @@ export default function EmbedShell({
 
               {/* Handoff Modal Overlay for Embedded View */}
               {handoffModal && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                   <FocusTrap onEscape={onDismissHandoff}>
                     <div className="max-w-md w-full">
                       {handoffModal}
@@ -945,6 +1060,8 @@ export default function EmbedShell({
                 onStop={onStopStreaming}
                 isTyping={isTyping}
                 primaryColor={primaryColor}
+                backgroundColor={backgroundColor}
+                subtleBorderColor={subtleBorderColor}
                 buttonBorderRadius={buttonBorderRadius}
                 fontStyles={fontStyles}
                 placeholder={placeholderText}
@@ -954,10 +1071,10 @@ export default function EmbedShell({
                 inputRef={inputRef}
               />
               {!widgetConfig?.hide_branding && (
-              <div className="p-2 text-center text-xs text-gray-500 flex items-center justify-center gap-2 flex-wrap">
+              <div className="p-2 text-center text-xs flex items-center justify-center gap-2 flex-wrap" style={{ color: mutedTextColor }}>
                 <span title="Hosted in the EU · GDPR compliant">🇪🇺 EU hosted · GDPR</span>
                 <span aria-hidden>·</span>
-                <span>{poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">{COMPANY_NAME}</a></span>
+                <span>{poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline" style={{ color: textColor, fontWeight: 500 }}>{COMPANY_NAME}</a></span>
               </div>
               )}
             </div>
@@ -982,10 +1099,12 @@ export default function EmbedShell({
                 zIndex: 999999,
                 backgroundColor: primaryColor,
                 color: readableOnPrimary,
-                borderRadius: `${buttonBorderRadius * 2}px`,
+                borderRadius: '9999px',
+                ['--tw-ring-color' as string]: primaryColor,
+                ['--tw-ring-offset-color' as string]: 'transparent',
                 ...fontStyles
               }}
-              className={`${btnWidth} ${btnHeight} shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:opacity-90`}
+              className={`${btnWidth} ${btnHeight} shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200 hover:scale-105 hover:opacity-90 ${FOCUS_RING}`}
               title={typeof t.openChat === 'string' ? t.openChat : String(t.openChat)}
             >
                 {widgetConfig?.bot_avatar ? (
@@ -1029,8 +1148,8 @@ export default function EmbedShell({
                   <button
                     type="button"
                     onClick={toggleCollapsed}
-                    style={{ backgroundColor: secondaryColor }}
-                    className="w-6 h-6 rounded flex items-center justify-center transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: secondaryColor, ['--tw-ring-color' as string]: headerTextColor, ['--tw-ring-offset-color' as string]: primaryColor }}
+                    className={`w-7 h-7 rounded flex items-center justify-center transition-opacity hover:opacity-90 ${FOCUS_RING}`}
                     title={typeof t.minimizeChat === 'string' ? t.minimizeChat : String(t.minimizeChat)}
                     aria-label={minimizeChatLabel}
                   >
@@ -1040,33 +1159,17 @@ export default function EmbedShell({
                   </button>
                 </div>
 
-                {error && (
-                  <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mx-3 mt-3 rounded" role="alert">
-                    <p className="text-sm">{error}</p>
-                  </div>
-                )}
-
-                {isOffline && (
-                  <div role="status" aria-live="polite" className="flex items-center gap-2 mx-3 mt-3 px-3 py-2 rounded text-xs" style={{ background: '#f0f9ff', border: '1px solid #7dd3fc', color: '#0c4a6e' }}>
-                    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6zm-1 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                    </svg>
-                    <span><strong className="mr-1">{translate(locale, 'offlineBannerTitle')}</strong>{translate(locale, 'offlineBannerDesc')}</span>
-                  </div>
-                )}
-
-                {sessionExpiredBanner && (
-                  <div role="status" aria-live="polite" className="flex items-center justify-between gap-2 mx-3 mt-3 px-3 py-2 rounded text-xs" style={{ background: '#fef3c7', border: '1px solid #fcd34d', color: '#78350f' }}>
-                    <span><strong className="mr-1">{translate(locale, 'sessionExpiredTitle')}</strong>{translate(locale, 'sessionExpiredBody')}</span>
-                    {onDismissSessionExpiredBanner && (
-                      <button type="button" onClick={onDismissSessionExpiredBanner} aria-label={translate(locale, 'sessionExpiredDismiss')} style={{ background: 'transparent', border: 'none', color: '#78350f', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
-                    )}
-                  </div>
-                )}
+                <StatusBanners
+                  error={error}
+                  isOffline={isOffline}
+                  sessionExpired={sessionExpiredBanner}
+                  onDismissSessionExpired={onDismissSessionExpiredBanner}
+                  {...bannerLabels}
+                />
 
                 <div
                   ref={scrollContainerRef}
-                  className="flex-1 overflow-y-auto p-3 space-y-3"
+                  className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-3"
                   role="log"
                   aria-live="polite"
                   aria-relevant="additions text"
@@ -1080,7 +1183,7 @@ export default function EmbedShell({
                         {showMessageAvatars && widgetConfig?.bot_avatar && (
                           <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
                         )}
-                        <div className="max-w-[80%] p-2" style={{ backgroundColor: agentBubbleBg, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
+                        <div className="max-w-[80%] px-3.5 py-2.5 border" style={{ backgroundColor: agentBubbleBg, borderColor: subtleBorderColor, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
                           {greetingText}
                         </div>
                       </div>
@@ -1159,12 +1262,15 @@ export default function EmbedShell({
                                     onClick={() => handleFollowUpButtonClickWrapper(button)}
                                     disabled={isClicked}
                                     style={{
-                                      backgroundColor: isClicked ? '#9ca3af' : primaryColor,
+                                      backgroundColor: isClicked ? withAlpha(textColor, 0.12) : primaryColor,
+                                      color: isClicked ? mutedTextColor : getReadableTextColor(primaryColor),
                                       borderRadius: `${buttonBorderRadius}px`,
+                                      ['--tw-ring-color' as string]: primaryColor,
+                                      ['--tw-ring-offset-color' as string]: backgroundColor,
                                       ...fontStyles
                                     }}
-                                    className={`w-fit px-3 py-2 text-white text-sm transition-opacity flex items-center gap-2 ${
-                                      isClicked ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+                                    className={`w-fit px-3 py-2 text-sm transition-opacity flex items-center gap-2 ${FOCUS_RING} ${
+                                      isClicked ? 'opacity-60 cursor-not-allowed' : 'hover:opacity-90'
                                     }`}
                                   >
                                     {button.icon && (() => {
@@ -1198,17 +1304,16 @@ export default function EmbedShell({
                       />
                     </div>
                   ) : (isTyping && (
-                    <div className="flex justify-start" role="status" aria-live="polite">
-                      <div className="p-3" style={{ backgroundColor: '#e5e7eb', color: textColor, borderRadius: `${messageBubbleRadius}px` }}>
-                        <span style={{ position: 'absolute', left: '-9999px' }}>{translate(locale, 'agentTyping')}</span>
-                        <div className="flex space-x-1 motion-reduce:hidden" aria-hidden="true">
-                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
-                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                        </div>
-                        <span className="hidden motion-reduce:inline text-gray-500 text-sm">…</span>
-                      </div>
-                    </div>
+                    <TypingIndicator
+                      agentBubbleBg={agentBubbleBg}
+                      textColor={textColor}
+                      mutedTextColor={mutedTextColor}
+                      messageBubbleRadius={messageBubbleRadius}
+                      showAvatar={showMessageAvatars}
+                      avatarSrc={botAvatarSrc}
+                      avatarAlt={botAvatarAlt}
+                      label={agentTypingLabel}
+                    />
                   ))}
                   {showJumpButton && (
                     <JumpToLatest onClick={scrollToBottom} label={jumpToLatestLabel} primaryColor={primaryColor} />
@@ -1217,7 +1322,7 @@ export default function EmbedShell({
 
                 {/* Feedback Dialog Overlay */}
                 {showFeedbackDialog && feedbackDialog && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
                     <FocusTrap>
                       <div className="max-w-md w-full">
                         {feedbackDialog}
@@ -1228,7 +1333,7 @@ export default function EmbedShell({
 
                 {/* Unsure Messages Modal Overlay */}
                 {unsureModal && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
                     <FocusTrap onEscape={onCloseUnsureModal}>
                       <div className="max-w-md w-full">
                         {unsureModal}
@@ -1239,7 +1344,7 @@ export default function EmbedShell({
 
                 {/* Handoff Modal Overlay */}
                 {handoffModal && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                     <FocusTrap onEscape={onDismissHandoff}>
                       <div className="max-w-md w-full">
                         {handoffModal}
@@ -1255,6 +1360,8 @@ export default function EmbedShell({
                   onStop={onStopStreaming}
                   isTyping={isTyping}
                   primaryColor={primaryColor}
+                  backgroundColor={backgroundColor}
+                  subtleBorderColor={subtleBorderColor}
                   buttonBorderRadius={buttonBorderRadius}
                   fontStyles={fontStyles}
                   placeholder={placeholderText}
@@ -1264,8 +1371,8 @@ export default function EmbedShell({
                   inputRef={inputRef}
                 />
                 {!widgetConfig?.hide_branding && (
-                <div className="p-2 text-center text-xs text-gray-500">
-                  {poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">{COMPANY_NAME}</a>
+                <div className="p-2 text-center text-xs" style={{ color: mutedTextColor }}>
+                  {poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline" style={{ color: textColor, fontWeight: 500 }}>{COMPANY_NAME}</a>
                 </div>
                 )}
               </div>

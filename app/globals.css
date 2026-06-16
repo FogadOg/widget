@@ -144,6 +144,18 @@
   animation: fade-in 0.3s ease-in-out;
 }
 
+/* Quiet typing indicator: a small, looping rise rather than a hard bounce.
+   Covered by the prefers-reduced-motion block below; components also render a
+   static ellipsis fallback via `motion-reduce:` utilities. */
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
+  40% { transform: translateY(-3px); opacity: 1; }
+}
+
+.animate-typing-dot {
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+
 /* ── prefers-reduced-motion ─────────────────────────────────────────────────
    Strip all decorative motion in one place. Tailwind's utility classes
    (animate-pulse, animate-spin, animate-bounce, animate-fade-in) and

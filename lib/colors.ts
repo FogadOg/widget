@@ -44,3 +44,11 @@ export const hexToRgb = (hex: string): string => {
       )}`
     : '255, 255, 255';
 };
+
+// Returns an rgba() string for the given hex color at the requested alpha.
+// Used to derive theme-aware neutrals (muted text, hairline borders, skeletons)
+// from the customer's configured text/background colors instead of hardcoding
+// gray shades that break on dark or branded themes.
+export const withAlpha = (hex: string, alpha: number): string => {
+  return `rgba(${hexToRgb(hex)}, ${alpha})`;
+};
