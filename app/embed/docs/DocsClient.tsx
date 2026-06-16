@@ -137,6 +137,8 @@ type Props = {
   pagePath?: string;
   parentOrigin?: string;
   loaderVersion?: string;
+  /** Base64-encoded JSON widget config for preview mode. When set, auth and API calls are skipped. */
+  previewConfig?: string;
 };
 
 type MessageType = {
@@ -167,7 +169,7 @@ const initialMessages: MessageType[] = [
 ];
 
 
-export default function DocsClient({ clientId, agentId, configId, locale: initialLocale, startOpen, pagePath, parentOrigin: initialParentOrigin, loaderVersion }: Props) {
+export default function DocsClient({ clientId, agentId, configId, locale: initialLocale, startOpen, pagePath, parentOrigin: initialParentOrigin, loaderVersion, previewConfig: initialPreviewConfig }: Props) {
   const embedHeaders = embedOriginHeader(initialParentOrigin, loaderVersion);
 
   const [open, setOpen] = useState(startOpen);
@@ -620,6 +622,16 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
 
   // Initialize session on mount
   useEffect(() => {
+    if (initialPreviewConfig) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(atob(initialPreviewConfig)));
+        const { config: validatedConfig } = validateConfig(decoded, 'docs');
+        setWidgetConfig({ status: 'success', data: validatedConfig });
+      } catch {
+        // ignore parse errors in preview mode
+      }
+      return;
+    }
     if (clientId && agentId) {
       const detectedParentOrigin = resolveParentOrigin();
 
@@ -648,7 +660,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     } else {
       console.warn('Missing clientId or agentId');
     }
-  }, [clientId, agentId, configId, createSession, validateAndRestoreSession, fetchWidgetConfig, getAuthToken, resolveParentOrigin]);
+  }, [clientId, agentId, configId, createSession, validateAndRestoreSession, fetchWidgetConfig, getAuthToken, initialPreviewConfig, resolveParentOrigin]);
 
   // Periodic check for expired sessions
   useEffect(() => {

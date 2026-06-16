@@ -246,6 +246,8 @@ type EmbedClientProps = {
    * test-only: forcibly display the feedback dialog regardless of timer state
    */
   showFeedbackDialogOverride?: boolean;
+  /** Base64-encoded JSON widget config for preview mode. When set, auth and API calls are skipped. */
+  previewConfig?: string;
 };
 
 export default function EmbedClient({
@@ -261,6 +263,7 @@ export default function EmbedClient({
   persistent: isPersistent = false,
   loaderVersion,
   showFeedbackDialogOverride,
+  previewConfig: initialPreviewConfig,
 }: EmbedClientProps) {
   // Stable header bag forwarded on every API request. The X-Widget-Loader-Version
   // header lets the backend gate behaviour changes so old loaders keep working
@@ -732,6 +735,20 @@ export default function EmbedClient({
     let cancelled = false;
 
     const bootstrap = async () => {
+      // Preview mode — use inline config without auth/API calls
+      if (initialPreviewConfig) {
+        try {
+          const decoded = JSON.parse(decodeURIComponent(atob(initialPreviewConfig)));
+          const { config: validatedConfig } = validateConfig(decoded, 'chat');
+          setWidgetConfig(validatedConfig);
+          injectCustomAssetsFromConfig(validatedConfig as unknown as { custom_css?: string | null } | null);
+        } catch {
+          // ignore parse errors in preview mode
+        } finally {
+          setIsBootstrapping(false);
+        }
+        return;
+      }
       // Use props instead of URL params
       const clientIdParam = initialClientId;
       const agentIdParam = initialAgentId;
@@ -821,7 +838,7 @@ export default function EmbedClient({
     return () => {
       cancelled = true;
     };
-  }, [getAuthToken, initialAgentId, initialClientId, initialConfigId, initialParentOrigin, sessionStorageKey]);
+  }, [getAuthToken, initialAgentId, initialClientId, initialConfigId, initialParentOrigin, initialPreviewConfig, sessionStorageKey]);
 
   const handleStopStreaming = useCallback(() => {
     streamUserAbortedRef.current = true;
@@ -1848,6 +1865,16 @@ export default function EmbedClient({
           } else {
             throw createAuthError('Invalid agent response', WidgetErrorCode.AUTH_TOKEN_FAILED);
           }
+        } else if (response.status === 429) {
+          const retryAfterSec = response.headers.get('Retry-After');
+          const waitSec = retryAfterSec ? parseInt(retryAfterSec, 10) : 0;
+          const rateLimitMsg = waitSec > 0
+            ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
+            : String(t.rateLimitGeneric);
+          const rateLimitErr = createNetworkError(rateLimitMsg, WidgetErrorCode.NETWORK_RATE_LIMITED);
+          rateLimitErr.retryable = false;
+          rateLimitErr.userMessage = rateLimitMsg;
+          throw rateLimitErr;
         } else {
           const errorMessage = String(t.agentUnavailable);
           throw createAuthError(errorMessage, WidgetErrorCode.AUTH_TOKEN_FAILED);

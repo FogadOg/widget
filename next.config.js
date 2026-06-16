@@ -132,9 +132,9 @@ const nextConfig = {
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
         ],
       },
-      // ── Embed routes: tighten frame-ancestors CSP, relax X-Frame-Options ─
+      // ── Embed + preview routes: tighten frame-ancestors CSP, relax X-Frame-Options ─
       {
-        source: '/embed/:path*',
+        source: '/(embed|preview)/:path*',
         headers: [
           {
             key: 'Content-Security-Policy',

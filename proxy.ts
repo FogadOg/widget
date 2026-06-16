@@ -24,7 +24,7 @@ function buildCsp(nonce: string, pathname: string): string {
 
   // Embed iframe pages must allow framing from any origin so the host page
   // (potentially on a different port or domain) can embed the widget.
-  const isEmbedRoute = pathname.startsWith('/embed/');
+  const isEmbedRoute = pathname.startsWith('/embed/') || pathname.startsWith('/preview');
   const frameAncestors = isEmbedRoute ? '*' : "'none'";
 
   // Turbopack (Next.js dev server) uses eval() for source maps — allow it only
@@ -56,7 +56,7 @@ function buildCsp(nonce: string, pathname: string): string {
 export function proxy(request: NextRequest): NextResponse {
   const nonce = nanoid(32);
   const pathname = request.nextUrl.pathname;
-  const isEmbedRoute = pathname.startsWith('/embed/');
+  const isEmbedRoute = pathname.startsWith('/embed/') || pathname.startsWith('/preview');
 
   const response = NextResponse.next({
     request: {
