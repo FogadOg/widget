@@ -3,6 +3,7 @@
   "typeYourMessageLabel": "Typ je bericht",
   "send": "Verzenden",
   "sending": "Versturen...",
+  "stopStreaming": "Stoppen",
   "failedToSendMessage": "Bericht verzenden mislukt",
   "failedToLoadWidget": "Widget kon niet worden geladen",
   "networkError": "Netwerkfout: Kon bericht niet verzenden",

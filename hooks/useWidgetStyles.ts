@@ -1,13 +1,16 @@
 import { useMemo } from 'react';
 import { DEFAULTS, DEFAULT_COLORS, SHADOW_INTENSITY, SIZE_PRESETS } from '../lib/constants';
 import type { WidgetConfig } from '../types/widget';
-import { normalizeHexColor } from '../lib/colors';
+import { normalizeHexColor, getReadableTextColor } from '../lib/colors';
 
 export function useWidgetStyles(widgetConfig?: WidgetConfig) {
   const primaryColor = normalizeHexColor(widgetConfig?.primary_color, DEFAULT_COLORS.PRIMARY);
   const secondaryColor = normalizeHexColor(widgetConfig?.secondary_color, DEFAULT_COLORS.SECONDARY);
   const backgroundColor = normalizeHexColor(widgetConfig?.background_color, DEFAULT_COLORS.BACKGROUND);
   const textColor = normalizeHexColor(widgetConfig?.text_color, DEFAULT_COLORS.TEXT);
+  // WCAG-contrast text color for any surface painted with primaryColor (buttons,
+  // user bubbles, etc.) so a light brand color doesn't yield unreadable white. (#10)
+  const readableOnPrimary = getReadableTextColor(primaryColor);
   const borderRadius = widgetConfig?.border_radius || DEFAULTS.BORDER_RADIUS;
   const fontFamily = widgetConfig?.font_family || DEFAULTS.FONT_FAMILY;
   const fontSize = widgetConfig?.font_size || DEFAULTS.FONT_SIZE;
@@ -56,6 +59,7 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
     secondaryColor,
     backgroundColor,
     textColor,
+    readableOnPrimary,
     borderRadius,
     fontStyles,
     getShadowStyle,

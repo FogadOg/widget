@@ -12,13 +12,13 @@ if (process.env.ANALYZE === 'true') {
 const nextConfig = {
   output: 'standalone',
   typescript: {
-    // Enforce type checking in production builds so real issues are surfaced
-    // NOTE: some third-party packages ship TypeScript sources that cause
-    // type-check failures in certain environments (CI/local). Temporarily
-    // disable enforcement here to allow the production build to complete.
-    // Consider re-enabling once dependencies with incompatible types are
-    // updated or their types are patched.
-    ignoreBuildErrors: true,
+    // Enforce type checking in production builds so real issues are surfaced.
+    // Re-enabled (#17): `tsc --noEmit` passes cleanly against this tsconfig
+    // (skipLibCheck:true keeps third-party .d.ts out of scope), and CI runs the
+    // same typecheck as a dedicated gate, so type regressions no longer ship
+    // silently. If a deploy build ever fails on a third-party .ts source, prefer
+    // patching/excluding that source over re-disabling enforcement globally.
+    ignoreBuildErrors: false,
   },
   // Ensure Turbopack uses this project as the root to avoid
   // warnings when multiple lockfiles exist in the mono-repo.
@@ -79,6 +79,31 @@ const nextConfig = {
     // HSTS — set for all routes in production
     const hstsValue = 'max-age=31536000; includeSubDomains; preload';
 
+    // Full Content-Security-Policy for the embed page (#6). frame-ancestors alone
+    // is no backstop for the markdown/themed-CSS surface this page renders. We only
+    // apply the strict policy in production: dev talks to an http://localhost API
+    // and uses eval-based tooling, so a loose dev policy keeps `next dev` working.
+    // Pragmatic by design — script/style 'unsafe-inline' is required by Next.js's
+    // inline hydration bootstrap and the widget's themed inline styles; connect-src
+    // stays broad (https/wss) because customers configure arbitrary API origins.
+    const embedCsp = process.env.NODE_ENV === 'production'
+      ? [
+          "default-src 'self'",
+          // Next inline bootstrap + 'wasm-unsafe-eval' for shiki's WASM highlighter.
+          "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
+          "style-src 'self' 'unsafe-inline'",
+          // Customer logos/avatars are arbitrary https URLs; data:/blob: for inline assets.
+          "img-src 'self' data: blob: https:",
+          "font-src 'self' data:",
+          // API base, telemetry, Sentry, GA all live on https; block http exfil.
+          "connect-src 'self' https: wss:",
+          "object-src 'none'",
+          "base-uri 'none'",
+          "form-action 'self'",
+          `frame-ancestors ${cspSources}`,
+        ].join('; ') + ';'
+      : `frame-ancestors ${cspSources};`;
+
     return [
       // ── Global security headers applied to every response ────────────────
       {
@@ -113,8 +138,9 @@ const nextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            // Restrict framing to explicit origins (includes 'self')
-            value: `frame-ancestors ${cspSources};`,
+            // Full policy in prod (script/style/img/connect/object/base + framing);
+            // frame-ancestors-only in dev. See embedCsp construction above. (#6)
+            value: embedCsp,
           },
           // X-Frame-Options ALLOW-FROM is non-standard and ignored by Chromium/Safari
           // (only IE/old-Edge honored it). The CSP frame-ancestors directive above is

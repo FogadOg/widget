@@ -2,6 +2,15 @@ import '@testing-library/jest-dom'
 import { MessageChannel } from 'worker_threads'
 import { TextEncoder, TextDecoder } from 'util'
 import React from 'react'
+import { resetAllLimiters } from './lib/rateLimiter'
+
+// The client rate limiter keeps module-level state keyed by sessionId. Reset it
+// before every test so accumulated sends from earlier tests don't silently
+// rate-limit a later test's first message (the widget now enforces the limiter
+// in handleSubmit).
+beforeEach(() => {
+  resetAllLimiters();
+});
 
 // ---------------------------------------------------------------------------
 // Polyfill Web Fetch API globals (Request, Response, Headers, fetch)

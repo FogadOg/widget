@@ -3,6 +3,7 @@
   "typeYourMessageLabel": "Type your message",
   "send": "Send",
   "sending": "Sending...",
+  "stopStreaming": "Stop",
   "failedToSendMessage": "Failed to send message",
   "failedToLoadWidget": "Failed to load widget",
   "networkError": "Network error: Could not send message",

@@ -3,6 +3,7 @@
   "typeYourMessageLabel": "Escribe tu mensaje",
   "send": "Enviar",
   "sending": "Enviando...",
+  "stopStreaming": "Detener",
   "failedToSendMessage": "Error al enviar mensaje",
   "failedToLoadWidget": "Error al cargar el widget",
   "networkError": "Error de red: No se pudo enviar el mensaje",

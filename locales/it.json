@@ -3,6 +3,7 @@
   "typeYourMessageLabel": "Scrivi il tuo messaggio",
   "send": "Invia",
   "sending": "Invio...",
+  "stopStreaming": "Ferma",
   "failedToSendMessage": "Invio del messaggio fallito",
   "failedToLoadWidget": "Impossibile caricare il widget",
   "networkError": "Errore di rete: Impossibile inviare il messaggio",

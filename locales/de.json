@@ -3,6 +3,7 @@
   "typeYourMessageLabel": "Schreiben Sie Ihre Nachricht",
   "send": "Senden",
   "sending": "Wird gesendet...",
+  "stopStreaming": "Stopp",
   "failedToSendMessage": "Nachricht konnte nicht gesendet werden",
   "failedToLoadWidget": "Widget konnte nicht geladen werden",
   "networkError": "Netzwerkfehler: Konnte nicht mit der API verbinden",

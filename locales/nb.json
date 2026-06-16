@@ -3,6 +3,7 @@
   "typeYourMessageLabel": "Skriv meldingen din",
   "send": "Send melding",
   "sending": "Sender...",
+  "stopStreaming": "Stopp",
   "failedToSendMessage": "Kunne ikke sende melding",
   "failedToLoadWidget": "Kunne ikke laste widgeten",
   "networkError": "Nettverksfeil: Kunne ikke sende melding",

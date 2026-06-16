@@ -66,7 +66,6 @@ describe('scripts/build-embed.js', () => {
     // the versioned file.
     const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
     const VERSION = String(pkg.version || '0.0.0');
-    const applyVersionToken = (s: string) => s.replace(/['"]__WIDGET_VERSION__['"]/g, JSON.stringify(VERSION));
 
     const outDocs = fs.readFileSync(path.join(tmp, 'public', `docs-widget-${VERSION}.js`), 'utf8');
     const outWidget = fs.readFileSync(path.join(tmp, 'public', `widget-${VERSION}.js`), 'utf8');
@@ -75,9 +74,14 @@ describe('scripts/build-embed.js', () => {
     expect(outDocs.startsWith('// =============================================================================')).toBe(true);
     expect(outWidget.startsWith('// =============================================================================')).toBe(true);
 
-    // output should end with source content after build-time token substitution
-    expect(outDocs.endsWith(applyVersionToken(docsContent))).toBe(true);
-    expect(outWidget.endsWith(applyVersionToken(widgetContent))).toBe(true);
+    // The versioned bundle is minified before shipping (#9), so it no longer ends
+    // with the verbatim source. Assert instead that the build-time version token was
+    // substituted (no raw __WIDGET_VERSION__ remains) and a non-empty body follows
+    // the header — both hold whether or not esbuild minified the output.
+    expect(outDocs).not.toContain('__WIDGET_VERSION__');
+    expect(outWidget).not.toContain('__WIDGET_VERSION__');
+    expect(outWidget.length).toBeGreaterThan(200);
+    expect(outDocs.length).toBeGreaterThan(200);
 
     // Idempotency: run again and ensure versioned files unchanged
     const beforeDocs = outDocs;

@@ -46,6 +46,26 @@ function sha384(buf) {
   return 'sha384-' + crypto.createHash('sha384').update(buf).digest('base64');
 }
 
+// Minify the embed loader before shipping it. The versioned bundle is loaded by
+// every customer page and cached forever, so whitespace/comments are pure waste.
+// SRI is computed over the minified output below, so the hash always matches what
+// is served. Falls back to the unminified source if esbuild is unavailable so the
+// build never hard-fails on a missing optional tool. (#9)
+function minifyEmbed(code, label) {
+  try {
+    const esbuild = require('esbuild');
+    const result = esbuild.transformSync(code, {
+      minify: true,
+      target: 'es2018',
+      legalComments: 'none',
+    });
+    return result.code;
+  } catch (err) {
+    console.warn(`build:embed  esbuild unavailable; shipping ${label} unminified (${err.message})`);
+    return code;
+  }
+}
+
 function buildEmbedFile(entry) {
   const srcPath = path.join(ROOT, entry.src);
   const dstPath = path.join(ROOT, entry.dst);
@@ -64,7 +84,7 @@ function buildEmbedFile(entry) {
   let stripped = HEADER_RE.test(source) ? source.replace(HEADER_RE, '') : source;
   stripped = stripped.replace(/['"]__WIDGET_VERSION__['"]/g, JSON.stringify(VERSION));
 
-  const output = header + stripped;
+  const output = header + minifyEmbed(stripped, entry.src);
 
   // The versioned file (e.g. widget-0.1.0.js) is the real bundle — immutable.
   fs.writeFileSync(versionedDstPath, output, 'utf8');

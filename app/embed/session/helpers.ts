@@ -116,6 +116,31 @@ export function storeSession(sessionStorageKey: string, sessionId: string, expir
   storeSessionByKey(sessionStorageKey, sessionId, expiresAt);
 }
 
+// Removes a stored session, swallowing failures. localStorage.removeItem throws in
+// Safari private mode / when storage is disabled — callers must not let that escape. (#12)
+export function clearStoredSession(sessionStorageKey: string) {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(sessionStorageKey);
+  } catch {
+    // storage unavailable — nothing to clear
+  }
+}
+
+// True only if localStorage can actually be written. Used to decide whether a
+// missing stored session means "expired" (tear down) vs "never persisted because
+// storage is unavailable" (keep the in-memory session). (#12)
+export function isStorageAvailable(): boolean {
+  try {
+    if (typeof localStorage === 'undefined') return false;
+    const probe = '__companin_storage_probe__';
+    localStorage.setItem(probe, '1');
+    localStorage.removeItem(probe);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function loadSessionMessages(
   sessionId: string,
   token?: string | null,

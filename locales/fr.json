@@ -3,6 +3,7 @@
   "typeYourMessageLabel": "Tapez votre message",
   "send": "Envoyer",
   "sending": "Envoi...",
+  "stopStreaming": "Arrêter",
   "failedToSendMessage": "Échec de l'envoi du message",
   "failedToLoadWidget": "Échec du chargement du widget",
   "networkError": "Erreur réseau : Impossible de se connecter à l'API",

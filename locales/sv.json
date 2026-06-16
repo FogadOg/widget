@@ -3,6 +3,7 @@
   "typeYourMessageLabel": "Skriv ditt meddelande",
   "send": "Skicka",
   "sending": "Skickar...",
+  "stopStreaming": "Stoppa",
   "failedToSendMessage": "Misslyckades att skicka meddelande",
   "failedToLoadWidget": "Kunde inte ladda widgeten",
   "networkError": "Nätverksfel: Kunde inte skicka meddelande",

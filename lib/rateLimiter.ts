@@ -50,3 +50,9 @@ export function peek(sessionId: string): { allowed: boolean; retryAfterMs?: numb
 export function resetLimiter(sessionId: string) {
   windows.delete(sessionId);
 }
+
+// Clears all rate-limit state. Intended for test isolation (the window map is
+// module-level and would otherwise persist across tests in the same file).
+export function resetAllLimiters() {
+  windows.clear();
+}

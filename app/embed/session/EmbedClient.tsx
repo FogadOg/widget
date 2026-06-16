@@ -12,6 +12,8 @@ import type {
 } from '../../../types/widget';
 import { ButtonLike } from '../../../hooks/useClickedButtons';
 import { logPerf } from '../../../lib/logger';
+import { validateMessageInput } from '../../../lib/validation';
+import { checkAndConsume } from '../../../lib/rateLimiter';
 import { trackEvent, embedOriginHeader, createSupportTicket } from '../../../lib/api';
 import { HandoffModal } from '../HandoffModal';
 import FeedbackDialog from '../../../components/FeedbackDialog';
@@ -84,6 +86,24 @@ export function applyCustomAssetsFromQuery(search?: string) {
   } catch (err) {
     logError(err, { action: 'applyCustomAssetsFromQuery', search });
   }
+}
+
+// Validates that an inbound postMessage actually originates from the host page
+// we expect, mirroring the check used by the main HOST_MESSAGE handler. Used to
+// gate sensitive inbound commands (consent, debug) so a malicious framing page
+// cannot forge them. Under dynamic embed-allowlist mode any HTTPS site can frame
+// the widget, so this check is the authoritative gate for inbound messages.
+export function isTrustedParentMessage(
+  event: MessageEvent,
+  expectedOrigin: string | null | undefined,
+): boolean {
+  if (typeof window === 'undefined' || window.parent === window) return false;
+  // Tests dispatch plain objects whose `source` is not window.parent; in that
+  // case fall back to matching the expected origin.
+  if (event.source === window.parent) return true;
+  if (!expectedOrigin) return false;
+  if (expectedOrigin !== '*' && event.origin !== expectedOrigin) return false;
+  return true;
 }
 
 // New path: inject custom CSS sourced from the loaded widget configuration.
@@ -280,34 +300,8 @@ export default function EmbedClient({
     return () => { cancelled = true; };
   }, [initialConsentRequired]);
 
-  // Listen for consent grant/revoke from the host page via the widget loader's
-  // postMessage relay (window.CompaninWidget.grantConsent / revokeConsent).
-  useEffect(() => {
-    if (!initialConsentRequired) return;
-    const handler = async (event: MessageEvent) => {
-      const t = event?.data?.type;
-      if (t !== 'WIDGET_CONSENT_GRANT' && t !== 'WIDGET_CONSENT_REVOKE') return;
-      try {
-        const mod = await import('../../../lib/sessionStorage');
-        if (t === 'WIDGET_CONSENT_GRANT') mod.grantStorageConsent();
-        else mod.revokeStorageConsent();
-      } catch {}
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [initialConsentRequired]);
-
-  // Allow the host page to toggle debug mode via postMessage (non-production only).
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'production') return;
-    const handler = (event: MessageEvent) => {
-      const t = event?.data?.type;
-      if (t === 'WIDGET_DEBUG_ENABLE') enableDebug();
-      else if (t === 'WIDGET_DEBUG_DISABLE') disableDebug();
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, []);
+  // NOTE: the consent and debug postMessage listeners live further down, after
+  // `parentTargetOrigin` is defined, so they can validate the sender's origin.
 
   // debug and perform custom css/js injection on mount
   useEffect(() => {
@@ -518,6 +512,40 @@ export default function EmbedClient({
     [parentTargetOrigin],
   );
 
+  // Listen for consent grant/revoke from the host page via the widget loader's
+  // postMessage relay (window.CompaninWidget.grantConsent / revokeConsent).
+  // Origin-validated so a malicious framing page cannot forge consent.
+  useEffect(() => {
+    if (!initialConsentRequired) return;
+    const handler = async (event: MessageEvent) => {
+      if (!isTrustedParentMessage(event, parentTargetOrigin)) return;
+      const t = event?.data?.type;
+      if (t !== 'WIDGET_CONSENT_GRANT' && t !== 'WIDGET_CONSENT_REVOKE') return;
+      try {
+        const mod = await import('../../../lib/sessionStorage');
+        if (t === 'WIDGET_CONSENT_GRANT') mod.grantStorageConsent();
+        else mod.revokeStorageConsent();
+      } catch {}
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [initialConsentRequired, parentTargetOrigin]);
+
+  // Allow the host page to toggle debug mode via postMessage (non-production only).
+  // Origin-validated even though it is dev-gated, so preview deploys can't be
+  // toggled into verbose logging by an arbitrary framing page.
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    const handler = (event: MessageEvent) => {
+      if (!isTrustedParentMessage(event, parentTargetOrigin)) return;
+      const t = event?.data?.type;
+      if (t === 'WIDGET_DEBUG_ENABLE') enableDebug();
+      else if (t === 'WIDGET_DEBUG_DISABLE') disableDebug();
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [parentTargetOrigin]);
+
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
@@ -606,6 +634,13 @@ export default function EmbedClient({
     }
 
     return () => {
+      // Abort any in-flight stream so we don't leak the connection / timeout timer
+      // or run setState on an unmounted component. (#5)
+      try {
+        streamAbortControllerRef.current?.abort();
+      } catch {
+        // ignore
+      }
       try {
         deregisterInstance(instanceId);
       } catch (err) {
@@ -663,6 +698,10 @@ export default function EmbedClient({
   // keep typing as if nothing happened.
   useEffect(() => {
     const checkSessionExpiry = async () => {
+      // If storage is unavailable (private mode / disabled), nothing was ever
+      // persisted, so a null stored session does NOT mean "expired". Treat the
+      // in-memory session as authoritative instead of churning it every 60s. (#12)
+      if (!helpers.isStorageAvailable()) return;
       const stored = helpers.getStoredSession(sessionStorageKey);
       if (stored || !sessionId || sessionRefreshInFlightRef.current) return;
 
@@ -899,6 +938,18 @@ export default function EmbedClient({
           clearTimeout(timeout);
 
           if (!resp.ok) {
+            // A permanent client error (4xx other than 408/429) will never succeed
+            // on retry. Drop it immediately and continue to the next queued message,
+            // instead of burning all attempts and head-of-line-blocking the queue. (#14)
+            const isPermanent = resp.status >= 400 && resp.status < 500
+              && resp.status !== 408 && resp.status !== 429;
+            if (isPermanent) {
+              try { await removeQueuedMessage(item.id); } catch {}
+              setMessages(prev => prev.map(m => m.id === item.id ? { ...m, pending: false, failed: true } : m));
+              continue;
+            }
+            // Transient error (5xx / 408 / 429): increment attempts and stop the
+            // flush — subsequent sends would likely hit the same condition.
             const newAttempts = currentAttempts + 1;
             try { await incrementAttempt(item.id); } catch {}
             setMessages(prev => prev.map(m => m.id === item.id ? { ...m, attempts: newAttempts } : m));
@@ -1765,12 +1816,13 @@ export default function EmbedClient({
         agentId,
         status: response.status
       });
-      localStorage.removeItem(sessionStorageKey);
+      helpers.clearStoredSession(sessionStorageKey);
       await createSession(agentId, token, configSnapshot);
     } catch (err) {
       logError(err, { sessionId, agentId, action: 'validateAndRestoreSession' });
-      // On error, create new session
-      localStorage.removeItem(sessionStorageKey);
+      // On error, create new session. clearStoredSession swallows storage failures
+      // so a private-mode removeItem throw can't escape this catch. (#12)
+      helpers.clearStoredSession(sessionStorageKey);
       await createSession(agentId, token, configSnapshot);
     }
   }
@@ -2018,8 +2070,40 @@ export default function EmbedClient({
     e.preventDefault();
     const message = messageText || input;
     if (!message.trim()) return;
-    if (isSubmittingRef.current && !skipAddingUserMessage) return;
+    // Re-entrancy guard: block ANY submit while a send/stream is in flight. Button
+    // and suggestion submits (skipAddingUserMessage) previously bypassed this, which
+    // let a rapid double-click spawn concurrent streams that clobbered the shared
+    // stream refs. (#7)
+    if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
+
+    // Validate and rate-limit user-typed messages. Flow/interaction-button sends use
+    // app-controlled text and are exempt. This enforces MAX_MESSAGE_LENGTH and the
+    // client throttle that the live composer previously bypassed entirely. (#2)
+    // We gate on validity only and still send the original text (preserving newlines)
+    // rather than the whitespace-collapsed `sanitized` value.
+    if (!skipAddingUserMessage) {
+      const validation = validateMessageInput(message);
+      if (!validation.isValid) {
+        setError(String(t.invalidMessage));
+        isSubmittingRef.current = false;
+        return;
+      }
+      const sidForLimit = sessionIdRef.current || sessionId;
+      if (sidForLimit) {
+        const rl = checkAndConsume(sidForLimit);
+        if (!rl.allowed) {
+          const waitSec = rl.retryAfterMs ? Math.ceil(rl.retryAfterMs / 1000) : 0;
+          setError(
+            waitSec > 0
+              ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
+              : String(t.rateLimitGeneric),
+          );
+          isSubmittingRef.current = false;
+          return;
+        }
+      }
+    }
 
     // Check if we have a session and auth token. If missing, attempt silent recovery
     // and continue sending if recovery succeeds.
@@ -2055,7 +2139,9 @@ export default function EmbedClient({
         const sid = sessionIdRef.current || sessionId;
         const tokenNow = authTokenRef.current || token || authToken;
         if (!sid || !tokenNow) {
-          // Still missing credentials — give up and return
+          // Still missing credentials — give up. Reset the in-flight flag first,
+          // otherwise every later send is silently blocked until remount. (#3)
+          isSubmittingRef.current = false;
           return;
         }
 
@@ -2068,7 +2154,9 @@ export default function EmbedClient({
         // We'll ensure the fetch below uses these variables.
 
       } catch {
-        // swallow unexpected recovery errors and return
+        // swallow unexpected recovery errors and return — reset the in-flight
+        // flag so the input isn't permanently bricked. (#3)
+        isSubmittingRef.current = false;
         return;
       }
     }
@@ -2149,7 +2237,7 @@ export default function EmbedClient({
               if (response.status === 410 || response.status === 401 || response.status === 404 ||
                   errorMessage.toLowerCase().includes('expired') ||
                   errorMessage.toLowerCase().includes('not found')) {
-                localStorage.removeItem(sessionStorageKey);
+                helpers.clearStoredSession(sessionStorageKey);
                 sessionIdRef.current = null;
                 setSessionId(null);
                 if (!sessionRefreshInFlightRef.current) {
@@ -2206,31 +2294,41 @@ export default function EmbedClient({
               let finalData: any = null;
               setStreamingMessage('');
               let streamDone = false;
-              while (!streamDone) {
-                const { value, done: dr } = await reader.read();
-                streamDone = dr;
-                if (!value) continue;
-                buffer += decoder.decode(value, { stream: true });
-                let sepIndex: number;
-                while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
-                  const rawEvent = buffer.slice(0, sepIndex);
-                  buffer = buffer.slice(sepIndex + 2);
-                  const dataLine = rawEvent.split('\n').find(l => l.startsWith('data:'));
-                  if (!dataLine) continue;
-                  const payloadStr = dataLine.slice(5).trim();
-                  if (!payloadStr) continue;
-                  let evt: any;
-                  try { evt = JSON.parse(payloadStr); } catch { continue; }
-                  if (evt.type === 'token') {
-                    accumulated += evt.text;
-                    streamAccumulatedRef.current = accumulated;
-                    setStreamingMessage(accumulated);
-                  } else if (evt.type === 'done') {
-                    finalData = evt.data;
-                  } else if (evt.type === 'error') {
-                    throw createNetworkError(evt.detail || 'Streaming failed', WidgetErrorCode.NETWORK_SERVER_ERROR);
+              // Always cancel + release the reader so a server-sent error event, an
+              // interrupted stream, or a timeout doesn't leak the locked body. (#5)
+              try {
+                while (!streamDone) {
+                  const { value, done: dr } = await reader.read();
+                  streamDone = dr;
+                  if (!value) continue;
+                  buffer += decoder.decode(value, { stream: true });
+                  let sepIndex: number;
+                  while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+                    const rawEvent = buffer.slice(0, sepIndex);
+                    buffer = buffer.slice(sepIndex + 2);
+                    const dataLine = rawEvent.split('\n').find(l => l.startsWith('data:'));
+                    if (!dataLine) continue;
+                    const payloadStr = dataLine.slice(5).trim();
+                    if (!payloadStr) continue;
+                    let evt: any;
+                    try { evt = JSON.parse(payloadStr); } catch { continue; }
+                    if (evt.type === 'token') {
+                      accumulated += evt.text;
+                      streamAccumulatedRef.current = accumulated;
+                      setStreamingMessage(accumulated);
+                    } else if (evt.type === 'done') {
+                      finalData = evt.data;
+                    } else if (evt.type === 'error') {
+                      // Log the server-supplied detail but show users a localized,
+                      // generic message — never raw server internals. (#13)
+                      if (evt.detail) logError(new Error(String(evt.detail)), { action: 'handleSubmit:streamError' });
+                      throw createNetworkError(String(t.serverError), WidgetErrorCode.NETWORK_SERVER_ERROR);
+                    }
                   }
                 }
+              } finally {
+                try { await reader.cancel(); } catch { /* already closed */ }
+                try { reader.releaseLock(); } catch { /* already released */ }
               }
               setStreamingMessage(null);
               if (!finalData) {
@@ -2249,7 +2347,10 @@ export default function EmbedClient({
               throw new Error(String(t.invalidServerResponse));
             }
             if (data.status !== 'success') {
-              throw new Error(parseApiError(data, String(t.failedToSendMessage)));
+              // Log the parsed server error for diagnostics, but surface a localized
+              // generic message to the user rather than raw server detail. (#13)
+              logError(new Error(parseApiError(data, 'unknown server error')), { action: 'handleSubmit:apiError' });
+              throw createNetworkError(String(t.serverError), WidgetErrorCode.NETWORK_SERVER_ERROR);
             }
 
             // record telemetry for message sent
@@ -2391,8 +2492,10 @@ export default function EmbedClient({
           // keep global error empty so we don't render the red error banner;
           // the UI shows the pending message state instead (ghost mode)
         } catch (queueErr) {
-          // If queuing failed, fall back to the original error handling below
-          const errorMessage = e.userMessage || e.message || String(t.failedToSendMessage);
+          // If queuing failed, fall back to the original error handling below.
+          // Use only our localized userMessage / generic fallback — never raw
+          // e.message, which can carry server internals. (#13)
+          const errorMessage = e.userMessage || String(t.failedToSendMessage);
           setError(errorMessage);
           // Already logged above; still include context for fallback
           logError(e, { message, sessionId, action: 'handleSubmit' });
@@ -2405,7 +2508,8 @@ export default function EmbedClient({
         // just log and do nothing (no error banner, no input restore, no message removal).
         logError(e, { message, sessionId, action: 'handleSubmit:button' });
       } else {
-        const errorMessage = e.userMessage || e.message || String(t.failedToSendMessage);
+        // Only our localized userMessage / generic fallback — never raw e.message. (#13)
+        const errorMessage = e.userMessage || String(t.failedToSendMessage);
         setError(errorMessage);
         logError(e, { message, sessionId, action: 'handleSubmit' });
 

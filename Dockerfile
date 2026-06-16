@@ -20,8 +20,10 @@ ENV EMBED_ALLOWLIST_MODE=$EMBED_ALLOWLIST_MODE
 ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV NEXT_PUBLIC_WIDGET_VERSION=$NEXT_PUBLIC_WIDGET_VERSION
 ENV NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=$NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE
-RUN EMBED_ALLOWLIST="${EMBED_ALLOWLIST:-}" EMBED_ALLOWLIST_MODE="${EMBED_ALLOWLIST_MODE:-dynamic}" node scripts/build-embed.js && \
-	EMBED_ALLOWLIST="${EMBED_ALLOWLIST:-}" EMBED_ALLOWLIST_MODE="${EMBED_ALLOWLIST_MODE:-dynamic}" npx next build
+# build:release = build:embed (minified loader + SRI manifest) + next build + build:sri.
+# It deliberately omits check-locales (needs python3, absent from node:alpine) and
+# tests. This ensures the deployed image generates the SRI manifest. (#8, #16)
+RUN EMBED_ALLOWLIST="${EMBED_ALLOWLIST:-}" EMBED_ALLOWLIST_MODE="${EMBED_ALLOWLIST_MODE:-dynamic}" npm run build:release
 
 FROM node:20-alpine AS runner
 WORKDIR /app

@@ -159,8 +159,8 @@ function JumpToLatest({
         type="button"
         onClick={onClick}
         aria-label={label}
-        className="pointer-events-auto flex items-center gap-1 rounded-full px-3 py-1.5 text-xs text-white shadow-lg transition-opacity hover:opacity-90 animate-fade-in"
-        style={{ backgroundColor: primaryColor }}
+        className="pointer-events-auto flex items-center gap-1 rounded-full px-3 py-1.5 text-xs shadow-lg transition-opacity hover:opacity-90 animate-fade-in"
+        style={{ backgroundColor: primaryColor, color: getReadableTextColor(primaryColor) }}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <polyline points="6,9 12,15 18,9" />
@@ -185,6 +185,7 @@ function Composer({
   placeholder,
   ariaLabel,
   sendLabel,
+  stopLabel,
   inputRef,
 }: {
   input: string;
@@ -198,6 +199,7 @@ function Composer({
   placeholder: string;
   ariaLabel: string;
   sendLabel: string;
+  stopLabel: string;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
 }) {
   const autoGrow = (el: HTMLTextAreaElement | null) => {
@@ -248,13 +250,14 @@ function Composer({
             onClick={onStop}
             style={{
               backgroundColor: primaryColor,
+              color: getReadableTextColor(primaryColor),
               borderRadius: `${buttonBorderRadius}px`,
               ...fontStyles,
             }}
-            className="px-4 py-2 text-white hover:opacity-90"
-            aria-label="Stop"
+            className="px-4 py-2 hover:opacity-90"
+            aria-label={stopLabel}
           >
-            <span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: 'white', borderRadius: '2px' }} aria-hidden="true" />
+            <span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: getReadableTextColor(primaryColor), borderRadius: '2px' }} aria-hidden="true" />
           </button>
         ) : (
           <button
@@ -262,10 +265,11 @@ function Composer({
             disabled={!canSend}
             style={{
               backgroundColor: primaryColor,
+              color: getReadableTextColor(primaryColor),
               borderRadius: `${buttonBorderRadius}px`,
               ...fontStyles,
             }}
-            className="px-4 py-2 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-busy={isTyping}
           >
             {isTyping ? (
@@ -336,6 +340,9 @@ export default function EmbedShell({
 
   // Ref for input (for focus management)
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Ref for the collapsed launcher button, so focus returns to it on close. (#15)
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const wasOpenRef = useRef(false);
 
   // "Jump to latest" affordance: shown when the user has scrolled up so new
   // messages don't yank them back to the bottom mid-read.
@@ -409,9 +416,19 @@ export default function EmbedShell({
   // Move focus into the composer when the widget opens, and after each send,
   // so keyboard and screen-reader users aren't stranded on the host page.
   useEffect(() => {
-    if (isCollapsed) return;
-    const id = window.setTimeout(() => inputRef.current?.focus(), 60);
-    return () => window.clearTimeout(id);
+    if (!isCollapsed) {
+      wasOpenRef.current = true;
+      const id = window.setTimeout(() => inputRef.current?.focus(), 60);
+      return () => window.clearTimeout(id);
+    }
+    // Widget just closed (open → collapsed): return focus to the launcher so
+    // keyboard users aren't dropped to the top of the host page. Skip on the
+    // initial mount (was never open) so we don't steal focus on page load. (#15)
+    if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      const id = window.setTimeout(() => launcherRef.current?.focus(), 0);
+      return () => window.clearTimeout(id);
+    }
   }, [isCollapsed]);
 
   const handleFormSubmit = useCallback(
@@ -460,6 +477,7 @@ export default function EmbedShell({
     secondaryColor,
     backgroundColor,
     textColor,
+    readableOnPrimary,
     borderRadius,
     fontStyles,
     getButtonSizeClasses,
@@ -554,6 +572,7 @@ export default function EmbedShell({
   const placeholderText = (getText(widgetConfig?.placeholder) || t.typeYourMessage || translate(locale, 'typeYourMessage')) as unknown as string;
   const composerAriaLabel = (t.typeYourMessageLabel || translate(locale, 'typeYourMessageLabel')) as unknown as string;
   const sendLabel = translate(locale, 'send');
+  const stopLabel = translate(locale, 'stopStreaming');
 
   return (
     <>
@@ -568,6 +587,7 @@ export default function EmbedShell({
         <>
           {isCollapsed ? (
             <button
+              ref={launcherRef}
               type="button"
               onClick={toggleCollapsed}
               aria-label={openChatLabel}
@@ -580,10 +600,11 @@ export default function EmbedShell({
                 transform: 'translate(-50%, -50%)',
                 zIndex: 999999,
                 backgroundColor: primaryColor,
+                color: readableOnPrimary,
                 borderRadius: `${buttonBorderRadius * 2}px`,
                 ...fontStyles
               }}
-              className={`${btnWidth} ${btnHeight} text-white shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:opacity-90 relative`}
+              className={`${btnWidth} ${btnHeight} shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:opacity-90 relative`}
               title={translate(locale, 'chatControl', { context: 'open' })}
             >
                 {widgetConfig?.bot_avatar ? (
@@ -819,10 +840,11 @@ export default function EmbedShell({
                                       disabled={isClicked}
                                       style={{
                                         backgroundColor: isClicked ? '#9ca3af' : primaryColor,
+                                        color: getReadableTextColor(isClicked ? '#9ca3af' : primaryColor),
                                         borderRadius: `${buttonBorderRadius}px`,
                                         ...fontStyles
                                       }}
-                                      className={`w-fit px-3 py-2 text-white text-sm transition-opacity flex items-center gap-2 ${
+                                      className={`w-fit px-3 py-2 text-sm transition-opacity flex items-center gap-2 ${
                                         isClicked ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
                                       }`}
                                     >
@@ -928,6 +950,7 @@ export default function EmbedShell({
                 placeholder={placeholderText}
                 ariaLabel={composerAriaLabel}
                 sendLabel={sendLabel}
+                stopLabel={stopLabel}
                 inputRef={inputRef}
               />
               {!widgetConfig?.hide_branding && (
@@ -945,6 +968,7 @@ export default function EmbedShell({
         <>
           {isCollapsed ? (
             <button
+              ref={launcherRef}
               type="button"
               onClick={toggleCollapsed}
               aria-label={openChatLabel}
@@ -957,10 +981,11 @@ export default function EmbedShell({
                 transform: 'translate(-50%, -50%)',
                 zIndex: 999999,
                 backgroundColor: primaryColor,
+                color: readableOnPrimary,
                 borderRadius: `${buttonBorderRadius * 2}px`,
                 ...fontStyles
               }}
-              className={`${btnWidth} ${btnHeight} text-white shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:opacity-90`}
+              className={`${btnWidth} ${btnHeight} shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:opacity-90`}
               title={typeof t.openChat === 'string' ? t.openChat : String(t.openChat)}
             >
                 {widgetConfig?.bot_avatar ? (
@@ -1193,27 +1218,33 @@ export default function EmbedShell({
                 {/* Feedback Dialog Overlay */}
                 {showFeedbackDialog && feedbackDialog && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
-                    <div className="max-w-md w-full">
-                      {feedbackDialog}
-                    </div>
+                    <FocusTrap>
+                      <div className="max-w-md w-full">
+                        {feedbackDialog}
+                      </div>
+                    </FocusTrap>
                   </div>
                 )}
 
                 {/* Unsure Messages Modal Overlay */}
                 {unsureModal && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
-                    <div className="max-w-md w-full">
-                      {unsureModal}
-                    </div>
+                    <FocusTrap onEscape={onCloseUnsureModal}>
+                      <div className="max-w-md w-full">
+                        {unsureModal}
+                      </div>
+                    </FocusTrap>
                   </div>
                 )}
 
                 {/* Handoff Modal Overlay */}
                 {handoffModal && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="max-w-md w-full">
-                      {handoffModal}
-                    </div>
+                    <FocusTrap onEscape={onDismissHandoff}>
+                      <div className="max-w-md w-full">
+                        {handoffModal}
+                      </div>
+                    </FocusTrap>
                   </div>
                 )}
 
@@ -1229,6 +1260,7 @@ export default function EmbedShell({
                   placeholder={placeholderText}
                   ariaLabel={composerAriaLabel}
                   sendLabel={sendLabel}
+                  stopLabel={stopLabel}
                   inputRef={inputRef}
                 />
                 {!widgetConfig?.hide_branding && (

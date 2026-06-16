@@ -3,6 +3,7 @@
   "typeYourMessageLabel": "Wpisz wiadomość...",
   "send": "Wyślij",
   "sending": "Wysyłanie...",
+  "stopStreaming": "Zatrzymaj",
   "failedToSendMessage": "Nie udało się wysłać wiadomości",
   "failedToLoadWidget": "Nie udało się załadować widżetu",
   "networkError": "Błąd sieci: nie można wysłać wiadomości",

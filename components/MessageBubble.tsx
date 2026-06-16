@@ -10,6 +10,7 @@ type MDComponents = Record<string, React.ComponentType<any>>;
 import { t as translate } from '../lib/i18n';
 import { useWidgetTranslation } from '../hooks/useWidgetTranslation';
 import type { WidgetConfig } from '../types/widget';
+import { normalizeHexColor, getReadableTextColor } from '../lib/colors';
 
 type Source = { url?: string; title?: string; snippet?: string };
 type Message = {
@@ -339,6 +340,8 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
   const isPending = Boolean(message.pending);
   const attempts = (message as any).attempts || 0;
 
+  const userBubbleBg = normalizeHexColor(widgetConfig?.primary_color, '#111827');
+
   const bubbleStyle: React.CSSProperties = isPending
     ? {
         backgroundColor: 'transparent',
@@ -349,8 +352,10 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
         ...fontStyles,
       }
     : {
-        backgroundColor: widgetConfig?.primary_color ?? '#111827',
-        color: '#ffffff',
+        backgroundColor: userBubbleBg,
+        // Contrast-aware text so a light primary_color (e.g. yellow) stays
+        // readable instead of hardcoded white-on-light. (#10)
+        color: getReadableTextColor(userBubbleBg),
         borderRadius: `${messageBubbleRadius}px`,
         ...fontStyles,
       };

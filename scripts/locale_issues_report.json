@@ -1,0 +1,350 @@
+{
+  "de.json": {
+    "total_keys": 150,
+    "empty_values_count": 0,
+    "empty_values_sample": [],
+    "untranslated_count": 6,
+    "untranslated_sample": [
+      {
+        "key": "handoffNameLabel",
+        "value": "Name"
+      },
+      {
+        "key": "sessionExpiredTitle",
+        "value": "Your session expired"
+      },
+      {
+        "key": "sessionExpiredBody",
+        "value": "We've started a fresh session so you can keep chatting."
+      },
+      {
+        "key": "sessionExpiredDismiss",
+        "value": "Dismiss"
+      },
+      {
+        "key": "agentTyping",
+        "value": "Customer Support AI Agent is typing"
+      },
+      {
+        "key": "uncertaintyLogAgent",
+        "value": "Agent:"
+      }
+    ],
+    "suspicious_markers_count": 0,
+    "suspicious_markers_sample": [],
+    "placeholder_mismatches_count": 0,
+    "placeholder_mismatches_sample": []
+  },
+  "es.json": {
+    "total_keys": 150,
+    "empty_values_count": 0,
+    "empty_values_sample": [],
+    "untranslated_count": 4,
+    "untranslated_sample": [
+      {
+        "key": "sessionExpiredTitle",
+        "value": "Your session expired"
+      },
+      {
+        "key": "sessionExpiredBody",
+        "value": "We've started a fresh session so you can keep chatting."
+      },
+      {
+        "key": "sessionExpiredDismiss",
+        "value": "Dismiss"
+      },
+      {
+        "key": "agentTyping",
+        "value": "Customer Support AI Agent is typing"
+      }
+    ],
+    "suspicious_markers_count": 0,
+    "suspicious_markers_sample": [],
+    "placeholder_mismatches_count": 1,
+    "placeholder_mismatches_sample": [
+      {
+        "key": "gettingStartedStep1Desc",
+        "en": [
+          "{customize}",
+          "{datasources}"
+        ],
+        "loc": [
+          "{datasources}",
+          "{personalizar}"
+        ]
+      }
+    ]
+  },
+  "fr.json": {
+    "total_keys": 150,
+    "empty_values_count": 0,
+    "empty_values_sample": [],
+    "untranslated_count": 5,
+    "untranslated_sample": [
+      {
+        "key": "handoffMessageLabel",
+        "value": "Message"
+      },
+      {
+        "key": "sessionExpiredTitle",
+        "value": "Your session expired"
+      },
+      {
+        "key": "sessionExpiredBody",
+        "value": "We've started a fresh session so you can keep chatting."
+      },
+      {
+        "key": "sessionExpiredDismiss",
+        "value": "Dismiss"
+      },
+      {
+        "key": "agentTyping",
+        "value": "Customer Support AI Agent is typing"
+      }
+    ],
+    "suspicious_markers_count": 0,
+    "suspicious_markers_sample": [],
+    "placeholder_mismatches_count": 1,
+    "placeholder_mismatches_sample": [
+      {
+        "key": "gettingStartedStep1Desc",
+        "en": [
+          "{customize}",
+          "{datasources}"
+        ],
+        "loc": [
+          "{datasources}",
+          "{personnaliser}"
+        ]
+      }
+    ]
+  },
+  "it.json": {
+    "total_keys": 150,
+    "empty_values_count": 0,
+    "empty_values_sample": [],
+    "untranslated_count": 4,
+    "untranslated_sample": [
+      {
+        "key": "sessionExpiredTitle",
+        "value": "Your session expired"
+      },
+      {
+        "key": "sessionExpiredBody",
+        "value": "We've started a fresh session so you can keep chatting."
+      },
+      {
+        "key": "sessionExpiredDismiss",
+        "value": "Dismiss"
+      },
+      {
+        "key": "agentTyping",
+        "value": "Customer Support AI Agent is typing"
+      }
+    ],
+    "suspicious_markers_count": 0,
+    "suspicious_markers_sample": [],
+    "placeholder_mismatches_count": 1,
+    "placeholder_mismatches_sample": [
+      {
+        "key": "gettingStartedStep1Desc",
+        "en": [
+          "{customize}",
+          "{datasources}"
+        ],
+        "loc": [
+          "{datasources}",
+          "{personalizza}"
+        ]
+      }
+    ]
+  },
+  "nb.json": {
+    "total_keys": 150,
+    "empty_values_count": 0,
+    "empty_values_sample": [],
+    "untranslated_count": 6,
+    "untranslated_sample": [
+      {
+        "key": "appTitle",
+        "value": "Customer Support AI Agent Widget"
+      },
+      {
+        "key": "sessionExpiredTitle",
+        "value": "Your session expired"
+      },
+      {
+        "key": "sessionExpiredBody",
+        "value": "We've started a fresh session so you can keep chatting."
+      },
+      {
+        "key": "sessionExpiredDismiss",
+        "value": "Dismiss"
+      },
+      {
+        "key": "agentTyping",
+        "value": "Customer Support AI Agent is typing"
+      },
+      {
+        "key": "uncertaintyLogAgent",
+        "value": "Agent:"
+      }
+    ],
+    "suspicious_markers_count": 0,
+    "suspicious_markers_sample": [],
+    "placeholder_mismatches_count": 1,
+    "placeholder_mismatches_sample": [
+      {
+        "key": "gettingStartedStep1Desc",
+        "en": [
+          "{customize}",
+          "{datasources}"
+        ],
+        "loc": [
+          "{datasources}",
+          "{tilpass}"
+        ]
+      }
+    ]
+  },
+  "nl.json": {
+    "total_keys": 150,
+    "empty_values_count": 0,
+    "empty_values_sample": [],
+    "untranslated_count": 6,
+    "untranslated_sample": [
+      {
+        "key": "appTitle",
+        "value": "Customer Support AI Agent Widget"
+      },
+      {
+        "key": "sessionExpiredTitle",
+        "value": "Your session expired"
+      },
+      {
+        "key": "sessionExpiredBody",
+        "value": "We've started a fresh session so you can keep chatting."
+      },
+      {
+        "key": "sessionExpiredDismiss",
+        "value": "Dismiss"
+      },
+      {
+        "key": "agentTyping",
+        "value": "Customer Support AI Agent is typing"
+      },
+      {
+        "key": "uncertaintyLogAgent",
+        "value": "Agent:"
+      }
+    ],
+    "suspicious_markers_count": 0,
+    "suspicious_markers_sample": [],
+    "placeholder_mismatches_count": 0,
+    "placeholder_mismatches_sample": []
+  },
+  "pl.json": {
+    "total_keys": 150,
+    "empty_values_count": 0,
+    "empty_values_sample": [],
+    "untranslated_count": 5,
+    "untranslated_sample": [
+      {
+        "key": "sessionExpiredTitle",
+        "value": "Your session expired"
+      },
+      {
+        "key": "sessionExpiredBody",
+        "value": "We've started a fresh session so you can keep chatting."
+      },
+      {
+        "key": "sessionExpiredDismiss",
+        "value": "Dismiss"
+      },
+      {
+        "key": "agentTyping",
+        "value": "Customer Support AI Agent is typing"
+      },
+      {
+        "key": "uncertaintyLogAgent",
+        "value": "Agent:"
+      }
+    ],
+    "suspicious_markers_count": 0,
+    "suspicious_markers_sample": [],
+    "placeholder_mismatches_count": 1,
+    "placeholder_mismatches_sample": [
+      {
+        "key": "gettingStartedStep1Desc",
+        "en": [
+          "{customize}",
+          "{datasources}"
+        ],
+        "loc": [
+          "{datasources}",
+          "{dostosuj}"
+        ]
+      }
+    ]
+  },
+  "pt.json": {
+    "total_keys": 150,
+    "empty_values_count": 0,
+    "empty_values_sample": [],
+    "untranslated_count": 4,
+    "untranslated_sample": [
+      {
+        "key": "sessionExpiredTitle",
+        "value": "Your session expired"
+      },
+      {
+        "key": "sessionExpiredBody",
+        "value": "We've started a fresh session so you can keep chatting."
+      },
+      {
+        "key": "sessionExpiredDismiss",
+        "value": "Dismiss"
+      },
+      {
+        "key": "agentTyping",
+        "value": "Customer Support AI Agent is typing"
+      }
+    ],
+    "suspicious_markers_count": 0,
+    "suspicious_markers_sample": [],
+    "placeholder_mismatches_count": 0,
+    "placeholder_mismatches_sample": []
+  },
+  "sv.json": {
+    "total_keys": 150,
+    "empty_values_count": 0,
+    "empty_values_sample": [],
+    "untranslated_count": 5,
+    "untranslated_sample": [
+      {
+        "key": "sessionExpiredTitle",
+        "value": "Your session expired"
+      },
+      {
+        "key": "sessionExpiredBody",
+        "value": "We've started a fresh session so you can keep chatting."
+      },
+      {
+        "key": "sessionExpiredDismiss",
+        "value": "Dismiss"
+      },
+      {
+        "key": "agentTyping",
+        "value": "Customer Support AI Agent is typing"
+      },
+      {
+        "key": "uncertaintyLogAgent",
+        "value": "Agent:"
+      }
+    ],
+    "suspicious_markers_count": 0,
+    "suspicious_markers_sample": [],
+    "placeholder_mismatches_count": 0,
+    "placeholder_mismatches_sample": []
+  }
+}

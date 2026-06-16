@@ -7,6 +7,7 @@ import { t as translate } from '../lib/i18n';
 import DynamicIcon from './DynamicIcon';
 import { API, embedOriginHeader } from '../lib/api';
 import { logError } from '../lib/errorHandling';
+import { getReadableTextColor } from '../lib/colors';
 
 type FeedbackRating = 'positive' | 'neutral' | 'negative';
 
@@ -230,7 +231,8 @@ export default function FeedbackDialog({
           className="flex-1 py-2 px-4 rounded-lg font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
             backgroundColor: primaryColor,
-            color: '#ffffff',
+            // Contrast-aware text against the brand color. (#10)
+            color: getReadableTextColor(primaryColor),
           }}
         >
           {isSubmitting ? '...' : translate(locale, 'submitFeedback')}
