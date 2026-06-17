@@ -2675,6 +2675,15 @@ export default function EmbedClient({
 
     trackEvent('button_clicked', initialAgentId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
 
+    // Always show the clicked button label as a user bubble immediately.
+    const userMsg: Message = {
+      id: `temp-${Date.now()}`,
+      text: labelText || b.action || '',
+      from: 'user',
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+
     // Add response as a grouped flow response
     if (maybeText || maybeButtons.length > 0) {
       setFlowResponses((prev: FlowResponse[]) => [...prev, {
@@ -2689,69 +2698,50 @@ export default function EmbedClient({
     // If the flow was handled client-side, notify parent about the interaction
     if (flowHandled) {
       try {
-        if (window.parent !== window) {
-          const userMessage = {
-            id: `temp-${Date.now()}`,
-            // Avoid falling back to the raw `action` value (e.g. 'text') as the
-            // message body — prefer labelText or maybeText and otherwise empty.
-            text: labelText || maybeText || '',
-            from: 'user',
-            timestamp: Date.now(),
-          };
-          if (parentSensitiveOrigin) {
-            window.parent.postMessage({ type: EMBED_EVENTS.MESSAGE, data: userMessage }, parentSensitiveOrigin);
-          }
+        if (window.parent !== window && parentSensitiveOrigin) {
+          window.parent.postMessage({ type: EMBED_EVENTS.MESSAGE, data: userMsg }, parentSensitiveOrigin);
         }
       } catch {
         // ignore
       }
+      return;
     }
 
-    if (!flowHandled) {
-      const userMsg: Message = {
-        id: `temp-${Date.now()}`,
-        text: labelText || b.action,
-        from: 'user',
-        timestamp: Date.now(),
-      };
-      setMessages(prev => [...prev, userMsg]);
-
-      // A follow-up button that already defines a local response should remain
-      // local-only: render the user's button click plus the local agent
-      // response and skip the backend submit.
-      if (hasLocalResponse) {
-        const sid = sessionIdRef.current;
-        const tok = authTokenRef.current;
-        const responseText = maybeText || '';
-        if (sid && tok && responseText) {
-          const persistFlow = async () => {
-            try {
-              const headers = {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${tok}`,
-                ...embedHeaders,
-              };
-              await fetch(API.sessionMessages(sid), {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ content: labelText, locale: activeLocale, skip_ai_response: true }),
-              });
-              await fetch(API.sessionMessages(sid), {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ content: responseText, locale: activeLocale, sender: 'assistant', skip_ai_response: true }),
-              });
-            } catch {
-              // ignore — history persistence is best-effort
-            }
-          };
-          void persistFlow();
-        }
-        return;
+    // A follow-up button that already defines a local response should remain
+    // local-only: the user bubble + agent response are already rendered; skip
+    // the backend submit.
+    if (hasLocalResponse) {
+      const sid = sessionIdRef.current;
+      const tok = authTokenRef.current;
+      const responseText = maybeText || '';
+      if (sid && tok && responseText) {
+        const persistFlow = async () => {
+          try {
+            const headers = {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${tok}`,
+              ...embedHeaders,
+            };
+            await fetch(API.sessionMessages(sid), {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ content: labelText, locale: activeLocale, skip_ai_response: true }),
+            });
+            await fetch(API.sessionMessages(sid), {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ content: responseText, locale: activeLocale, sender: 'assistant', skip_ai_response: true }),
+            });
+          } catch {
+            // ignore — history persistence is best-effort
+          }
+        };
+        void persistFlow();
       }
-
-      handleSubmit(new Event('submit') as unknown as React.FormEvent, labelText || b.action, true);
+      return;
     }
+
+    handleSubmit(new Event('submit') as unknown as React.FormEvent, labelText || b.action, true);
   };
 
   const handleInteractionButtonClick = async (button: ButtonLike) => {
