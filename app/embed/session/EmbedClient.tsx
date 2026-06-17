@@ -117,6 +117,10 @@ export function injectCustomAssetsFromConfig(config: { custom_css?: string | nul
 
 
 
+// localStorage key used only in preview mode to remember whether the admin
+// left the preview widget open or closed across iframe reloads.
+const PREVIEW_COLLAPSED_KEY = 'companin-preview-collapsed';
+
 export const getButtonPixelSize = (buttonSize: string) => {
   return BUTTON_SIZES[buttonSize as keyof typeof BUTTON_SIZES] || BUTTON_SIZES.md;
 };
@@ -329,6 +333,9 @@ export default function EmbedClient({
   const streamPartialDroppedRef = useRef(false);
   const isSubmittingRef = useRef(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
+  // Guards preview open/closed persistence: stays false until the stored state
+  // has been restored, so the initial default `true` can't clobber it first.
+  const previewStateRestoredRef = useRef(false);
 
   // emit widget_load telemetry when widget mounts, but only once per
   // browser session; reloading the page should not produce duplicate load events.
@@ -742,6 +749,10 @@ export default function EmbedClient({
           const { config: validatedConfig } = validateConfig(decoded, 'chat');
           setWidgetConfig(validatedConfig);
           injectCustomAssetsFromConfig(validatedConfig as unknown as { custom_css?: string | null } | null);
+          // Treat the preview iframe as embedded so EmbedShell uses its responsive
+          // 100% × 100% layout (maxWidth 400px / maxHeight 600px) instead of the
+          // standalone fixed-pixel layout which overflows the 360px preview panel.
+          setIsEmbedded(true);
         } catch {
           // ignore parse errors in preview mode
         } finally {
@@ -839,6 +850,30 @@ export default function EmbedClient({
       cancelled = true;
     };
   }, [getAuthToken, initialAgentId, initialClientId, initialConfigId, initialParentOrigin, initialPreviewConfig, sessionStorageKey]);
+
+  // Preview mode only: apply live config updates pushed from the admin customize
+  // panel via postMessage. This lets the dashboard reflect appearance edits
+  // without reloading the iframe (which would reset the widget to closed). The
+  // config is the admin's own and is re-validated here, exactly as the URL-based
+  // preview config is, so this introduces no new trust surface.
+  useEffect(() => {
+    if (!initialPreviewConfig) return;
+    const handler = (event: MessageEvent) => {
+      const data = event?.data as { type?: string; config?: string } | undefined;
+      if (!data || typeof data !== 'object') return;
+      if (data.type !== 'COMPANIN_PREVIEW_CONFIG' || typeof data.config !== 'string') return;
+      try {
+        const decoded = JSON.parse(decodeURIComponent(atob(data.config)));
+        const { config: validated } = validateConfig(decoded, 'chat');
+        setWidgetConfig(validated);
+        injectCustomAssetsFromConfig(validated as unknown as { custom_css?: string | null } | null);
+      } catch {
+        // ignore malformed preview config
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [initialPreviewConfig]);
 
   const handleStopStreaming = useCallback(() => {
     streamUserAbortedRef.current = true;
@@ -1173,8 +1208,30 @@ export default function EmbedClient({
     } else {
       timeoutId = window.setTimeout(() => {
         setShouldRender(true);
+        // Preview mode (admin "Customize" panel): config updates arrive live via
+        // postMessage and re-run this effect. Once we've applied the initial
+        // open/closed state we must NOT touch it again, or every appearance edit
+        // would snap the widget shut. The initial state itself is restored from
+        // localStorage so it also survives the iframe reloads caused by dev Fast
+        // Refresh / type-locale changes. Scoped to preview — production is
+        // unaffected.
+        if (initialPreviewConfig && previewStateRestoredRef.current) {
+          return;
+        }
         // Use the prop value if available, otherwise use config
-        setIsCollapsed(!initialStartOpen && !widgetConfig.start_open);
+        let nextCollapsed = !initialStartOpen && !widgetConfig.start_open;
+        if (initialPreviewConfig) {
+          try {
+            const stored = localStorage.getItem(PREVIEW_COLLAPSED_KEY);
+            if (stored === 'true') nextCollapsed = true;
+            else if (stored === 'false') nextCollapsed = false;
+          } catch {
+            // storage unavailable — fall back to the default
+          }
+          // Allow persistence only now that the stored state has been applied.
+          previewStateRestoredRef.current = true;
+        }
+        setIsCollapsed(nextCollapsed);
       }, 0);
       try {
         if (window.parent !== window) {
@@ -1193,6 +1250,17 @@ export default function EmbedClient({
       }
     };
   }, [widgetConfig, initialStartOpen, initialParentOrigin, parentTargetOrigin]);
+
+  // Persist the open/closed state in preview mode so it survives the iframe
+  // reloads triggered by config edits / Fast Refresh (see restore logic above).
+  useEffect(() => {
+    if (!initialPreviewConfig || !previewStateRestoredRef.current) return;
+    try {
+      localStorage.setItem(PREVIEW_COLLAPSED_KEY, String(isCollapsed));
+    } catch {
+      // storage unavailable — non-fatal, preview just won't remember state
+    }
+  }, [isCollapsed, initialPreviewConfig]);
 
   // Load unread count and last read message from localStorage on mount
   useEffect(() => {
@@ -2104,6 +2172,33 @@ export default function EmbedClient({
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
 
+    // Preview mode: add user message and return a dummy agent reply after a short delay
+    if (initialPreviewConfig) {
+      const previewUserMsg: Message = {
+        id: `preview-user-${Date.now()}`,
+        text: message,
+        from: 'user',
+        timestamp: Date.now(),
+      };
+      if (!skipAddingUserMessage) setMessages(prev => [...prev, previewUserMsg]);
+      setInput('');
+      setIsTyping(true);
+      setError(null);
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          id: `preview-agent-${Date.now()}`,
+          text: 'This is a preview — in the live widget your AI agent will respond here.',
+          from: 'agent' as const,
+          timestamp: Date.now(),
+          sources: [],
+        }]);
+        setIsTyping(false);
+        setStreamingMessage(null);
+        isSubmittingRef.current = false;
+      }, 1000);
+      return;
+    }
+
     // Validate and rate-limit user-typed messages. Flow/interaction-button sends use
     // app-controlled text and are exempt. This enforces MAX_MESSAGE_LENGTH and the
     // client throttle that the live composer previously bypassed entirely. (#2)
@@ -2677,32 +2772,39 @@ export default function EmbedClient({
     // Add user bubble — always solid, never ghost
     setMessages(prev => [...prev, userMsg]);
 
-    const flowHandled = processWidgetFlow(b.action);
+    // Render any keyword-flow reply triggered by this button's action. The flow's
+    // reply is added by processWidgetFlow itself; we deliberately ignore the return
+    // value here and never re-echo the button label as a response (see below).
+    processWidgetFlow(b.action);
     // track interaction click
     trackEvent('button_clicked', initialAgentId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
 
-    if (!maybeText && !flowHandled) {
-      // Interaction buttons are local-only entry points. When there is no
-      // configured local response, keep only the user bubble and do not send a
-      // backend message. Follow-up buttons retain the submit-to-agent path.
-      return;
-    } else {
+    // A button can define its OWN local response (response.text and/or follow-up
+    // buttons) and/or trigger a keyword flow via its action. The button's *label*
+    // is never a response — only echo a reply bubble when the button actually has
+    // its own configured response (maybeText/maybeButtons), and use that text
+    // verbatim (no labelText fallback). A flow-only button has no own response, so
+    // its reply comes solely from processWidgetFlow above; echoing the label here
+    // would render it a second time as an agent bubble (the duplicate the user saw).
+    const hasOwnResponse = Boolean(maybeText) || maybeButtons.length > 0;
+
+    if (hasOwnResponse) {
       // Local response available — show typing then reveal it
       setIsTyping(true);
       setTimeout(() => {
         setFlowResponses((prev: FlowResponse[]) => [...prev, {
-          text: maybeText || labelText || '',
+          text: maybeText,
           buttons: maybeButtons,
           timestamp: Date.now()
         }]);
         setIsTyping(false);
       }, 1000);
 
-      // Persist the button click and flow response to the backend so they
+      // Persist the button click and its local response to the backend so they
       // appear in conversation history (fire-and-forget, never block the UI).
       const sid = sessionIdRef.current;
       const tok = authTokenRef.current;
-      const responseText = maybeText || labelText || '';
+      const responseText = maybeText;
       if (sid && tok && responseText) {
         const persistFlow = async () => {
           try {
@@ -2727,23 +2829,24 @@ export default function EmbedClient({
         };
         void persistFlow();
       }
+    }
 
-      // notify parent about the user message
-      try {
-        if (window.parent !== window) {
-          const userMessage = {
-            id: userMsg.id,
-            text: userMsg.text,
-            from: 'user',
-            timestamp: userMsg.timestamp,
-          };
-          if (parentSensitiveOrigin) {
-            window.parent.postMessage({ type: EMBED_EVENTS.MESSAGE, data: userMessage }, parentSensitiveOrigin);
-          }
+    // notify parent about the user message (always — the user bubble is added
+    // regardless of whether the button had its own response or triggered a flow)
+    try {
+      if (window.parent !== window) {
+        const userMessage = {
+          id: userMsg.id,
+          text: userMsg.text,
+          from: 'user',
+          timestamp: userMsg.timestamp,
+        };
+        if (parentSensitiveOrigin) {
+          window.parent.postMessage({ type: EMBED_EVENTS.MESSAGE, data: userMessage }, parentSensitiveOrigin);
         }
-      } catch {
-        // ignore
       }
+    } catch {
+      // ignore
     }
   };
 
@@ -2980,6 +3083,7 @@ export default function EmbedClient({
       <EmbedShell
         isEmbedded={isEmbedded}
         isCollapsed={isCollapsed}
+        previewPositioning={!!initialPreviewConfig}
         toggleCollapsed={toggleCollapsed}
         messages={messages}
         isTyping={isTyping}

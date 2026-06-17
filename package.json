@@ -15,6 +15,7 @@
   },
   "scripts": {
     "dev": "next dev -p 3001",
+    "dev:webpack": "next dev --webpack -p 3001",
     "build:embed": "node scripts/build-embed.js",
     "build:sri": "node scripts/generate-sri.js",
     "build:release": "QUIET_LOCALE=1 npm run build:embed && next build && npm run build:sri",

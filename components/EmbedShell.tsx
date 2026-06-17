@@ -95,6 +95,8 @@ type Props = {
   sessionExpiredBanner?: boolean;
   onDismissSessionExpiredBanner?: () => void;
   isOffline?: boolean;
+  /** When true, anchors the widget to bottom-right (preview iframe). Default centers within the loader's small iframe. */
+  previewPositioning?: boolean;
 };
 
 
@@ -448,6 +450,7 @@ export default function EmbedShell({
   sessionExpiredBanner = false,
   onDismissSessionExpiredBanner,
   isOffline = false,
+  previewPositioning = false,
 }: Props) {
   const { translations: t, locale: hookLocale } = useWidgetTranslation();
   const locale = localeProp || hookLocale;
@@ -647,8 +650,8 @@ export default function EmbedShell({
     onButtonClickInternal(button, onFollowUpButtonClick);
   };
 
-  // Suppress the static greeting once the session has any real agent message
-  const hasGreetingMessage = messages.some(m => m.from === 'agent');
+  // Hide the static greeting section (and buttons) once any messages exist or a flow has fired.
+  const hasGreetingMessage = messages.length > 0 || (flowResponses?.length ?? 0) > 0;
   const showGreeting = widgetConfig?.greeting_message && !hasGreetingMessage;
   const greetingText = showGreeting ? getText(widgetConfig.greeting_message.text) : '';
   // Only show interaction buttons whose `languages` whitelist includes the
@@ -663,6 +666,8 @@ export default function EmbedShell({
     return langs.includes(locale) || langs.includes(baseLocale);
   };
   const interactionButtons = (widgetConfig?.greeting_message?.buttons || []).filter(isVisibleInLocale);
+  // Always show interaction buttons when configured — clicked buttons are disabled
+  // individually via clickedButtons, not by hiding the whole group.
   const showButtons = interactionButtons.length > 0;
 
   // Suggested prompts (conversation starters). Config may provide a flat list
@@ -729,9 +734,9 @@ export default function EmbedShell({
               aria-haspopup="dialog"
               style={{
                 position: 'fixed',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
+                ...(previewPositioning
+                  ? { bottom: '20px', right: '20px' }
+                  : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }),
                 zIndex: 999999,
                 backgroundColor: primaryColor,
                 color: readableOnPrimary,
@@ -781,9 +786,9 @@ export default function EmbedShell({
             <div
               style={{
                 position: 'fixed',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
+                ...(previewPositioning
+                  ? { bottom: '0', right: '0' }
+                  : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }),
                 width: '100%',
                 height: '100%',
                 maxWidth: `${widgetWidth}px`,
@@ -882,20 +887,19 @@ export default function EmbedShell({
                             {greetingText}
                           </div>
                         </div>
-                      </div>
-                    )}
-
-                    {showButtons && (
-                      <div className="flex flex-col gap-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar && greetingText) ? '40px' : '0' }}>
-                        <InteractionButtons
-                          buttons={interactionButtons}
-                          clickedButtons={clickedButtons}
-                          onButtonClick={handleInteractionButtonClickWrapper}
-                          primaryColor={primaryColor}
-                          buttonBorderRadius={buttonBorderRadius}
-                          fontStyles={fontStyles}
-                          getLocalizedText={getText}
-                        />
+                        {showButtons && (
+                          <div className="flex flex-col gap-2 mt-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>
+                            <InteractionButtons
+                              buttons={interactionButtons}
+                              clickedButtons={clickedButtons}
+                              onButtonClick={handleInteractionButtonClickWrapper}
+                              primaryColor={primaryColor}
+                              buttonBorderRadius={buttonBorderRadius}
+                              fontStyles={fontStyles}
+                              getLocalizedText={getText}
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -913,22 +917,38 @@ export default function EmbedShell({
                     {mergedContent.map((item, index) => {
                       if (item.type === 'message') {
                         const message = item.data;
+                        const isGreetingMsg = (message.metadata as Record<string, unknown>)?.is_greeting === true;
                         return (
-                          <div key={message.id} className={`flex w-full ${message.from === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <MessageBubble
-                              message={message}
-                              widgetConfig={widgetConfig}
-                              agentName={agentName}
-                              showMessageAvatars={showMessageAvatars}
-                              textColor={textColor}
-                              agentBubbleBg={agentBubbleBg}
-                              fontStyles={fontStyles}
-                              messageBubbleRadius={messageBubbleRadius}
-                              onSubmitMessageFeedback={onSubmitMessageFeedback}
-                              messageFeedbackSubmitted={messageFeedbackSet}
-                              showTimestamps={showTimestamps}
-                            />
-                          </div>
+                          <React.Fragment key={message.id}>
+                            <div className={`flex w-full ${message.from === 'user' ? 'justify-end' : 'justify-start'}`}>
+                              <MessageBubble
+                                message={message}
+                                widgetConfig={widgetConfig}
+                                agentName={agentName}
+                                showMessageAvatars={showMessageAvatars}
+                                textColor={textColor}
+                                agentBubbleBg={agentBubbleBg}
+                                fontStyles={fontStyles}
+                                messageBubbleRadius={messageBubbleRadius}
+                                onSubmitMessageFeedback={onSubmitMessageFeedback}
+                                messageFeedbackSubmitted={messageFeedbackSet}
+                                showTimestamps={showTimestamps}
+                              />
+                            </div>
+                            {isGreetingMsg && showButtons && (
+                              <div className="flex flex-col gap-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>
+                                <InteractionButtons
+                                  buttons={interactionButtons}
+                                  clickedButtons={clickedButtons}
+                                  onButtonClick={handleInteractionButtonClickWrapper}
+                                  primaryColor={primaryColor}
+                                  buttonBorderRadius={buttonBorderRadius}
+                                  fontStyles={fontStyles}
+                                  getLocalizedText={getText}
+                                />
+                              </div>
+                            )}
+                          </React.Fragment>
                         );
                       } else {
                         const flowResponse = item.data;
@@ -1187,20 +1207,19 @@ export default function EmbedShell({
                           {greetingText}
                         </div>
                       </div>
-                    </div>
-                  )}
-
-                  {showButtons && (
-                    <div className="flex flex-col gap-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar && greetingText) ? '40px' : '0' }}>
-                      <InteractionButtons
-                        buttons={interactionButtons}
-                        clickedButtons={clickedButtons}
-                        onButtonClick={handleInteractionButtonClickWrapper}
-                        primaryColor={primaryColor}
-                        buttonBorderRadius={buttonBorderRadius}
-                        fontStyles={fontStyles}
-                        getLocalizedText={getText}
-                      />
+                      {showButtons && (
+                        <div className="flex flex-col gap-2 mt-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>
+                          <InteractionButtons
+                            buttons={interactionButtons}
+                            clickedButtons={clickedButtons}
+                            onButtonClick={handleInteractionButtonClickWrapper}
+                            primaryColor={primaryColor}
+                            buttonBorderRadius={buttonBorderRadius}
+                            fontStyles={fontStyles}
+                            getLocalizedText={getText}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1218,21 +1237,37 @@ export default function EmbedShell({
                   {mergedContent.map((item, index) => {
                     if (item.type === 'message') {
                       const message = item.data;
+                      const isGreetingMsg = (message.metadata as Record<string, unknown>)?.is_greeting === true;
                       return (
-                        <div key={message.id} className={`flex w-full ${message.from === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <MessageBubble
-                            message={message}
-                            widgetConfig={widgetConfig}
-                            agentName={agentName}
-                            showMessageAvatars={showMessageAvatars}
-                            textColor={textColor}
-                            fontStyles={fontStyles}
-                            messageBubbleRadius={messageBubbleRadius}
-                            onSubmitMessageFeedback={onSubmitMessageFeedback}
-                            messageFeedbackSubmitted={messageFeedbackSet}
-                            showTimestamps={showTimestamps}
-                          />
-                        </div>
+                        <React.Fragment key={message.id}>
+                          <div className={`flex w-full ${message.from === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <MessageBubble
+                              message={message}
+                              widgetConfig={widgetConfig}
+                              agentName={agentName}
+                              showMessageAvatars={showMessageAvatars}
+                              textColor={textColor}
+                              fontStyles={fontStyles}
+                              messageBubbleRadius={messageBubbleRadius}
+                              onSubmitMessageFeedback={onSubmitMessageFeedback}
+                              messageFeedbackSubmitted={messageFeedbackSet}
+                              showTimestamps={showTimestamps}
+                            />
+                          </div>
+                          {isGreetingMsg && showButtons && (
+                            <div className="flex flex-col gap-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>
+                              <InteractionButtons
+                                buttons={interactionButtons}
+                                clickedButtons={clickedButtons}
+                                onButtonClick={handleInteractionButtonClickWrapper}
+                                primaryColor={primaryColor}
+                                buttonBorderRadius={buttonBorderRadius}
+                                fontStyles={fontStyles}
+                                getLocalizedText={getText}
+                              />
+                            </div>
+                          )}
+                        </React.Fragment>
                       );
                     } else {
                       const flowResponse = item.data;

@@ -172,7 +172,31 @@ const initialMessages: MessageType[] = [
 export default function DocsClient({ clientId, agentId, configId, locale: initialLocale, startOpen, pagePath, parentOrigin: initialParentOrigin, loaderVersion, previewConfig: initialPreviewConfig }: Props) {
   const embedHeaders = embedOriginHeader(initialParentOrigin, loaderVersion);
 
-  const [open, setOpen] = useState(startOpen);
+  // Preview mode (admin "Customize" panel): the iframe reloads on every config
+  // edit and on dev Fast Refresh, which would otherwise snap the widget back to
+  // closed and force the admin to re-open it after each tweak. Restore/persist
+  // the open state so the preview reloads in the same state it was left in.
+  // Scoped to preview — production is unaffected.
+  const [open, setOpen] = useState(() => {
+    if (initialPreviewConfig && typeof window !== 'undefined') {
+      try {
+        const stored = window.localStorage.getItem('companin-preview-docs-open');
+        if (stored === 'true') return true;
+        if (stored === 'false') return false;
+      } catch {
+        // storage unavailable — fall back to the default
+      }
+    }
+    return startOpen;
+  });
+  useEffect(() => {
+    if (!initialPreviewConfig || typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('companin-preview-docs-open', String(open));
+    } catch {
+      // storage unavailable — non-fatal
+    }
+  }, [open, initialPreviewConfig]);
   const [text, setText] = useState<string>("");
   const [status, setStatus] = useState<
     "submitted" | "streaming" | "ready" | "error"
@@ -661,6 +685,28 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
       console.warn('Missing clientId or agentId');
     }
   }, [clientId, agentId, configId, createSession, validateAndRestoreSession, fetchWidgetConfig, getAuthToken, initialPreviewConfig, resolveParentOrigin]);
+
+  // Preview mode only: apply live config updates pushed from the admin customize
+  // panel via postMessage, so appearance edits update without reloading the
+  // iframe (which would reset the widget to closed). Re-validated exactly as the
+  // URL-based preview config, so no new trust surface.
+  useEffect(() => {
+    if (!initialPreviewConfig) return;
+    const handler = (event: MessageEvent) => {
+      const data = event?.data as { type?: string; config?: string } | undefined;
+      if (!data || typeof data !== 'object') return;
+      if (data.type !== 'COMPANIN_PREVIEW_CONFIG' || typeof data.config !== 'string') return;
+      try {
+        const decoded = JSON.parse(decodeURIComponent(atob(data.config)));
+        const { config: validatedConfig } = validateConfig(decoded, 'docs');
+        setWidgetConfig({ status: 'success', data: validatedConfig });
+      } catch {
+        // ignore malformed preview config
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [initialPreviewConfig]);
 
   // Periodic check for expired sessions
   useEffect(() => {

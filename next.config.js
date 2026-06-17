@@ -26,7 +26,11 @@ const nextConfig = {
     root: __dirname,
   },
   webpack(config, { isServer }) {
-    if (!isServer) {
+    // Only load the Size Limit analysis plugins when explicitly analyzing
+    // (ANALYZE=true). They are CI/analysis-only: `@size-limit/webpack-why`
+    // retains the full module graph in memory and OOMs a normal `next dev`
+    // webpack compile. Gating them keeps dev/build fast and within heap.
+    if (!isServer && process.env.ANALYZE === 'true') {
       try {
         // Add Size Limit webpack plugins so `npx size-limit --why` can work
         // Plugins are optional and only used during CI/local analysis.

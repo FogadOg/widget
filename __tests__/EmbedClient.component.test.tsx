@@ -344,6 +344,54 @@ jest.mock('../components/EmbedShell', () => {
 
         <button
 
+          data-testid="interaction-flow-label-only-btn"
+
+          onClick={() => props.onInteractionButtonClick && props.onInteractionButtonClick({
+
+            action: 'flow-action',
+
+            response: {
+
+              text: undefined
+
+            },
+
+            label: { en: 'My Label' }
+
+          })}
+
+        >
+
+          Interaction Flow Label Only
+
+        </button>
+
+        <button
+
+          data-testid="interaction-own-response-btn"
+
+          onClick={() => props.onInteractionButtonClick && props.onInteractionButtonClick({
+
+            action: 'text',
+
+            response: {
+
+              text: { en: 'Own response' }
+
+            },
+
+            label: { en: 'My Label' }
+
+          })}
+
+        >
+
+          Interaction Own Response
+
+        </button>
+
+        <button
+
           data-testid="followup-undefined-btn"
 
           onClick={() => props.onFollowUpButtonClick && props.onFollowUpButtonClick({
@@ -9132,7 +9180,11 @@ describe('EmbedClient Component', () => {
 
       });
 
-      fireEvent.click(screen.getByTestId('interaction-handler-btn'));
+      // A button with its OWN configured response shows the typing indicator
+      // before revealing the reply after the 1s delay. (Flow-only buttons have no
+      // own response and reply immediately via processWidgetFlow — see the
+      // dedicated regression test below.)
+      fireEvent.click(screen.getByTestId('interaction-own-response-btn'));
 
       expect(screen.getByTestId('typing-state')).toHaveTextContent('typing');
 
@@ -9273,6 +9325,118 @@ describe('EmbedClient Component', () => {
       });
 
       expect(screen.getByTestId('flow-responses')).toBeInTheDocument();
+
+      jest.useRealTimers();
+
+    });
+
+    test('handleInteractionButtonClick does not echo the button label as a reply when it only triggers a flow', async () => {
+
+      // Regression: a flow-triggering interaction button with a label but no own
+      // response.text must show ONLY the flow's reply. Previously the reply text
+      // fell back to the button label (`maybeText || labelText`), so the label
+      // rendered a second time as an agent bubble on top of the flow's reply.
+
+      jest.useFakeTimers();
+
+      mockFetch.mockImplementation((url: string) => {
+
+        if (url.includes('/widget-config/')) {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({
+
+              status: 'success',
+
+              data: {
+
+                greeting_message: {
+
+                  flows: [{
+
+                    trigger: 'flow-action',
+
+                    responses: [{ text: 'Flow response', buttons: [] }]
+
+                  }]
+
+                },
+
+                default_language: 'en'
+
+              }
+
+            }),
+
+          });
+
+        }
+
+        if (url.includes('/agents/')) {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({ status: 'success', data: { name: 'Test' } }),
+
+          });
+
+        }
+
+        if (url.includes('/sessions')) {
+
+          return Promise.resolve({
+
+            ok: true,
+
+            json: async () => ({ status: 'success', data: { session_id: 'sess-1' } }),
+
+          });
+
+        }
+
+        return Promise.resolve({
+
+          ok: true,
+
+          json: async () => ({ status: 'success', data: {} }),
+
+        });
+
+      });
+
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
+
+      await waitFor(() => {
+
+        expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
+
+      });
+
+      fireEvent.click(screen.getByTestId('interaction-flow-label-only-btn'));
+
+      await act(async () => {
+
+        jest.advanceTimersByTime(1000);
+
+        await Promise.resolve();
+
+      });
+
+      // Only the flow's reply is rendered. The label ("My Label") is the user's
+      // bubble (a message, not a flow response) and must never be echoed back as
+      // an agent reply, so there is exactly one flow response and none of them
+      // contain the label text.
+
+      expect(screen.getByTestId('flow-text-0')).toHaveTextContent('Flow response');
+
+      expect(screen.queryByTestId('flow-1')).not.toBeInTheDocument();
+
+      expect(screen.queryByTestId('flow-text-0')).not.toHaveTextContent('My Label');
 
       jest.useRealTimers();
 
