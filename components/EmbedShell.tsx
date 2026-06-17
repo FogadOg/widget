@@ -786,12 +786,9 @@ export default function EmbedShell({
             <div
               style={{
                 position: 'fixed',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
                 ...(previewPositioning
-                  ? { width: `${widgetWidth}px`, height: `${widgetHeight}px` }
-                  : { width: '100%', height: '100%', maxWidth: `${widgetWidth}px`, maxHeight: `${widgetHeight}px` }),
+                  ? { inset: 0, margin: 'auto', width: `${widgetWidth}px`, height: `${widgetHeight}px`, maxWidth: '100%', maxHeight: '100%' }
+                  : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '100%', height: '100%', maxWidth: `${widgetWidth}px`, maxHeight: `${widgetHeight}px` }),
                 zIndex: 999999,
                 boxShadow: 'rgba(0, 0, 0, 0.2) 0px 10px 40px',
                 borderRadius: `${borderRadius}px`,

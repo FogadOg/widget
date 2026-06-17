@@ -182,7 +182,6 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
       try {
         const stored = window.localStorage.getItem('companin-preview-docs-open');
         if (stored === 'true') return true;
-        if (stored === 'false') return false;
       } catch {
         // storage unavailable — fall back to the default
       }
@@ -201,7 +200,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   const [status, setStatus] = useState<
     "submitted" | "streaming" | "ready" | "error"
   >("ready");
-  const [messages, setMessages] = useState<MessageType[]>([]);
+  const [messages, setMessages] = useState<MessageType[]>(() => initialPreviewConfig ? initialMessages : []);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
     null
   );
@@ -606,6 +605,30 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
       return;
     }
 
+    // Preview mode: add user message then return a dummy agent reply
+    if (initialPreviewConfig) {
+      const content = message.text || 'Sent with attachments';
+      const ts = Date.now();
+      setMessages(prev => [
+        ...prev,
+        { key: `user-${ts}`, from: 'user', versions: [{ id: `user-${ts}`, content }] },
+      ]);
+      setText('');
+      setStatus('streaming');
+      setTimeout(() => {
+        setMessages(prev => [
+          ...prev,
+          {
+            key: `preview-agent-${Date.now()}`,
+            from: 'agent',
+            versions: [{ id: `preview-agent-${Date.now()}`, content: 'This is a preview — in the live widget your AI agent will respond here.' }],
+          },
+        ]);
+        setStatus('ready');
+      }, 800);
+      return;
+    }
+
     setStatus("submitted");
 
     if (message.files?.length) {
@@ -757,6 +780,120 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     return () => window.removeEventListener('message', handleMessage);
   }, [handleOpenChange]);
 
+  const title = getLocalizedText(widgetConfig?.data?.title, activeLocale) || translate(activeLocale, 'docsTitleFallback');
+  const subtitle = getLocalizedText(widgetConfig?.data?.subtitle, activeLocale) || translate(activeLocale, 'docsSubtitleFallback');
+  const placeholderText = getLocalizedText(widgetConfig?.data?.placeholder, activeLocale) || translate(activeLocale, 'typeYourMessage');
+  const resolvedSuggestions = resolveLocalizedSuggestions(widgetConfig?.data?.suggestions, activeLocale, widgetConfig?.data?.default_language);
+
+  // Preview mode: bypass the Dialog stub entirely and render the widget as a
+  // direct full-height panel so layout works correctly inside the preview iframe.
+  if (initialPreviewConfig) {
+    return (
+      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#fff', fontFamily: 'inherit', overflow: 'hidden' }}>
+        <div
+          aria-live="polite" aria-atomic="true"
+          style={{ position: 'absolute', left: '-9999px', height: '1px', width: '1px', overflow: 'hidden' }}
+        >{liveMessage}</div>
+
+        {/* Header */}
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#111827', lineHeight: 1.3 }}>{title}</h2>
+          {subtitle && <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#6b7280', lineHeight: 1.5 }}>{subtitle}</p>}
+          {error && (
+            <div style={{ marginTop: '8px', background: '#fefce8', borderLeft: '4px solid #facc15', color: '#713f12', padding: '6px 12px', fontSize: '13px' }} role="alert">
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Conversation */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
+          <Conversation>
+            <ConversationContent>
+              {messages.map(({ versions, ...message }) => (
+                <MessageBranch defaultBranch={0} key={message.key}>
+                  <MessageBranchContent>
+                    {versions.map((version) => (
+                      <Message from={message.from === 'agent' ? 'assistant' : message.from} key={`${message.key}-${version.id}`}>
+                        <div>
+                          {message.reasoning && (
+                            <Reasoning duration={message.reasoning.duration}>
+                              <ReasoningTrigger />
+                              <ReasoningContent>{message.reasoning.content}</ReasoningContent>
+                            </Reasoning>
+                          )}
+                          <MessageContent>
+                            <MessageResponse sources={message.sources}>{version.content}</MessageResponse>
+                          </MessageContent>
+                          {message.from === 'agent' && !messageFeedbackSubmitted.has(message.key) && (
+                            <div className="mt-2 flex gap-2">
+                              <button type="button" onClick={() => handleSubmitMessageFeedback(message.key, 'thumbs_up')} className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1" aria-label={translate(activeLocale, 'feedbackPositive')}>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>
+                              </button>
+                              <button type="button" onClick={() => handleSubmitMessageFeedback(message.key, 'thumbs_down')} className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1" aria-label={translate(activeLocale, 'feedbackNegative')}>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.737 3h4.017c.163 0 .326.02.485.06L17 4m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m6-10h-2" /></svg>
+                              </button>
+                            </div>
+                          )}
+                          {message.from === 'agent' && messageFeedbackSubmitted.has(message.key) && (
+                            <div className="mt-2 text-xs opacity-50">{typeof t.feedbackSubmittedMessage === 'string' ? t.feedbackSubmittedMessage : String(t.feedbackSubmittedMessage)}</div>
+                          )}
+                        </div>
+                      </Message>
+                    ))}
+                  </MessageBranchContent>
+                  {versions.length > 1 && (
+                    <MessageBranchSelector from={message.from === 'agent' ? 'assistant' : message.from}>
+                      <MessageBranchPrevious /><MessageBranchPage /><MessageBranchNext />
+                    </MessageBranchSelector>
+                  )}
+                </MessageBranch>
+              ))}
+              {status === 'streaming' && (
+                <div className="flex justify-start">
+                  <div className="p-3" style={{ backgroundColor: '#e5e7eb', borderRadius: '8px' }}>
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" />
+                      <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                      <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
+          <div ref={conversationEndRef} />
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '12px 24px 20px', borderTop: '1px solid #e5e7eb', flexShrink: 0 }}>
+          {resolvedSuggestions.length > 0 && (
+            <div style={{ marginBottom: '10px' }}>
+              <Suggestions>
+                {resolvedSuggestions.map((s: string) => (
+                  <Suggestion key={s} onClick={() => handleSuggestionClick(s)} suggestion={s} />
+                ))}
+              </Suggestions>
+            </div>
+          )}
+          <PromptInput globalDrop multiple onSubmit={handleSubmit}>
+            <PromptInputHeader>
+              <PromptInputAttachments>{(attachment) => <PromptInputAttachment data={attachment} />}</PromptInputAttachments>
+            </PromptInputHeader>
+            <PromptInputBody>
+              <PromptInputTextarea onChange={(e) => setText(e.target.value)} value={text} placeholder={placeholderText} />
+            </PromptInputBody>
+            <PromptInputFooter>
+              <PromptInputTools />
+              <PromptInputSubmit disabled={!(text.trim() || status) || status === 'streaming'} status={status} />
+            </PromptInputFooter>
+          </PromptInput>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full">
       <div
@@ -766,6 +903,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
       >
         {liveMessage}
       </div>
+
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className='mb-8 flex h-[calc(100vh-20vh)] min-w-[calc(100vw-20vw)] flex-col justify-between gap-0 p-0'>
           <ScrollArea ref={scrollAreaRef} className='flex flex-col justify-between overflow-hidden'>

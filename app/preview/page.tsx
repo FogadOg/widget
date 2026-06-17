@@ -17,9 +17,12 @@ export const viewport = {
 
 export default async function PreviewPage({ searchParams }: Props) {
   const params = await searchParams;
-  const configB64 = params.config ?? '';
   const type = params.type === 'docs' ? 'docs' : 'chat';
   const locale = params.locale ?? 'en';
+  // Config is no longer baked into the URL (it arrives via postMessage on load).
+  // "PREVIEW_MODE" is an invalid-base64 sentinel that signals preview mode to the
+  // client (skips auth, registers the postMessage listener) without carrying data.
+  const previewConfigSentinel = 'PREVIEW_MODE';
 
   return (
     <div
@@ -37,16 +40,16 @@ export default async function PreviewPage({ searchParams }: Props) {
             clientId="preview"
             agentId="preview"
             configId="preview"
-            previewConfig={configB64}
+            previewConfig={previewConfigSentinel}
             locale={locale}
-            startOpen={false}
+            startOpen={true}
           />
         ) : (
           <EmbedClient
             clientId="preview"
             agentId="preview"
             configId="preview"
-            previewConfig={configB64}
+            previewConfig={previewConfigSentinel}
             locale={locale}
             startOpen={false}
           />
