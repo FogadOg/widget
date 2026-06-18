@@ -157,5 +157,15 @@
   "dismiss": "Despedir",
   "uncertaintyLogUser": "Usuario:",
   "uncertaintyLogAgent": "Agente:",
-  "close": "Cerrar"
+  "close": "Cerrar",
+  "addPhotosOrFiles": "Add photos or files",
+  "contextCache": "Cache",
+  "contextInput": "Input",
+  "contextOutput": "Output",
+  "contextReasoning": "Reasoning",
+  "thinking": "Thinking...",
+  "thoughtForFewSeconds": "Thought for a few seconds",
+  "thoughtForSeconds": "Thought for {duration} seconds",
+  "totalCost": "Total cost",
+  "whatWouldYouLikeToKnow": "What would you like to know?"
 }

@@ -97,6 +97,8 @@ type Props = {
   isOffline?: boolean;
   /** When true, anchors the widget to bottom-right (preview iframe). Default centers within the loader's small iframe. */
   previewPositioning?: boolean;
+  /** When true, the greeting block is always shown regardless of conversation state. */
+  isPreview?: boolean;
 };
 
 
@@ -451,6 +453,7 @@ export default function EmbedShell({
   onDismissSessionExpiredBanner,
   isOffline = false,
   previewPositioning = false,
+  isPreview = false,
 }: Props) {
   const { translations: t, locale: hookLocale } = useWidgetTranslation();
   const locale = localeProp || hookLocale;
@@ -650,8 +653,10 @@ export default function EmbedShell({
     onButtonClickInternal(button, onFollowUpButtonClick);
   };
 
-  // Hide the static greeting section (and buttons) once any messages exist or a flow has fired.
-  const hasGreetingMessage = messages.length > 0 || (flowResponses?.length ?? 0) > 0;
+  // In preview mode keep the greeting block pinned so it doesn't vanish when the
+  // user sends a message. In the live widget the server re-delivers the greeting
+  // as the first chat message, so the static block correctly hides once messages load.
+  const hasGreetingMessage = !isPreview && (messages.length > 0 || (flowResponses?.length ?? 0) > 0);
   const showGreeting = widgetConfig?.greeting_message && !hasGreetingMessage;
   const greetingText = showGreeting ? getText(widgetConfig.greeting_message.text) : '';
   // Only show interaction buttons whose `languages` whitelist includes the

@@ -2172,7 +2172,7 @@ export default function EmbedClient({
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
 
-    // Preview mode: add user message and return a dummy agent reply after a short delay
+    // Preview mode: add user message only — no dummy agent reply
     if (initialPreviewConfig) {
       const previewUserMsg: Message = {
         id: `preview-user-${Date.now()}`,
@@ -2182,20 +2182,8 @@ export default function EmbedClient({
       };
       if (!skipAddingUserMessage) setMessages(prev => [...prev, previewUserMsg]);
       setInput('');
-      setIsTyping(true);
       setError(null);
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          id: `preview-agent-${Date.now()}`,
-          text: 'This is a preview — in the live widget your AI agent will respond here.',
-          from: 'agent' as const,
-          timestamp: Date.now(),
-          sources: [],
-        }]);
-        setIsTyping(false);
-        setStreamingMessage(null);
-        isSubmittingRef.current = false;
-      }, 1000);
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -3073,6 +3061,7 @@ export default function EmbedClient({
       <EmbedShell
         isEmbedded={isEmbedded}
         isCollapsed={isCollapsed}
+        isPreview={!!initialPreviewConfig}
         previewPositioning={!!initialPreviewConfig}
         toggleCollapsed={toggleCollapsed}
         messages={messages}

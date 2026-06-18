@@ -17,6 +17,7 @@ import dynamic from "next/dynamic";
 
 const Streamdown = dynamic(() => import("./Markdown"), { ssr: false });
 import { Shimmer } from "./shimmer";
+import en from "../../../locales/en.json";
 
 type ReasoningContextValue = {
   isStreaming: boolean;
@@ -126,12 +127,12 @@ export type ReasoningTriggerProps = ComponentProps<typeof CollapsibleTrigger> & 
 
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
-    return <Shimmer duration={1}>Thinking...</Shimmer>;
+    return <Shimmer duration={1}>{en.thinking}</Shimmer>;
   }
   if (duration === undefined) {
-    return <p>Thought for a few seconds</p>;
+    return <p>{en.thoughtForFewSeconds}</p>;
   }
-  return <p>Thought for {duration} seconds</p>;
+  return <p>{en.thoughtForSeconds.replace('{duration}', String(duration))}</p>;
 };
 
 export const ReasoningTrigger = memo(

@@ -157,5 +157,15 @@
   "dismiss": "Dismiss",
   "uncertaintyLogUser": "User:",
   "uncertaintyLogAgent": "Agent:",
-  "close": "Close"
+  "close": "Close",
+  "thinking": "Thinking...",
+  "thoughtForFewSeconds": "Thought for a few seconds",
+  "thoughtForSeconds": "Thought for {duration} seconds",
+  "totalCost": "Total cost",
+  "contextInput": "Input",
+  "contextOutput": "Output",
+  "contextReasoning": "Reasoning",
+  "contextCache": "Cache",
+  "addPhotosOrFiles": "Add photos or files",
+  "whatWouldYouLikeToKnow": "What would you like to know?"
 }

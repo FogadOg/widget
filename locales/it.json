@@ -157,5 +157,15 @@
   "dismiss": "Licenziare",
   "uncertaintyLogUser": "Please provide the text you would like to have translated.",
   "uncertaintyLogAgent": "Agente:",
-  "close": "Chiudi"
+  "close": "Chiudi",
+  "addPhotosOrFiles": "Add photos or files",
+  "contextCache": "Cache",
+  "contextInput": "Input",
+  "contextOutput": "Output",
+  "contextReasoning": "Reasoning",
+  "thinking": "Thinking...",
+  "thoughtForFewSeconds": "Thought for a few seconds",
+  "thoughtForSeconds": "Thought for {duration} seconds",
+  "totalCost": "Total cost",
+  "whatWouldYouLikeToKnow": "What would you like to know?"
 }
