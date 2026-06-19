@@ -125,7 +125,7 @@ describe('InteractionButtons component', () => {
         onButtonClick={cb}
       />
     );
-    const btn = screen.getByText('Disabled');
+    const btn = screen.getByRole('button', { name: 'Disabled' });
     expect(btn).toBeDisabled();
     btn.click();
     expect(cb).not.toHaveBeenCalled();

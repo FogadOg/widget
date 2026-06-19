@@ -150,7 +150,7 @@ describe('EmbedShell - logo and avatar', () => {
         button_border_radius: 0,
         opacity: 1,
       };
-      const { getByText } = render(
+      render(
         <EmbedShell
           isEmbedded={false}
           isCollapsed={false}
@@ -164,7 +164,7 @@ describe('EmbedShell - logo and avatar', () => {
           onInteractionButtonClick={onInteraction}
         />
       );
-      const btn = getByText('Click');
+      const btn = screen.getByRole('button', { name: 'Click' });
       expect(btn).not.toBeDisabled();
       act(() => {
         btn.click();
