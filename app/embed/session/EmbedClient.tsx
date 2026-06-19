@@ -875,6 +875,14 @@ export default function EmbedClient({
     return () => window.removeEventListener('message', handler);
   }, [initialPreviewConfig]);
 
+  // Signal to the admin preview panel that this iframe is mounted and ready to
+  // receive config via postMessage. The admin page may have already fired its
+  // onLoad postMessage before React hydration completed, so we re-request here.
+  useEffect(() => {
+    if (!initialPreviewConfig) return;
+    window.parent.postMessage({ type: 'COMPANIN_PREVIEW_READY' }, '*');
+  }, [initialPreviewConfig]);
+
   const handleStopStreaming = useCallback(() => {
     streamUserAbortedRef.current = true;
     streamAbortControllerRef.current?.abort();
@@ -2751,9 +2759,8 @@ export default function EmbedClient({
     setMessages(prev => [...prev, userMsg]);
 
     // Render any keyword-flow reply triggered by this button's action. The flow's
-    // reply is added by processWidgetFlow itself; we deliberately ignore the return
-    // value here and never re-echo the button label as a response (see below).
-    processWidgetFlow(b.action);
+    // reply is added by processWidgetFlow itself.
+    const flowFired = processWidgetFlow(b.action);
     // track interaction click
     trackEvent('button_clicked', initialAgentId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
 
@@ -2770,11 +2777,21 @@ export default function EmbedClient({
       // Local response available — show typing then reveal it
       setIsTyping(true);
       setTimeout(() => {
-        setFlowResponses((prev: FlowResponse[]) => [...prev, {
-          text: maybeText,
-          buttons: maybeButtons,
-          timestamp: Date.now()
-        }]);
+        setFlowResponses((prev: FlowResponse[]) => {
+          if (flowFired && prev.length > 0) {
+            // A flow already added a response with its own buttons. Inject the
+            // button's response text ABOVE those buttons by splitting the last
+            // flow entry: text-only first, then button text + combined buttons.
+            const last = prev[prev.length - 1];
+            const rest = prev.slice(0, -1);
+            return [
+              ...rest,
+              { text: last.text, buttons: [], timestamp: last.timestamp },
+              { text: maybeText, buttons: [...last.buttons, ...maybeButtons], timestamp: last.timestamp + 1 },
+            ];
+          }
+          return [...prev, { text: maybeText, buttons: maybeButtons, timestamp: Date.now() }];
+        });
         setIsTyping(false);
       }, 1000);
 

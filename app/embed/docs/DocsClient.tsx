@@ -731,6 +731,11 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     return () => window.removeEventListener('message', handler);
   }, [initialPreviewConfig]);
 
+  useEffect(() => {
+    if (!initialPreviewConfig) return;
+    window.parent.postMessage({ type: 'COMPANIN_PREVIEW_READY' }, '*');
+  }, [initialPreviewConfig]);
+
   // Periodic check for expired sessions
   useEffect(() => {
     const checkSessionExpiry = () => {
