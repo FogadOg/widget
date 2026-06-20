@@ -84,7 +84,6 @@ export default function DevHarness() {
     if (showOverlay) params.set('widget_debug', '1');
     return `${origin}/embed/session?${params.toString()}`;
     // appliedAt is a dependency so the src only changes on explicit apply.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [origin, appliedAt]);
 
   const ready = clientId && agentId && configId;
@@ -126,7 +125,6 @@ export default function DevHarness() {
     }
     // localStorage is shared with the same-origin iframe, so a reload starts fresh.
     reloadIframe();
-    // eslint-disable-next-line no-console
     console.info(`[DevHarness] Cleared ${removed} widget storage keys.`);
   }, [reloadIframe]);
 

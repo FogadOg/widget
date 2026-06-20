@@ -52,6 +52,7 @@ const eslintConfig = defineConfig([
     "public/docs-widget.js",
     "public/docs-widget-*.js",
     "public/widget.js",
+    "public/widget-*.js",
     "public/sw.js",
     // Source for the generated embed scripts — plain browser JS, not TypeScript
     "src/embed/docs-widget.js",

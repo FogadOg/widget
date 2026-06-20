@@ -54,7 +54,6 @@ if (typeof window !== 'undefined') {
    */
   const dumpState = () => {
     const instances = listInstances();
-    // eslint-disable-next-line no-console
     console.table(
       instances.map((w) => ({
         instanceId: w.instanceId,
@@ -63,7 +62,6 @@ if (typeof window !== 'undefined') {
         state: w.state ?? '',
       }))
     );
-    // eslint-disable-next-line no-console
     console.info('[Widget] instances:', instances.length, '· debugActive:', detectDebugMode(), '· offlineSimulated:', isSimulatedOffline());
     return instances;
   };
@@ -85,7 +83,6 @@ if (typeof window !== 'undefined') {
     } catch {
       // localStorage may be unavailable in a sandboxed iframe
     }
-    // eslint-disable-next-line no-console
     console.info(`[Widget] Session cleared (${removed} keys removed). Reload the page.`);
     return removed;
   };

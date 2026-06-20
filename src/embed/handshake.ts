@@ -105,11 +105,8 @@ function logHandshakeMessage(direction: '→' | '←', data: unknown): void {
   if (!isHandshakeDebugActive()) return;
   try {
     const type = (data as { type?: unknown } | null)?.type ?? 'UNKNOWN';
-    // eslint-disable-next-line no-console
     console.groupCollapsed(`[Widget postMessage] ${direction} ${String(type)}`);
-    // eslint-disable-next-line no-console
     console.log(data);
-    // eslint-disable-next-line no-console
     console.groupEnd();
   } catch {
     // never let logging break the handshake

@@ -215,7 +215,18 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   const [error, setError] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [messageFeedbackSubmitted, setMessageFeedbackSubmitted] = useState<Set<string>>(new Set());
-  const [widgetConfig, setWidgetConfig] = useState<any>(null);
+  const [widgetConfig, setWidgetConfig] = useState<any>(() => {
+    if (initialPreviewConfig) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(atob(initialPreviewConfig)));
+        const { config: validatedConfig } = validateConfig(decoded, 'docs');
+        return { status: 'success', data: validatedConfig };
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
   // Parent origin is provided by docs-widget.js as a URL param. The token's
   // `origin` claim is pinned to this value at /auth/widget-token mint time,
   // and WidgetScopeMiddleware rejects (403 Origin mismatch) any later API
@@ -669,16 +680,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
 
   // Initialize session on mount
   useEffect(() => {
-    if (initialPreviewConfig) {
-      try {
-        const decoded = JSON.parse(decodeURIComponent(atob(initialPreviewConfig)));
-        const { config: validatedConfig } = validateConfig(decoded, 'docs');
-        setWidgetConfig({ status: 'success', data: validatedConfig });
-      } catch {
-        // ignore parse errors in preview mode
-      }
-      return;
-    }
+    if (initialPreviewConfig) return;
     if (clientId && agentId) {
       const detectedParentOrigin = resolveParentOrigin();
 
