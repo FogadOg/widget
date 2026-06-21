@@ -28,7 +28,7 @@ export function useWidgetLifecycle({
   embedHeaders,
   conversationEndRef,
   scrollAreaRef,
-  lastAnnouncedKey,
+  lastAnnouncedKey: lastAnnouncedKeyRef,
   setLiveMessage,
 }: UseWidgetLifecycleParams) {
   useEffect(() => {
@@ -66,8 +66,8 @@ export function useWidgetLifecycle({
     const latestContent = latestAgent.versions?.[latestAgent.versions.length - 1]?.content || '';
     const announcementKey = `${latestAgent.key}-${latestContent}`;
 
-    if (announcementKey !== lastAnnouncedKey.current) {
-      lastAnnouncedKey.current = announcementKey;
+    if (announcementKey !== lastAnnouncedKeyRef.current) {
+      lastAnnouncedKeyRef.current = announcementKey;
       setLiveMessage(
         translate(activeLocale, 'newMessageAnnouncement', {
           vars: { message: latestContent },

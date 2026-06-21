@@ -83,7 +83,7 @@ export function useSessionManagement({
 
   // Helper to make an authenticated API call with 401 retry logic
   async function fetchWithAuthRetry(fetchFn: (token: string | null, ...rest: unknown[]) => Promise<Response>, ...args: unknown[]) {
-    let token = authTokenRef.current || authToken;
+    let token: string | null = authTokenRef.current ?? authToken ?? null;
     let response = await fetchFn(token, ...args);
     if (response.status === 401) {
       // Try to refresh token and retry once

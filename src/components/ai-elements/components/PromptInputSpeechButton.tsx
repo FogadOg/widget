@@ -35,7 +35,7 @@ export const PromptInputSpeechButton = ({
       ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
     ) {
       const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       const speechRecognition = new SpeechRecognition();
 
       speechRecognition.continuous = true;
