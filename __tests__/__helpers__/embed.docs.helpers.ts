@@ -1,6 +1,6 @@
 import path from 'path';
 
-const FILE = path.resolve(process.cwd(), 'src', 'embed', 'docs-widget.js');
+export const FILE = path.resolve(process.cwd(), 'src', 'embed', 'docs-widget.js');
 
 export function loadDocsWidget(attrs: Record<string, string> = {}) {
 

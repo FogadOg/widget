@@ -5,7 +5,7 @@
  */
 
 import { VALID } from './__fixtures__/embed.docs.fixtures';
-import { loadDocsWidget, mockCW, fromIframe } from './__helpers__/embed.docs.helpers';
+import { loadDocsWidget, mockCW, fromIframe, FILE } from './__helpers__/embed.docs.helpers';
 
 beforeEach(() => {
 

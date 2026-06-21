@@ -47,11 +47,27 @@ import {
   applyCustomAssetsFromQuery,
   isTrustedParentMessage,
   injectCustomAssetsFromConfig,
+  injectCustomAssets,
 } from './EmbedClient.utils';
 import { PREVIEW_COLLAPSED_KEY } from './EmbedClient.constants';
 import {
   parseHostMessageCommand,
   resolveParentTargetOrigin,
+  getNormalizedEdgeOffset,
+} from './embed.utils';
+
+// Re-export helpers so tests importing from 'EmbedClient' continue to work
+export {
+  injectCustomAssets,
+  applyCustomAssetsFromQuery,
+  isTrustedParentMessage,
+  injectCustomAssetsFromConfig,
+} from './EmbedClient.utils';
+export {
+  parseHostMessageCommand,
+  resolveParentTargetOrigin,
+  getNormalizedEdgeOffset,
+  getButtonPixelSize,
 } from './embed.utils';
 import type { EmbedClientProps } from './EmbedClient.types';
 import { UnsureMessagesModal } from './components/UnsureMessagesModal';
@@ -494,8 +510,8 @@ export default function EmbedClient({
     }
   }, [isCollapsed]);
 
-  // When auth fails before any config loads, surface it as a fatal error
-  // so the widget renders a visible error instead of staying invisible.
+  // When auth fails before any config loads, mark it as a fatal error so
+  // the widget exits cleanly (null in prod, DevOverlay+error in debug).
   useEffect(() => {
     if (authError && !widgetConfig) {
       const id = window.setTimeout(() => {
@@ -1732,9 +1748,13 @@ export default function EmbedClient({
   ]);
 
   if (fatalError) {
+    // In production integrations, silently render nothing — a broken widget
+    // is less disruptive than a red error box on the host site. The parent
+    // already received an AUTH_FAILURE postMessage for programmatic handling.
+    if (!isDebug) return null;
     return (
       <>
-      {isDebug && <DevOverlay />}
+      <DevOverlay />
       <div style={{
         position: 'fixed',
         bottom: 0,
