@@ -8,6 +8,20 @@ import * as helpers from '../app/embed/session/helpers';
 
 import * as offline from '../src/lib/offline';
 
+import {
+  defaultProps,
+  QUEUED_MESSAGE_FIXTURE,
+  QUEUE_FLUSH_RESULT_EVENT,
+  HOST_MESSAGE_EVENTS,
+} from './__fixtures__/EmbedClient.handlers.fixtures';
+
+import {
+  setupServiceWorkerMock,
+  setupParentWindow,
+  createFetchMock,
+  dispatchHostMessage,
+} from './__helpers__/EmbedClient.handlers.helpers';
+
 jest.mock('../app/embed/session/helpers');
 
 jest.mock('../app/embed/session/events', () => ({ onInitConfig: jest.fn(() => ({ remove: jest.fn() })) }));
@@ -63,22 +77,6 @@ jest.mock('../components/EmbedShell', () => {
 jest.mock('../components/FeedbackDialog', () => () => <div />);
 
 describe('EmbedClient handlers', () => {
-
-  const defaultProps = {
-
-    clientId: 'c1',
-
-    agentId: 'a1',
-
-    configId: 'cfg',
-
-    locale: 'en',
-
-    startOpen: false,
-
-    parentOrigin: 'https://example.com',
-
-  };
 
   let mockFetch: jest.Mock;
 

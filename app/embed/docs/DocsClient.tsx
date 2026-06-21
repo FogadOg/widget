@@ -2,12 +2,9 @@
 
 
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { ChevronLeftIcon } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useState, useCallback, useRef } from 'react'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -17,8 +14,8 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useWidgetAuth } from '../../../hooks/useWidgetAuth'
 import { useWidgetTranslation } from '../../../hooks/useWidgetTranslation'
-import { getLocaleDirection, t as translate } from '../../../lib/i18n'
-import { API, embedOriginHeader, trackEvent } from '../../../lib/api'
+import { t as translate } from '../../../lib/i18n'
+import { embedOriginHeader } from '../../../lib/api'
 import { validateConfig } from '../../../lib/validateConfig'
 import {
   MessageBranch,
@@ -43,131 +40,32 @@ import {
   PromptInputAttachment,
   PromptInputAttachments,
   PromptInputBody,
-  PromptInputButton,
   PromptInputFooter,
   PromptInputHeader,
-  type PromptInputMessage,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input"
-import {
-  ModelSelector,
-  ModelSelectorContent,
-  ModelSelectorEmpty,
-  ModelSelectorGroup,
-  ModelSelectorInput,
-  ModelSelectorItem,
-  ModelSelectorList,
-  ModelSelectorLogo,
-  ModelSelectorLogoGroup,
-  ModelSelectorName,
-  ModelSelectorTrigger,
-} from "@/components/ai-elements/model-selector"
 import {
   Reasoning,
   ReasoningContent,
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning"
 import { MessageResponse } from "@/components/ai-elements/message"
-import {
-  Source,
-  Sources,
-  SourcesContent,
-  SourcesTrigger,
-} from "@/components/ai-elements/sources"
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion"
-import { CheckIcon, GlobeIcon, MicIcon } from "lucide-react"
-import { nanoid } from "nanoid"
-import { toast } from "sonner"
-import {
-  getSessionStorageKey,
-  getVisitorId as helpersGetVisitorId,
-  getPageContext as helpersGetPageContext,
-  getStoredSession as helpersGetStoredSession,
-  storeSession as helpersStoreSession,
-  getLocalizedText as helpersGetLocalizedText,
-  scrollToBottom as helpersScrollToBottom,
-} from './helpers'
+import { getLocalizedText, resolveLocalizedSuggestions, resolveParentOrigin as resolveParentOriginUtil } from './DocsClient.utils'
+import { Props, MessageType } from './DocsClient.types'
+import { initialMessages } from './DocsClient.constants'
+import { usePreviewMode } from './hooks/usePreviewMode'
+import { useWidgetLifecycle } from './hooks/useWidgetLifecycle'
+import { useSessionManagement } from './hooks/useSessionManagement'
+import { useWidgetConfig } from './hooks/useWidgetConfig'
+import { useMessageOperations } from './hooks/useMessageOperations'
+import { useDialogState } from './hooks/useDialogState'
+import { PreviewModeWidget } from './components/PreviewModeWidget'
+import { MessageFeedbackButtons } from './components/MessageFeedbackButtons'
 
-// NOTE: exported for testing. Accepts explicit locale to avoid closure on hook.
-export function getLocalizedText(textObj: { [lang: string]: string } | undefined, loc?: string): string {
-  if (!textObj) return '';
-  const useLoc = loc || 'en';
-
-  if (textObj[useLoc]) return textObj[useLoc];
-  if (textObj['en']) return textObj['en'];
-
-  const values = Object.values(textObj);
-  return values.length > 0 ? values[0] : '';
-}
-
-export function resolveLocalizedSuggestions(
-  raw: unknown,
-  loc?: string,
-  defaultLanguage?: string,
-): string[] {
-  if (Array.isArray(raw)) {
-    return raw.filter((s): s is string => typeof s === 'string');
-  }
-  if (raw && typeof raw === 'object') {
-    const map = raw as Record<string, unknown>;
-    const candidates = [loc, defaultLanguage, 'en'].filter(Boolean) as string[];
-    for (const lang of candidates) {
-      const arr = map[lang];
-      if (Array.isArray(arr) && arr.length > 0) {
-        return arr.filter((s): s is string => typeof s === 'string');
-      }
-    }
-    for (const arr of Object.values(map)) {
-      if (Array.isArray(arr) && arr.length > 0) {
-        return arr.filter((s): s is string => typeof s === 'string');
-      }
-    }
-  }
-  return [];
-}
-
-type Props = {
-  clientId: string;
-  agentId: string;
-  configId: string;
-  locale: string;
-  startOpen: boolean;
-  pagePath?: string;
-  parentOrigin?: string;
-  loaderVersion?: string;
-  /** Base64-encoded JSON widget config for preview mode. When set, auth and API calls are skipped. */
-  previewConfig?: string;
-};
-
-type MessageType = {
-  key: string;
-  from: "user" | "agent";
-  sources?: { url?: string; href?: string; title?: string; snippet?: string; type?: string; reference_id?: string }[];
-  versions: {
-    id: string;
-    content: string;
-  }[];
-  reasoning?: {
-    content: string;
-    duration: number;
-  };
-};
-
-const initialMessages: MessageType[] = [
-  {
-    key: nanoid(),
-    from: "agent",
-    versions: [
-      {
-        id: nanoid(),
-        content: "Hello! I'm your documentation agent. How can I help you today?",
-      },
-    ],
-  },
-];
-
+export { getLocalizedText, resolveLocalizedSuggestions }
 
 export default function DocsClient({ clientId, agentId, configId, locale: initialLocale, startOpen, pagePath, parentOrigin: initialParentOrigin, loaderVersion, previewConfig: initialPreviewConfig }: Props) {
   const embedHeaders = embedOriginHeader(initialParentOrigin, loaderVersion);
@@ -177,33 +75,12 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   // closed and force the admin to re-open it after each tweak. Restore/persist
   // the open state so the preview reloads in the same state it was left in.
   // Scoped to preview — production is unaffected.
-  const [open, setOpen] = useState(() => {
-    if (initialPreviewConfig && typeof window !== 'undefined') {
-      try {
-        const stored = window.localStorage.getItem('companin-preview-docs-open');
-        if (stored === 'true') return true;
-      } catch {
-        // storage unavailable — fall back to the default
-      }
-    }
-    return startOpen;
-  });
-  useEffect(() => {
-    if (!initialPreviewConfig || typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem('companin-preview-docs-open', String(open));
-    } catch {
-      // storage unavailable — non-fatal
-    }
-  }, [open, initialPreviewConfig]);
+  const { open, setOpen } = usePreviewMode(initialPreviewConfig, startOpen);
   const [text, setText] = useState<string>("");
   const [status, setStatus] = useState<
     "submitted" | "streaming" | "ready" | "error"
   >("ready");
   const [messages, setMessages] = useState<MessageType[]>(() => initialPreviewConfig ? initialMessages : []);
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
-    null
-  );
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { getAuthToken, authToken, authError } = useWidgetAuth();
@@ -249,543 +126,81 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   });
 
   const resolveParentOrigin = useCallback((): string | undefined => {
-    if (initialParentOrigin) return initialParentOrigin;
-    if (typeof window === 'undefined') return undefined;
-
-    try {
-      if (document.referrer) {
-        return new URL(document.referrer).origin;
-      }
-
-      if (window.location.ancestorOrigins && window.location.ancestorOrigins.length > 0) {
-        return window.location.ancestorOrigins[0];
-      }
-    } catch (e) {
-      console.warn('Could not determine parent origin');
-    }
-
-    return undefined;
+    return resolveParentOriginUtil(initialParentOrigin);
   }, [initialParentOrigin]);
 
-  useEffect(() => {
-    helpersScrollToBottom(conversationEndRef.current, scrollAreaRef.current);
-  }, [messages]);
-
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.lang = activeLocale;
-      document.documentElement.dir = getLocaleDirection(activeLocale);
-    }
-  }, [activeLocale]);
-
-  // Emit widget_load telemetry once per browser session so the install-status
-  // endpoint can confirm the docs widget is active on a site.
-  useEffect(() => {
-    if (!clientId || !agentId) return;
-    const loadKey = `companin-telemetry-load-${clientId}-${agentId}-${configId}`;
-    try {
-      if (localStorage.getItem(loadKey)) return;
-    } catch {
-      // localStorage unavailable — fire anyway
-    }
-    trackEvent('widget_load', agentId, { widget_config_id: configId }, clientId, undefined, embedHeaders).catch(() => {});
-    try {
-      localStorage.setItem(loadKey, '1');
-    } catch {
-      // ignore storage errors
-    }
-  }, [agentId, clientId]);
-
-  useEffect(() => {
-    const latestAgent = [...messages].reverse().find((msg) => msg.from === 'agent');
-    if (!latestAgent) return;
-    const latestContent = latestAgent.versions?.[latestAgent.versions.length - 1]?.content || '';
-    const announcementKey = `${latestAgent.key}-${latestContent}`;
-
-    if (announcementKey !== lastAnnouncedKey.current) {
-      lastAnnouncedKey.current = announcementKey;
-      setLiveMessage(
-        translate(activeLocale, 'newMessageAnnouncement', {
-          vars: { message: latestContent },
-        })
-      );
-    }
-  }, [messages, activeLocale]);
-
-  useEffect(() => {
-    if (open && messages.length > 0) {
-      // Scroll to bottom when dialog opens and has messages with a longer delay
-      setTimeout(() => helpersScrollToBottom(conversationEndRef.current, scrollAreaRef.current), 300);
-    }
-  }, [open]);
+  useWidgetLifecycle({
+    messages,
+    activeLocale,
+    open,
+    clientId,
+    agentId,
+    configId,
+    embedHeaders,
+    conversationEndRef,
+    scrollAreaRef,
+    lastAnnouncedKey,
+    setLiveMessage,
+  });
 
   // helper utilities are provided by ./helpers
 
+  const { createSession, validateAndRestoreSession, loadSessionMessages } = useSessionManagement({
+    agentId,
+    activeLocale,
+    clientId,
+    initialParentOrigin,
+    embedHeaders,
+    setSessionId,
+    setError,
+    setMessages,
+    setIsInitialLoad,
+  });
 
-  // Create session
-  const createSession = useCallback(async (token: string, variantInfo?: { variant_id?: string; variant_name?: string }) => {
-    try {
-      const visitorId = helpersGetVisitorId(clientId);
+  const { fetchWidgetConfig } = useWidgetConfig({
+    clientId,
+    initialParentOrigin,
+    embedHeaders,
+    setWidgetConfig,
+    setError,
+  });
 
-            const requestBody: Record<string, unknown> = {
-        agent_id: agentId,
-        visitor_id: visitorId,
-        locale: activeLocale,
-        ...(variantInfo?.variant_id ? { metadata: { variant_id: variantInfo.variant_id, variant_name: variantInfo.variant_name } } : {}),
-            };
+  const { sendMessageToAPI, handleSubmitMessageFeedback, addUserMessage, handleSubmit, handleSuggestionClick } = useMessageOperations({
+    sessionId,
+    authToken,
+    activeLocale,
+    initialParentOrigin,
+    initialPreviewConfig,
+    embedHeaders,
+    setStatus,
+    setError,
+    setMessages,
+    setMessageFeedbackSubmitted,
+    setText,
+    loadSessionMessages,
+  });
 
-      const response = await fetch(API.sessions(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          ...embedHeaders,
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.status === 'success') {
-        setSessionId(data.data.session_id);
-        setError(null);
-        // Store session data in localStorage
-        if (data.data.expires_at) {
-          helpersStoreSession(clientId, agentId, data.data.session_id, data.data.expires_at);
-        }
-        // Load messages after session creation
-        await loadSessionMessages(data.data.session_id, token, true);
-      } else {
-        const errorMsg = data.detail || 'Failed to create session';
-        console.error('Session creation failed:', errorMsg);
-        setError(errorMsg);
-      }
-    } catch (err) {
-      const errorMsg = 'Network error: Unable to connect';
-      console.error('Session creation error:', err);
-      setError(errorMsg);
-    }
-  }, [agentId, activeLocale, clientId, initialParentOrigin]);
-
-  // Validate and restore existing session
-  const validateAndRestoreSession = useCallback(async (sessionId: string, token: string) => {
-    if (!sessionId) {
-      console.error('validateAndRestoreSession called with empty sessionId');
-      return;
-    }
-    try {
-      const response = await fetch(API.sessionMessages(sessionId), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          ...embedHeaders,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 'success') {
-          setSessionId(sessionId);
-          setError(null);
-          // Load messages
-          const loadedMessages: MessageType[] = data.data.messages
-            .filter((msg: any) => {
-              if (msg.sender === 'assistant') {
-                const userMessages = data.data.messages.filter((m: any) => m.sender === 'user');
-                return userMessages.length > 0;
-              }
-              return true;
-            })
-            .map((msg: any) => ({
-              key: msg.id,
-              from: msg.sender === 'assistant' ? 'agent' : msg.sender as 'user' | 'agent',
-              sources: msg.sources || [],
-              versions: [{
-                id: msg.id,
-                content: msg.content
-              }]
-            }));
-          setMessages(loadedMessages.length > 0 ? loadedMessages : initialMessages);
-          setIsInitialLoad(false);
-        } else {
-          localStorage.removeItem(getSessionStorageKey(clientId, agentId));
-          createSession(token);
-        }
-      } else {
-        localStorage.removeItem(getSessionStorageKey(clientId, agentId));
-        createSession(token);
-      }
-    } catch (err) {
-      console.error('Session validation error:', err);
-      localStorage.removeItem(getSessionStorageKey(clientId, agentId));
-      createSession(token);
-    }
-  }, [createSession]);
-
-  // Load session messages
-  async function loadSessionMessages(sessionId: string, token: string, isNewSession = false) {
-    if (!sessionId) {
-      console.error('Skipping loadSessionMessages: missing sessionId');
-      return;
-    }
-    try {
-      const response = await fetch(API.sessionMessages(sessionId), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          ...embedHeaders,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 'success') {
-          const loadedMessages: MessageType[] = data.data.messages
-            .filter((msg: any) => {
-              if (msg.sender === 'assistant') {
-                const userMessages = data.data.messages.filter((m: any) => m.sender === 'user');
-                return userMessages.length > 0;
-              }
-              return true;
-            })
-            .map((msg: any) => ({
-              key: msg.id,
-              from: msg.sender === 'assistant' ? 'agent' : msg.sender as 'user' | 'agent',
-              sources: msg.sources || [],
-              versions: [{
-                id: msg.id,
-                content: msg.content
-              }]
-            }));
-          setMessages(loadedMessages.length > 0 ? loadedMessages : initialMessages);
-          setIsInitialLoad(false);
-        }
-      }
-    } catch (err) {
-      console.error('Error loading messages:', err);
-    }
-  }
-
-  // Fetch widget config
-  const fetchWidgetConfig = useCallback(async (configId: string, token: string): Promise<{ variant_id?: string; variant_name?: string } | undefined> => {
-    try {
-      const visitorId = helpersGetVisitorId(clientId);
-      const response = await fetch(API.widgetConfig(configId, visitorId), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          ...embedHeaders,
-        },
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        if (data?.data) {
-          const { config: validatedConfig, typeMismatch } = validateConfig(data.data, 'docs');
-          data.data = validatedConfig;
-          if (typeMismatch) {
-            setError('Configuration warning: this config is set to "chat" type but is running in the docs widget. Check your widget_type setting in the admin.');
-          }
-        }
-        setWidgetConfig(data);
-        return {
-          variant_id: data?.data?.variant_id,
-          variant_name: data?.data?.variant_name,
-        };
-      } else {
-        console.error('Failed to fetch widget config:', data);
-      }
-    } catch (err) {
-      console.error('Error fetching widget config:', err);
-    }
-    return undefined;
-  }, [clientId, initialParentOrigin]);
-
-
-
-  // Send message to API
-  const sendMessageToAPI = useCallback(async (content: string) => {
-    if (!sessionId || !authToken) {
-      console.error('No sessionId or authToken available');
-      return;
-    }
-
-    try {
-      setStatus("streaming");
-      const response = await fetch(API.sessionMessages(sessionId), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-          ...embedHeaders,
-        },
-        body: JSON.stringify({
-          content: content,
-          locale: activeLocale,
-          page_context: helpersGetPageContext(),
-        }),
-      });
-
-
-      const data = await response.json();
-
-      if (response.ok && data.status === 'success') {
-        // Reload all messages from the server to get the agent's response
-        await loadSessionMessages(sessionId, authToken);
-      } else {
-        console.error('Failed to send message:', data);
-        setError(data.detail || 'Failed to send message');
-        setStatus("error");
-      }
-    } catch (err) {
-      console.error('Error sending message:', err);
-      setError('Network error: Unable to send message');
-      setStatus("error");
-    } finally {
-      setStatus("ready");
-    }
-  }, [sessionId, authToken, activeLocale, loadSessionMessages, initialParentOrigin]);
-
-  // Handle message feedback submission
-  const handleSubmitMessageFeedback = useCallback(async (messageId: string, feedbackType: string = 'thumbs_up') => {
-    if (!authToken) return;
-
-    try {
-      const response = await fetch(API.messageFeedback(messageId), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-          ...embedHeaders,
-        },
-        body: JSON.stringify({
-          feedback_type: feedbackType,
-        }),
-      });
-
-      if (response.ok) {
-        setMessageFeedbackSubmitted((prev) => new Set(prev).add(messageId));
-        // Show success toast if available
-      } else {
-        const errorText = await response.text();
-        console.error('Failed to submit message feedback:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText
-        });
-      }
-    } catch (error) {
-      console.error('Error submitting message feedback:', error);
-    }
-  }, [authToken, initialParentOrigin]);
-
-  const addUserMessage = useCallback(
-    async (content: string) => {
-
-      if (!sessionId || !authToken) {
-        console.error('Cannot send message: missing sessionId or authToken', { sessionId, authToken: !!authToken });
-        setError('Session not initialized. Please refresh the page.');
-        return;
-      }
-
-      const userMessage: MessageType = {
-        key: `user-${Date.now()}`,
-        from: "user",
-        versions: [
-          {
-            id: `user-${Date.now()}`,
-            content,
-          },
-        ],
-      };
-
-      setMessages((prev) => [...prev, userMessage]);
-      setStatus("submitted");
-
-      await sendMessageToAPI(content);
-    },
-    [sendMessageToAPI, sessionId, authToken]
-  );
-
-  const handleSubmit = (message: PromptInputMessage) => {
-    const hasText = Boolean(message.text);
-    const hasAttachments = Boolean(message.files?.length);
-
-    if (!(hasText || hasAttachments)) {
-      return;
-    }
-
-    // Preview mode: add user message then return a dummy agent reply
-    if (initialPreviewConfig) {
-      const content = message.text || 'Sent with attachments';
-      const ts = Date.now();
-      setMessages(prev => [
-        ...prev,
-        { key: `user-${ts}`, from: 'user', versions: [{ id: `user-${ts}`, content }] },
-      ]);
-      setText('');
-      setStatus('streaming');
-      setTimeout(() => {
-        setMessages(prev => [
-          ...prev,
-          {
-            key: `preview-agent-${Date.now()}`,
-            from: 'agent',
-            versions: [{ id: `preview-agent-${Date.now()}`, content: 'This is a preview — in the live widget your AI agent will respond here.' }],
-          },
-        ]);
-        setStatus('ready');
-      }, 800);
-      return;
-    }
-
-    setStatus("submitted");
-
-    if (message.files?.length) {
-      toast.success("Files attached", {
-        description: `${message.files.length} file(s) attached to message`,
-      });
-    }
-
-    addUserMessage(message.text || "Sent with attachments");
-    setText("");
-  };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    // Don't set status here - let addUserMessage handle it
-    addUserMessage(suggestion);
-  };
-
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
-
-    // Send resize message to parent
-    if (typeof window !== 'undefined' && window.parent) {
-      if (newOpen) {
-        // Full screen when dialog opens
-        window.parent.postMessage({
-          type: 'WIDGET_RESIZE',
-          data: { width: '100vw', height: '100vh' }
-        }, parentOrigin);
-      } else {
-        // Back to original size and position when dialog closes
-        window.parent.postMessage({
-          type: 'WIDGET_RESIZE',
-          data: { width: 0, height: 0, hide: true }
-        }, parentOrigin);
-      }
-    }
-  };
-
-  // Initialize session on mount
-  useEffect(() => {
-    if (initialPreviewConfig) return;
-    if (clientId && agentId) {
-      const detectedParentOrigin = resolveParentOrigin();
-
-      getAuthToken(clientId, detectedParentOrigin).then(async (token) => {
-        if (token) {
-          // Fetch widget config first so variant info is available for session creation
-          const variantInfo = await fetchWidgetConfig(configId, token);
-
-          const storedSession = helpersGetStoredSession(clientId, agentId);
-          if (storedSession) {
-            validateAndRestoreSession(storedSession.sessionId, token);
-          } else {
-            createSession(token, variantInfo);
-          }
-        } else if (authError) {
-          console.error('Auth error:', authError);
-          setError(authError);
-        } else {
-          console.error('No token and no authError - check getAuthToken implementation');
-          setError('Failed to authenticate');
-        }
-      }).catch(err => {
-        console.error('Error getting auth token:', err);
-        setError('Failed to authenticate');
-      });
-    } else {
-      console.warn('Missing clientId or agentId');
-    }
-  }, [clientId, agentId, configId, createSession, validateAndRestoreSession, fetchWidgetConfig, getAuthToken, initialPreviewConfig, resolveParentOrigin]);
-
-  // Preview mode only: apply live config updates pushed from the admin customize
-  // panel via postMessage, so appearance edits update without reloading the
-  // iframe (which would reset the widget to closed). Re-validated exactly as the
-  // URL-based preview config, so no new trust surface.
-  useEffect(() => {
-    if (!initialPreviewConfig) return;
-    const handler = (event: MessageEvent) => {
-      const data = event?.data as { type?: string; config?: string } | undefined;
-      if (!data || typeof data !== 'object') return;
-      if (data.type !== 'COMPANIN_PREVIEW_CONFIG' || typeof data.config !== 'string') return;
-      try {
-        const decoded = JSON.parse(decodeURIComponent(atob(data.config)));
-        const { config: validatedConfig } = validateConfig(decoded, 'docs');
-        setWidgetConfig({ status: 'success', data: validatedConfig });
-      } catch {
-        // ignore malformed preview config
-      }
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [initialPreviewConfig]);
-
-  useEffect(() => {
-    if (!initialPreviewConfig) return;
-    window.parent.postMessage({ type: 'COMPANIN_PREVIEW_READY' }, '*');
-  }, [initialPreviewConfig]);
-
-  // Periodic check for expired sessions
-  useEffect(() => {
-    const checkSessionExpiry = () => {
-      const stored = helpersGetStoredSession(clientId, agentId);
-      if (!stored && sessionId) {
-        setSessionId(null);
-        setMessages([]);
-      }
-    };
-
-    const interval = setInterval(checkSessionExpiry, 60000);
-    return () => clearInterval(interval);
-  }, [sessionId]);
-
-  // Apply hide_on_mobile from widget config for docs widget
-  useEffect(() => {
-    if (!widgetConfig) return;
-    const ua = navigator.userAgent;
-    const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile|Mobi/i.test(ua);
-    const hideOnMobile = Boolean(widgetConfig?.data?.hide_on_mobile);
-
-    try {
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage(
-          { type: hideOnMobile && isMobileDevice ? 'WIDGET_HIDE' : 'WIDGET_SHOW' },
-          parentOrigin
-        );
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, [widgetConfig, parentOrigin]);
-
-  // Listen for messages from parent to open/close dialog
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      const { type } = event.data || {};
-
-      if (type === 'OPEN_DOCS_DIALOG') {
-        handleOpenChange(true);
-      } else if (type === 'CLOSE_DOCS_DIALOG') {
-        handleOpenChange(false);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [handleOpenChange]);
+  const { handleOpenChange } = useDialogState({
+    open,
+    setOpen,
+    parentOrigin,
+    initialPreviewConfig,
+    clientId,
+    agentId,
+    configId,
+    sessionId,
+    setSessionId,
+    setMessages,
+    setError,
+    setWidgetConfig,
+    widgetConfig,
+    authError,
+    getAuthToken,
+    fetchWidgetConfig,
+    createSession,
+    validateAndRestoreSession,
+    resolveParentOrigin,
+  });
 
   const title = getLocalizedText(widgetConfig?.data?.title, activeLocale) || translate(activeLocale, 'docsTitleFallback');
   const subtitle = getLocalizedText(widgetConfig?.data?.subtitle, activeLocale) || translate(activeLocale, 'docsSubtitleFallback');
@@ -796,108 +211,25 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   // direct full-height panel so layout works correctly inside the preview iframe.
   if (initialPreviewConfig) {
     return (
-      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#fff', fontFamily: 'inherit', overflow: 'hidden' }}>
-        <div
-          aria-live="polite" aria-atomic="true"
-          style={{ position: 'absolute', left: '-9999px', height: '1px', width: '1px', overflow: 'hidden' }}
-        >{liveMessage}</div>
-
-        {/* Header */}
-        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#111827', lineHeight: 1.3 }}>{title}</h2>
-          {subtitle && <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#6b7280', lineHeight: 1.5 }}>{subtitle}</p>}
-          {error && (
-            <div style={{ marginTop: '8px', background: '#fefce8', borderLeft: '4px solid #facc15', color: '#713f12', padding: '6px 12px', fontSize: '13px' }} role="alert">
-              {error}
-            </div>
-          )}
-        </div>
-
-        {/* Conversation */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
-          <Conversation>
-            <ConversationContent>
-              {messages.map(({ versions, ...message }) => (
-                <MessageBranch defaultBranch={0} key={message.key}>
-                  <MessageBranchContent>
-                    {versions.map((version) => (
-                      <Message from={message.from === 'agent' ? 'assistant' : message.from} key={`${message.key}-${version.id}`}>
-                        <div>
-                          {message.reasoning && (
-                            <Reasoning duration={message.reasoning.duration}>
-                              <ReasoningTrigger />
-                              <ReasoningContent>{message.reasoning.content}</ReasoningContent>
-                            </Reasoning>
-                          )}
-                          <MessageContent>
-                            <MessageResponse sources={message.sources}>{version.content}</MessageResponse>
-                          </MessageContent>
-                          {message.from === 'agent' && !messageFeedbackSubmitted.has(message.key) && (
-                            <div className="mt-2 flex gap-2">
-                              <button type="button" onClick={() => handleSubmitMessageFeedback(message.key, 'thumbs_up')} className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1" aria-label={translate(activeLocale, 'feedbackPositive')}>
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>
-                              </button>
-                              <button type="button" onClick={() => handleSubmitMessageFeedback(message.key, 'thumbs_down')} className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1" aria-label={translate(activeLocale, 'feedbackNegative')}>
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.737 3h4.017c.163 0 .326.02.485.06L17 4m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m6-10h-2" /></svg>
-                              </button>
-                            </div>
-                          )}
-                          {message.from === 'agent' && messageFeedbackSubmitted.has(message.key) && (
-                            <div className="mt-2 text-xs opacity-50">{typeof t.feedbackSubmittedMessage === 'string' ? t.feedbackSubmittedMessage : String(t.feedbackSubmittedMessage)}</div>
-                          )}
-                        </div>
-                      </Message>
-                    ))}
-                  </MessageBranchContent>
-                  {versions.length > 1 && (
-                    <MessageBranchSelector from={message.from === 'agent' ? 'assistant' : message.from}>
-                      <MessageBranchPrevious /><MessageBranchPage /><MessageBranchNext />
-                    </MessageBranchSelector>
-                  )}
-                </MessageBranch>
-              ))}
-              {status === 'streaming' && (
-                <div className="flex justify-start">
-                  <div className="p-3" style={{ backgroundColor: '#e5e7eb', borderRadius: '8px' }}>
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" />
-                      <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                      <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </ConversationContent>
-            <ConversationScrollButton />
-          </Conversation>
-          <div ref={conversationEndRef} />
-        </div>
-
-        {/* Footer */}
-        <div style={{ padding: '12px 24px 20px', borderTop: '1px solid #e5e7eb', flexShrink: 0 }}>
-          {resolvedSuggestions.length > 0 && (
-            <div style={{ marginBottom: '10px' }}>
-              <Suggestions>
-                {resolvedSuggestions.map((s: string) => (
-                  <Suggestion key={s} onClick={() => handleSuggestionClick(s)} suggestion={s} />
-                ))}
-              </Suggestions>
-            </div>
-          )}
-          <PromptInput globalDrop multiple onSubmit={handleSubmit}>
-            <PromptInputHeader>
-              <PromptInputAttachments>{(attachment) => <PromptInputAttachment data={attachment} />}</PromptInputAttachments>
-            </PromptInputHeader>
-            <PromptInputBody>
-              <PromptInputTextarea onChange={(e) => setText(e.target.value)} value={text} placeholder={placeholderText} />
-            </PromptInputBody>
-            <PromptInputFooter>
-              <PromptInputTools />
-              <PromptInputSubmit disabled={!(text.trim() || status) || status === 'streaming'} status={status} />
-            </PromptInputFooter>
-          </PromptInput>
-        </div>
-      </div>
+      <PreviewModeWidget
+        liveMessage={liveMessage}
+        title={title}
+        subtitle={subtitle}
+        error={error}
+        messages={messages}
+        messageFeedbackSubmitted={messageFeedbackSubmitted}
+        handleSubmitMessageFeedback={handleSubmitMessageFeedback}
+        activeLocale={activeLocale}
+        feedbackSubmittedMessage={typeof t.feedbackSubmittedMessage === 'string' ? t.feedbackSubmittedMessage : String(t.feedbackSubmittedMessage)}
+        status={status}
+        conversationEndRef={conversationEndRef}
+        resolvedSuggestions={resolvedSuggestions}
+        handleSuggestionClick={handleSuggestionClick}
+        handleSubmit={handleSubmit}
+        text={text}
+        setText={setText}
+        placeholderText={placeholderText}
+      />
     );
   }
 
@@ -950,36 +282,16 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                                       <MessageContent>
                                         <MessageResponse sources={message.sources}>{version.content}</MessageResponse>
                                       </MessageContent>
-                                      {message.from === 'agent' && !messageFeedbackSubmitted.has(message.key) && (
-                                        <div className="mt-2 flex gap-2">
-                                          <button
-                                            type="button"
-                                            onClick={() => handleSubmitMessageFeedback(message.key, 'thumbs_up')}
-                                            className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1"
-                                            title={typeof t.feedbackThumbsUp === 'string' ? t.feedbackThumbsUp : String(t.feedbackThumbsUp)}
-                                            aria-label={translate(activeLocale, 'feedbackPositive')}
-                                          >
-                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                            </svg>
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => handleSubmitMessageFeedback(message.key, 'thumbs_down')}
-                                            className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1"
-                                            title={typeof t.feedbackThumbsDown === 'string' ? t.feedbackThumbsDown : String(t.feedbackThumbsDown)}
-                                            aria-label={translate(activeLocale, 'feedbackNegative')}
-                                          >
-                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.737 3h4.017c.163 0 .326.02.485.06L17 4m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m6-10h-2" />
-                                            </svg>
-                                          </button>
-                                        </div>
-                                      )}
-                                      {message.from === 'agent' && messageFeedbackSubmitted.has(message.key) && (
-                                        <div className="mt-2 text-xs opacity-50">
-                                          {typeof t.feedbackSubmittedMessage === 'string' ? t.feedbackSubmittedMessage : String(t.feedbackSubmittedMessage)}
-                                        </div>
+                                      {message.from === 'agent' && (
+                                        <MessageFeedbackButtons
+                                          messageKey={message.key}
+                                          messageFeedbackSubmitted={messageFeedbackSubmitted}
+                                          handleSubmitMessageFeedback={handleSubmitMessageFeedback}
+                                          activeLocale={activeLocale}
+                                          feedbackThumbsUp={typeof t.feedbackThumbsUp === 'string' ? t.feedbackThumbsUp : String(t.feedbackThumbsUp)}
+                                          feedbackThumbsDown={typeof t.feedbackThumbsDown === 'string' ? t.feedbackThumbsDown : String(t.feedbackThumbsDown)}
+                                          feedbackSubmittedMessage={typeof t.feedbackSubmittedMessage === 'string' ? t.feedbackSubmittedMessage : String(t.feedbackSubmittedMessage)}
+                                        />
                                       )}
                                     </div>
                                   </Message>

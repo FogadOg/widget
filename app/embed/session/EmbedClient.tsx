@@ -11,7 +11,6 @@ import type {
   SourceData,
 } from '../../../types/widget';
 import { ButtonLike } from '../../../hooks/useClickedButtons';
-import { logPerf } from '../../../lib/logger';
 import { validateMessageInput } from '../../../lib/validation';
 import { checkAndConsume } from '../../../lib/rateLimiter';
 import { trackEvent, embedOriginHeader, createSupportTicket } from '../../../lib/api';
@@ -20,19 +19,17 @@ import FeedbackDialog from '../../../components/FeedbackDialog';
 import {
   createSessionError,
   createNetworkError,
-  createAuthError,
   retryWithBackoff,
   logError,
   parseApiError,
   WidgetErrorCode,
 } from '../../../lib/errorHandling';
 import { API } from '../../../lib/api';
-import { EMBED_EVENTS, STORAGE_KEYS, targetOrigin, sensitiveOrigin } from '../../../lib/embedConstants';
-import { BUTTON_SIZES, DEFAULTS, SIZE_PRESETS } from '../../../lib/constants';
+import { EMBED_EVENTS, targetOrigin, sensitiveOrigin } from '../../../lib/embedConstants';
+
 import * as helpers from './helpers';
-import { getQueuedMessages, removeQueuedMessage, queueMessage, incrementAttempt } from '../../../src/lib/offline';
+import { queueMessage } from '../../../src/lib/offline';
 import { onInitConfig } from './events';
-import { sanitizeCss } from '../../../lib/cssValidator';
 import { validateConfig } from '../../../lib/validateConfig';
 import { enableDebug, disableDebug, useDebugMode, reportDevState, DevOverlay } from '../../../src/components/DevOverlay';
 import {
@@ -46,213 +43,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 // For streaming decoding
 const textDecoder = typeof window !== 'undefined' && window.TextDecoder ? new window.TextDecoder() : undefined;
 import EmbedShell from 'components/EmbedShell';
-
-// helpers exposed so tests can call them directly
-export function injectCustomAssets(css?: string) {
-  try {
-    if (css) {
-      let safe: string | undefined = undefined;
-      try {
-        safe = sanitizeCss(css);
-      } catch (err) {
-        logError(err as Error, { action: 'injectCustomAssets', css });
-        return;
-      }
-      if (!safe) {
-        logError('sanitizeCss returned falsy', { action: 'injectCustomAssets', css });
-        return;
-      }
-      const style = document.createElement('style');
-      style.textContent = safe;
-      document.head.appendChild(style);
-    }
-  } catch (err) {
-    logError(err as Error, { action: 'injectCustomAssets', css });
-  }
-}
-
-export function applyCustomAssetsFromQuery(search?: string) {
-  // Legacy path retained so customers with old snippets keep working until they
-  // migrate. New deployments serve custom_css via WidgetConfig (#20). We keep
-  // sanitizeCss on the URL-supplied value because the hardened sanitizer still
-  // strips dangerous patterns even when consumed from an untrusted URL.
-  try {
-    const src = search ?? window.location.search;
-    const params = new URLSearchParams(src);
-    const css = params.get('customCss');
-    if (css) {
-      injectCustomAssets(decodeURIComponent(css));
-    }
-  } catch (err) {
-    logError(err, { action: 'applyCustomAssetsFromQuery', search });
-  }
-}
-
-// Validates that an inbound postMessage actually originates from the host page
-// we expect, mirroring the check used by the main HOST_MESSAGE handler. Used to
-// gate sensitive inbound commands (consent, debug) so a malicious framing page
-// cannot forge them. Under dynamic embed-allowlist mode any HTTPS site can frame
-// the widget, so this check is the authoritative gate for inbound messages.
-export function isTrustedParentMessage(
-  event: MessageEvent,
-  expectedOrigin: string | null | undefined,
-): boolean {
-  if (typeof window === 'undefined' || window.parent === window) return false;
-  // Tests dispatch plain objects whose `source` is not window.parent; in that
-  // case fall back to matching the expected origin.
-  if (event.source === window.parent) return true;
-  if (!expectedOrigin) return false;
-  if (expectedOrigin !== '*' && event.origin !== expectedOrigin) return false;
-  return true;
-}
-
-// New path: inject custom CSS sourced from the loaded widget configuration.
-// The dashboard already persists `custom_css` server-side (WidgetConfig.custom_css);
-// the embed page reads it after fetchWidgetConfig succeeds.
-export function injectCustomAssetsFromConfig(config: { custom_css?: string | null } | null | undefined) {
-  if (!config) return;
-  const css = config.custom_css || undefined;
-  if (css) injectCustomAssets(css);
-}
-
-
-
-// localStorage key used only in preview mode to remember whether the admin
-// left the preview widget open or closed across iframe reloads.
-const PREVIEW_COLLAPSED_KEY = 'companin-preview-collapsed';
-
-export const getButtonPixelSize = (buttonSize: string) => {
-  return BUTTON_SIZES[buttonSize as keyof typeof BUTTON_SIZES] || BUTTON_SIZES.md;
-};
-
-export const getNormalizedEdgeOffset = (config?: WidgetConfig | null): number => {
-  if (!config) return 20;
-
-  const raw = (config as WidgetConfig & { edgeOffset?: unknown }).edgeOffset ?? config.edge_offset;
-
-  if (typeof raw === 'number' && Number.isFinite(raw)) {
-    return raw;
-  }
-
-  if (typeof raw === 'string') {
-    const parsed = Number.parseFloat(raw);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-
-  return 20;
-};
-
-type HostWidgetAction = 'open' | 'close' | 'toggle';
-type ParsedHostMessageCommand =
-  | { kind: 'action'; action: HostWidgetAction }
-  | { kind: 'message'; text: string }
-  | null;
-
-export function parseHostMessageCommand(raw: unknown): ParsedHostMessageCommand {
-  if (typeof raw === 'string') {
-    const text = raw.trim();
-    if (!text) return null;
-    const cmd = text.toLowerCase();
-    if (cmd === 'open' || cmd === 'show' || cmd === 'restore') return { kind: 'action', action: 'open' };
-    if (cmd === 'close' || cmd === 'hide' || cmd === 'minimize') return { kind: 'action', action: 'close' };
-    if (cmd === 'toggle') return { kind: 'action', action: 'toggle' };
-    return { kind: 'message', text };
-  }
-
-  if (!raw || typeof raw !== 'object') {
-    return null;
-  }
-
-  const payload = raw as Record<string, unknown>;
-  const commandValue = [payload.action, payload.command, payload.event, payload.type]
-    .find((value) => typeof value === 'string');
-  const command = typeof commandValue === 'string' ? commandValue.trim().toLowerCase() : '';
-
-  if (command) {
-    if (command === 'open' || command === 'show' || command === 'restore') {
-      return { kind: 'action', action: 'open' };
-    }
-
-    if (command === 'close' || command === 'hide' || command === 'minimize') {
-      return { kind: 'action', action: 'close' };
-    }
-
-    if (command === 'toggle') {
-      return { kind: 'action', action: 'toggle' };
-    }
-  }
-
-  const textValue = [payload.text, payload.message, payload.content, payload.prompt, payload.query]
-    .find((value) => typeof value === 'string');
-  const text = typeof textValue === 'string' ? textValue.trim() : '';
-  if (!text) {
-    return null;
-  }
-
-  return { kind: 'message', text };
-}
-
-export function resolveParentTargetOrigin(
-  explicit?: string,
-  referrer?: string,
-  /** When true, fall back to the document referrer origin but never '*' */
-  strict?: boolean,
-): string | null {
-  const explicitOrigin = (explicit || '').trim();
-  if (explicitOrigin) {
-    return explicitOrigin;
-  }
-
-  const fallbackReferrer = typeof referrer === 'string'
-    ? referrer
-    : (typeof document !== 'undefined' ? document.referrer : '');
-
-  if (fallbackReferrer) {
-    try {
-      const parsed = new URL(fallbackReferrer);
-      if (parsed.origin) {
-        return parsed.origin;
-      }
-    } catch {
-      // ignore invalid referrer
-    }
-  }
-
-  // In strict mode never fall back to wildcard — refuse to post to unknown origins.
-  // The parent window will not receive messages until it re-embeds with a valid origin.
-  if (strict) return null;
-  return '*';
-}
-
-type EmbedClientProps = {
-  clientId: string;
-  agentId: string;
-  configId: string;
-  locale: string;
-  startOpen: boolean;
-  pagePath?: string;
-  parentOrigin?: string;
-  /** Mirror of data-strict-origin. When true, never send postMessage to '*'. */
-  strictOrigin?: boolean;
-  /** Admin-only: force a specific variant ID to bypass hash assignment (for preview/testing). */
-  forceVariantId?: string;
-  /** When true, the host page requires explicit storage consent before the widget
-   *  may write visitor IDs or session IDs to localStorage (LAUNCH-READINESS #16). */
-  consentRequired?: boolean;
-  /** When true, the widget is embedded inline (persistent mode) — hides the close/collapse button. */
-  persistent?: boolean;
-  /** Version of the embed loader script (e.g. "0.1.0"). Absent on pre-versioning installs.
-   *  Use this to gate behavior changes so old loaders keep working after a breaking deploy. */
-  loaderVersion?: string;
-  /**
-   * test-only: forcibly display the feedback dialog regardless of timer state
-   */
-  showFeedbackDialogOverride?: boolean;
-  /** Base64-encoded JSON widget config for preview mode. When set, auth and API calls are skipped. */
-  previewConfig?: string;
-};
+import {
+  applyCustomAssetsFromQuery,
+  isTrustedParentMessage,
+  injectCustomAssetsFromConfig,
+} from './EmbedClient.utils';
+import { PREVIEW_COLLAPSED_KEY } from './EmbedClient.constants';
+import {
+  parseHostMessageCommand,
+  resolveParentTargetOrigin,
+} from './embed.utils';
+import type { EmbedClientProps } from './EmbedClient.types';
+import { UnsureMessagesModal } from './components/UnsureMessagesModal';
+import { useStreamingMessage } from './hooks/useStreamingMessage';
+import { useUnreadTracking } from './hooks/useUnreadTracking';
+import { useWidgetResize } from './hooks/useWidgetResize';
+import { useAutoOpen } from './hooks/useAutoOpen';
+import { useSessionManagement } from './hooks/useSessionManagement';
+import { useQueuedMessageManagement } from './hooks/useQueuedMessageManagement';
+import { useFeedbackManagement } from './hooks/useFeedbackManagement';
+import { useBootstrap } from './hooks/useBootstrap';
 
 export default function EmbedClient({
   clientId: initialClientId,
@@ -326,11 +136,15 @@ export default function EmbedClient({
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   // Streaming state: holds the partial agent message being streamed
-  const [streamingMessage, setStreamingMessage] = useState<string | null>(null);
-  const streamAbortControllerRef = useRef<AbortController | null>(null);
-  const streamAccumulatedRef = useRef<string>('');
-  const streamUserAbortedRef = useRef(false);
-  const streamPartialDroppedRef = useRef(false);
+  const {
+    streamingMessage,
+    setStreamingMessage,
+    streamAbortControllerRef,
+    streamAccumulatedRef,
+    streamUserAbortedRef,
+    streamPartialDroppedRef,
+    handleStopStreaming,
+  } = useStreamingMessage();
   const isSubmittingRef = useRef(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
   // Guards preview open/closed persistence: stays false until the stored state
@@ -476,9 +290,6 @@ export default function EmbedClient({
   const [shouldRender, setShouldRender] = useState(true);
   const { translations: t, locale: hookLocale } = useWidgetTranslation();
   const activeLocale = initialLocale || hookLocale || 'en';
-  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-  const [messageFeedbackSubmitted, setMessageFeedbackSubmitted] = useState<Set<string>>(new Set());
   const [unsureMessages, setUnsureMessages] = useState<Array<{userMessage: string, agentMessage: string, timestamp: number}>>([]);
   const [showUnsureModal, setShowUnsureModal] = useState(false);
   const [showHandoffModal, setShowHandoffModal] = useState(false);
@@ -486,10 +297,20 @@ export default function EmbedClient({
   const [hasEscalated, setHasEscalated] = useState(false);
   const handoffConversationIdRef = useRef<string | null>(null);
   const supportTicketsEnabled = widgetConfig?.support_tickets_enabled === true;
-  const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
   const postedShowUnreadBadge = useRef<boolean | undefined>(undefined);
   const postedEdgeOffset = useRef<number | undefined>(undefined);
+  const {
+    unreadCount,
+    setUnreadCount,
+    lastReadMessageId,
+    setLastReadMessageId,
+  } = useUnreadTracking({
+    messages,
+    isCollapsed,
+    unreadStorageKey,
+    lastReadStorageKey,
+    showUnreadBadge: widgetConfig?.show_unread_badge ?? true,
+  });
   const [fatalError, setFatalError] = useState<string | null>(null);
   // strict_origin: once config loads, use strict mode for all subsequent postMessage calls.
   // Before config loads we tolerate wildcard so the WIDGET_SHOW message still goes out.
@@ -702,6 +523,90 @@ export default function EmbedClient({
   // multiple concurrent createSession() calls when an expiry is detected.
   const sessionRefreshInFlightRef = useRef(false);
 
+  // Stable ref to flushQueuedMessages — declared here so useSessionManagement
+  // can call it via the ref without a circular hook dependency.
+  const flushQueuedMessagesRef = useRef<() => Promise<void>>(async () => {});
+
+  // Feedback management via hook
+  const {
+    showFeedbackDialog,
+    setShowFeedbackDialog,
+    feedbackSubmitted,
+    setFeedbackSubmitted,
+    messageFeedbackSubmitted,
+    checkFeedbackStatus,
+    handleFeedbackSubmit,
+    handleFeedbackSkip,
+    handleSubmitMessageFeedback,
+  } = useFeedbackManagement({
+    sessionId,
+    authToken,
+    messages,
+    initialAgentId,
+    initialClientId,
+    embedHeaders,
+    showFeedbackDialogOverride,
+  });
+
+  // Session management via hook
+  const {
+    loadSessionMessages,
+    createSession,
+    validateAndRestoreSession,
+    fetchAgentDetails,
+    fetchWidgetConfig,
+  } = useSessionManagement({
+    initialAgentId,
+    initialClientId,
+    initialConfigId,
+    initialParentOrigin,
+    initialForceVariantId,
+    initialLocale,
+    activeLocale,
+    sessionStorageKey,
+    baseSessionKey,
+    embedHeaders,
+    parentSensitiveOrigin,
+    authToken,
+    authTokenRef,
+    getAuthToken,
+    widgetConfig,
+    setWidgetConfig,
+    setAgentName,
+    setError,
+    setMessages,
+    setSessionId,
+    setFeedbackSubmitted,
+    feedbackSubmitted,
+    hasLoadedMessagesRef,
+    sessionRefreshInFlightRef,
+    t: t as Record<string, unknown>,
+    checkFeedbackStatus,
+    flushQueuedMessages: async () => { await flushQueuedMessagesRef.current?.(); },
+    injectCustomAssetsFromConfig,
+    postedShowUnreadBadge,
+    postedEdgeOffset,
+  });
+
+  // Queued message management via hook
+  const { flushQueuedMessages } = useQueuedMessageManagement({
+    sessionId,
+    sessionIdRef,
+    authToken,
+    authTokenRef,
+    activeLocale,
+    embedHeaders,
+    sessionStorageKey,
+    didInitialFlushRef,
+    setMessages,
+    loadSessionMessages,
+  });
+
+  // Keep the ref up-to-date so useSessionManagement can call the latest version
+  useEffect(() => {
+    flushQueuedMessagesRef.current = flushQueuedMessages;
+  }, [flushQueuedMessages]);
+
   // Periodic check for expired sessions. When the local TTL has lapsed we
   // silently provision a new session in the background rather than showing
   // an "expired" banner — the existing chat UI is preserved and the user can
@@ -737,119 +642,29 @@ export default function EmbedClient({
     return () => clearInterval(interval);
   }, [sessionId, sessionStorageKey, initialAgentId]);
 
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const bootstrap = async () => {
-      // Preview mode — use inline config without auth/API calls
-      if (initialPreviewConfig) {
-        try {
-          const decoded = JSON.parse(decodeURIComponent(atob(initialPreviewConfig)));
-          const { config: validatedConfig } = validateConfig(decoded, 'chat');
-          setWidgetConfig(validatedConfig);
-          injectCustomAssetsFromConfig(validatedConfig as unknown as { custom_css?: string | null } | null);
-          // Treat the preview iframe as embedded so EmbedShell uses its responsive
-          // 100% × 100% layout (maxWidth 400px / maxHeight 600px) instead of the
-          // standalone fixed-pixel layout which overflows the 360px preview panel.
-          setIsEmbedded(true);
-        } catch {
-          // ignore parse errors in preview mode
-        } finally {
-          setIsBootstrapping(false);
-        }
-        return;
-      }
-      // Use props instead of URL params
-      const clientIdParam = initialClientId;
-      const agentIdParam = initialAgentId;
-      const configIdParam = initialConfigId;
-
-      try {
-        // Detect iframe embedding and render a stripped layout when embedded
-        try {
-          setIsEmbedded(window.top !== window);
-        } catch {
-          setIsEmbedded(true);
-        }
-
-        if (!(clientIdParam && agentIdParam)) {
-          return;
-        }
-
-        const token = await getAuthToken(clientIdParam, initialParentOrigin);
-        if (!token) {
-          // getAuthToken returned null — authError will be set by the hook.
-          // The useEffect below watches authError and sets fatalError.
-          return;
-        }
-
-        // Schedule silent token refresh. The hook records the server-reported
-        // expires_in on tokenExpiresAtRef; we read it back via getTokenExpiresAt
-        // and fall back to a 55-minute window if (and only if) the server omitted
-        // the field (LAUNCH-READINESS.md gap #15).
-        const reportedExpiry = typeof getTokenExpiresAt === 'function' ? getTokenExpiresAt() : null;
-        const tokenExpiryMs = (reportedExpiry && Number.isFinite(reportedExpiry))
-          ? reportedExpiry
-          : Date.now() + 55 * 60 * 1000;
-        scheduleAutoRefresh(tokenExpiryMs, clientIdParam, initialParentOrigin);
-
-        if (cancelled) return;
-
-        // Validate agent exists
-        await fetchAgentDetails(agentIdParam, token);
-
-        // Validate config exists if provided
-        let fetchedConfig: ReturnType<typeof validateConfig>['config'] | null = null;
-        if (configIdParam) {
-          fetchedConfig = await fetchWidgetConfig(configIdParam, token) ?? null;
-          // Inject server-side custom CSS (LAUNCH-READINESS #20). The sanitizer
-          // strips url() / position:fixed / @font-face etc., so even a compromised
-          // config field can't exfiltrate or clickjack the host page.
-          injectCustomAssetsFromConfig(fetchedConfig as unknown as { custom_css?: string | null } | null);
-          if (fetchedConfig?.ga_measurement_id && initialParentOrigin) {
-            // GA measurement ID is non-sensitive but still gated on a known
-            // parent origin so we don't leak it via '*' (LAUNCH-READINESS #6).
-            window.parent.postMessage(
-              { type: 'WIDGET_GA_INIT', data: { gaMeasurementId: fetchedConfig.ga_measurement_id } },
-              initialParentOrigin
-            );
-          }
-        }
-
-        if (cancelled) return;
-
-        // Try to restore existing session first
-        const storedSession = helpers.getStoredSession(sessionStorageKey);
-        if (storedSession) {
-          await validateAndRestoreSession(storedSession.sessionId, agentIdParam, token, fetchedConfig);
-        } else {
-          await createSession(agentIdParam, token, fetchedConfig);
-        }
-      } catch (err: unknown) {
-        if (cancelled) return;
-        // If validation fails, set error
-        const errorMessage = (err as { userMessage?: string })?.userMessage || String(t.failedToLoadWidget);
-        setError(errorMessage);
-        logError(err as Error, {
-          clientId: initialClientId,
-          agentId: initialAgentId,
-          configId: initialConfigId,
-          action: 'validateWidget'
-        });
-      } finally {
-        if (!cancelled) {
-          setIsBootstrapping(false);
-        }
-      }
-    };
-
-    bootstrap();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [getAuthToken, initialAgentId, initialClientId, initialConfigId, initialParentOrigin, initialPreviewConfig, sessionStorageKey]);
+  // Bootstrap via hook
+  useBootstrap({
+    initialPreviewConfig,
+    initialClientId,
+    initialAgentId,
+    initialConfigId,
+    initialParentOrigin,
+    sessionStorageKey,
+    getAuthToken,
+    scheduleAutoRefresh,
+    getTokenExpiresAt,
+    setWidgetConfig,
+    setIsEmbedded,
+    setIsBootstrapping,
+    setError,
+    fetchAgentDetails,
+    fetchWidgetConfig,
+    validateAndRestoreSession,
+    createSession,
+    t: t as Record<string, unknown>,
+    postedShowUnreadBadge,
+    postedEdgeOffset,
+  });
 
   // Preview mode only: apply live config updates pushed from the admin customize
   // panel via postMessage. This lets the dashboard reflect appearance edits
@@ -883,309 +698,10 @@ export default function EmbedClient({
     window.parent.postMessage({ type: 'COMPANIN_PREVIEW_READY' }, '*');
   }, [initialPreviewConfig]);
 
-  const handleStopStreaming = useCallback(() => {
-    streamUserAbortedRef.current = true;
-    streamAbortControllerRef.current?.abort();
-  }, []);
+  // handleStopStreaming is provided by useStreamingMessage hook above
 
-  // Listen for queued-message events dispatched by PromptInput when offline
-  useEffect(() => {
-    const onQueued = (ev: Event) => {
-      try {
-        const detail = (ev as CustomEvent).detail;
-        if (!detail) return;
-        const queued = detail as { id: string; text: string; files?: any[]; timestamp?: number; attempts?: number };
-        const pendingMessage: Message = {
-          id: queued.id,
-          text: queued.text,
-          from: 'user',
-          timestamp: queued.timestamp || Date.now(),
-          pending: true,
-          attempts: queued.attempts || 0,
-        } as any;
-        setMessages((prev) => [...prev, pendingMessage]);
-      } catch {
-        // ignore malformed events
-      }
-    };
-
-    window.addEventListener('companin:queued-message', onQueued as EventListener);
-    return () => window.removeEventListener('companin:queued-message', onQueued as EventListener);
-  }, []);
-
-  // Listen for service worker reconciliation results (QUEUE_FLUSH_RESULT)
-  useEffect(() => {
-    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
-
-    const handler = (ev: MessageEvent) => {
-      try {
-        const data = ev.data || {};
-        if (data.type !== 'QUEUE_FLUSH_RESULT' || !Array.isArray(data.results)) return;
-
-        setMessages((prev) => {
-          const next = [...prev];
-          for (const res of data.results) {
-            const idx = next.findIndex((m) => m.id === res.id);
-            if (res.success) {
-              if (res.serverMessage && res.serverMessage.id) {
-                // Replace temp/pending message with server-provided message
-                const server = res.serverMessage;
-                const replaced: Message = {
-                  id: server.id,
-                  text: server.content || server.text || (idx >= 0 ? next[idx].text : ''),
-                  from: (server.sender || server.from) === 'assistant' ? 'agent' : 'user',
-                  timestamp: server.created_at ? new Date(server.created_at).getTime() : (server.timestamp || Date.now()),
-                };
-                if (idx >= 0) next[idx] = replaced; else next.push(replaced);
-              } else if (idx >= 0) {
-                // Mark as delivered (clear pending flag)
-                next[idx] = { ...next[idx], pending: false };
-              }
-            }
-          }
-          return next;
-        });
-      } catch { /* ignore */ }
-    };
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', handler as EventListener);
-    }
-    return () => {
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.removeEventListener('message', handler as EventListener);
-      }
-    };
-  }, []);
-
-  // Client-mediated flush: when the page comes online or SW asks to flush,
-  // read the IndexedDB queue and POST messages using sessionId+authToken.
-  const MAX_QUEUE_ATTEMPTS = 5;
-
-  const flushQueuedMessages = useCallback(async () => {
-    const storedSession = helpers.getStoredSession(sessionStorageKey);
-    const sid = sessionIdRef.current || sessionId || storedSession?.sessionId || null;
-    const token = authTokenRef.current || authToken || null;
-    if (!sid || !token) return;
-    try {
-      const queued = await getQueuedMessages();
-      if (!queued || queued.length === 0) return;
-
-      for (const item of queued.sort((a, b) => (a.seq || 0) - (b.seq || 0))) {
-        const currentAttempts = item.attempts || 0;
-        if (currentAttempts >= MAX_QUEUE_ATTEMPTS) {
-          // Permanently failed — remove from queue, mark as failed in UI
-          try { await removeQueuedMessage(item.id); } catch {}
-          setMessages(prev => prev.map(m =>
-            m.id === item.id ? { ...m, pending: false, failed: true } : m
-          ));
-          continue;
-        }
-        try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 30000);
-
-          const resp = await fetch(API.sessionMessages(sid ?? undefined), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-              ...embedHeaders,
-            },
-            body: JSON.stringify({ content: item.text, locale: activeLocale, page_context: helpers.getPageContext() }),
-            signal: controller.signal,
-          });
-          clearTimeout(timeout);
-
-          if (!resp.ok) {
-            // A permanent client error (4xx other than 408/429) will never succeed
-            // on retry. Drop it immediately and continue to the next queued message,
-            // instead of burning all attempts and head-of-line-blocking the queue. (#14)
-            const isPermanent = resp.status >= 400 && resp.status < 500
-              && resp.status !== 408 && resp.status !== 429;
-            if (isPermanent) {
-              try { await removeQueuedMessage(item.id); } catch {}
-              setMessages(prev => prev.map(m => m.id === item.id ? { ...m, pending: false, failed: true } : m));
-              continue;
-            }
-            // Transient error (5xx / 408 / 429): increment attempts and stop the
-            // flush — subsequent sends would likely hit the same condition.
-            const newAttempts = currentAttempts + 1;
-            try { await incrementAttempt(item.id); } catch {}
-            setMessages(prev => prev.map(m => m.id === item.id ? { ...m, attempts: newAttempts } : m));
-            if (newAttempts >= MAX_QUEUE_ATTEMPTS) {
-              try { await removeQueuedMessage(item.id); } catch {}
-              setMessages(prev => prev.map(m => m.id === item.id ? { ...m, pending: false, failed: true } : m));
-            }
-            break;
-          }
-
-          await removeQueuedMessage(item.id);
-          await loadSessionMessages(sid, token);
-        } catch (err) {
-          const newAttempts = currentAttempts + 1;
-          try { await incrementAttempt(item.id); } catch {}
-          setMessages(prev => prev.map(m => m.id === item.id ? { ...m, attempts: newAttempts } : m));
-          if (newAttempts >= MAX_QUEUE_ATTEMPTS) {
-            try { await removeQueuedMessage(item.id); } catch {}
-            setMessages(prev => prev.map(m => m.id === item.id ? { ...m, pending: false, failed: true } : m));
-          }
-          break;
-        }
-      }
-    } catch (err) {
-      // ignore
-    }
-  }, [activeLocale, initialParentOrigin, loadSessionMessages, sessionStorageKey]);
-
-  useEffect(() => {
-    // Flush when browser regains connectivity
-    const onOnline = () => flushQueuedMessages();
-
-    window.addEventListener('online', onOnline);
-
-    // Also listen for SW-initiated flush requests (FLUSH_QUEUE)
-    const swHandler = (ev: MessageEvent) => {
-      try {
-        const data = ev.data || {};
-        if (data && data.type === 'FLUSH_QUEUE') {
-          flushQueuedMessages();
-        }
-      } catch {}
-    };
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', swHandler as any);
-    }
-
-    // Attempt an immediate flush if online. Guarded so it runs only once on
-    // mount: `flushQueuedMessages` changes identity on every render (it closes
-    // over the non-memoized `loadSessionMessages`), so without this guard the
-    // effect would re-fire each render and, with a non-empty queue, loop
-    // forever. Session-ready flushes are still covered by the explicit calls
-    // after createSession/validateAndRestoreSession.
-    if (navigator.onLine && !didInitialFlushRef.current) {
-      didInitialFlushRef.current = true;
-      flushQueuedMessages();
-    }
-
-    return () => {
-      window.removeEventListener('online', onOnline);
-      if ('serviceWorker' in navigator) navigator.serviceWorker.removeEventListener('message', swHandler as any);
-    };
-  }, [flushQueuedMessages]);
-
-  // Handle individual retry requests from the UI
-  useEffect(() => {
-    const onRetry = async (ev: Event) => {
-      try {
-        const detail = (ev as CustomEvent).detail as { id?: string } | undefined;
-        if (!detail?.id) return;
-        const id = detail.id;
-        const storedSession = helpers.getStoredSession(sessionStorageKey);
-        const sid = sessionIdRef.current || sessionId || storedSession?.sessionId || null;
-        const token = authTokenRef.current || authToken || null;
-        if (!sid || !token) return;
-
-        const queued = await getQueuedMessages();
-        const item = queued.find((q: any) => q.id === id);
-        if (!item) return;
-
-        try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 30000);
-          const resp = await fetch(API.sessionMessages(sid ?? undefined), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-              ...embedHeaders,
-            },
-            body: JSON.stringify({ content: item.text, locale: activeLocale, page_context: helpers.getPageContext() }),
-            signal: controller.signal,
-          });
-          clearTimeout(timeout);
-          if (resp.ok) {
-            await removeQueuedMessage(id);
-            await loadSessionMessages(sid, token);
-          } else {
-            try { await incrementAttempt(id); } catch {}
-          }
-        } catch {
-          try { await incrementAttempt(id); } catch {}
-        }
-      } catch {}
-    };
-
-    window.addEventListener('companin:retry-queued', onRetry as EventListener);
-    return () => window.removeEventListener('companin:retry-queued', onRetry as EventListener);
-  }, [activeLocale, initialParentOrigin, loadSessionMessages, sessionStorageKey]);
-
-  // Multi-tab session sync: when another tab creates or refreshes the session,
-  // pick up the new sessionId so both tabs share the same conversation.
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key !== sessionStorageKey || !e.newValue) return;
-      try {
-        const parsed = JSON.parse(e.newValue);
-        const newSid = parsed?.sessionId;
-        if (newSid && newSid !== sessionIdRef.current) {
-          sessionIdRef.current = newSid;
-          setSessionId(newSid);
-          const token = authTokenRef.current || authToken;
-          if (token) loadSessionMessages(newSid, token);
-        }
-      } catch {}
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, [sessionStorageKey, authToken, loadSessionMessages]);
-
-  // Proactive open trigger: delay-based and/or scroll-depth-based auto-open.
-  // Reads auto_open_delay (ms) and auto_open_scroll_depth (0-100 %) from widgetConfig.
-  // Only fires once per page-load and only when the widget is currently collapsed.
-  useEffect(() => {
-    if (!widgetConfig) return;
-    // Don't auto-open if already explicitly open or if start_open already handled it
-    const delayMs = widgetConfig.auto_open_delay ?? 0;
-    const scrollDepth = widgetConfig.auto_open_scroll_depth ?? 0;
-    if (delayMs <= 0 && scrollDepth <= 0) return;
-
-    let fired = false;
-    const open = () => {
-      if (fired) return;
-      fired = true;
-      setIsCollapsed((prev) => {
-        if (!prev) return prev; // already open
-        return false;
-      });
-    };
-
-    let delayTimer: ReturnType<typeof setTimeout> | null = null;
-    if (delayMs > 0) {
-      delayTimer = setTimeout(open, delayMs);
-    }
-
-    let scrollHandler: (() => void) | null = null;
-    if (scrollDepth > 0) {
-      scrollHandler = () => {
-        if (fired) return;
-        const scrolled = window.scrollY + window.innerHeight;
-        const total = document.documentElement.scrollHeight;
-        const pct = total > 0 ? (scrolled / total) * 100 : 0;
-        if (pct >= scrollDepth) open();
-      };
-      // Fire against the parent document via postMessage since widget runs in an iframe
-      // For non-iframe contexts (dev/test), listen on the local window
-      window.addEventListener('scroll', scrollHandler, { passive: true });
-    }
-
-    return () => {
-      if (delayTimer) clearTimeout(delayTimer);
-      if (scrollHandler) window.removeEventListener('scroll', scrollHandler);
-    };
-  // widgetConfig.auto_open_delay and auto_open_scroll_depth are primitives — safe to spread
-  }, [widgetConfig?.auto_open_delay, widgetConfig?.auto_open_scroll_depth]);
+  // Auto-open is handled by useAutoOpen hook
+  useAutoOpen({ widgetConfig, setIsCollapsed });
 
   // Apply widget behavior settings when config is loaded
   useEffect(() => {
@@ -1270,844 +786,35 @@ export default function EmbedClient({
     }
   }, [isCollapsed, initialPreviewConfig]);
 
-  // Load unread count and last read message from localStorage on mount
+  // Unread tracking is handled by useUnreadTracking hook above
+  // Widget resize is handled by useWidgetResize hook
+  useWidgetResize({
+    widgetConfig,
+    isCollapsed,
+    initialParentOrigin,
+    parentTargetOrigin,
+    safePostToParent,
+  });
+
+  // Multi-tab session sync: when another tab creates or refreshes the session,
+  // pick up the new sessionId so both tabs share the same conversation.
   useEffect(() => {
-    const timeoutIds: number[] = [];
-    try {
-      const storedUnread = localStorage.getItem(unreadStorageKey);
-      const storedLastRead = localStorage.getItem(lastReadStorageKey);
-
-      if (storedUnread) {
-        timeoutIds.push(window.setTimeout(() => {
-          setUnreadCount(parseInt(storedUnread, 10) || 0);
-        }, 0));
-      }
-      if (storedLastRead) {
-        timeoutIds.push(window.setTimeout(() => {
-          setLastReadMessageId(storedLastRead);
-        }, 0));
-      }
-    } catch (error) {
-      logError(error as Error, { context: 'loadUnreadCount' });
-    }
-
-    return () => {
-      timeoutIds.forEach((id) => window.clearTimeout(id));
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== sessionStorageKey || !e.newValue) return;
+      try {
+        const parsed = JSON.parse(e.newValue);
+        const newSid = parsed?.sessionId;
+        if (newSid && newSid !== sessionIdRef.current) {
+          sessionIdRef.current = newSid;
+          setSessionId(newSid);
+          const token = authTokenRef.current || authToken;
+          if (token) loadSessionMessages(newSid, token);
+        }
+      } catch {}
     };
-  }, [lastReadStorageKey, unreadStorageKey]);
-
-  // Track unread messages when new agent messages arrive and widget is collapsed
-  useEffect(() => {
-    // Only track unread if the feature is enabled
-    const showUnreadBadge = widgetConfig?.show_unread_badge ?? true; // Default to true
-
-    if (!showUnreadBadge) {
-      return;
-    }
-
-    if (isCollapsed && messages.length > 0) {
-      // Get the last agent message
-      const lastMessage = messages[messages.length - 1];
-
-      if (lastMessage?.from === 'agent' && lastMessage?.id) {
-        // Only count as unread if this message is after the last read message
-        if (!lastReadMessageId || lastMessage.id !== lastReadMessageId) {
-          // Count unread agent messages after the last read message
-          const lastReadIndex = lastReadMessageId
-            ? messages.findIndex(m => m.id === lastReadMessageId)
-            : -1;
-
-          const unreadMessages = messages.filter((m, idx) =>
-            m.from === 'agent' &&
-            idx > lastReadIndex &&
-            !m.id.startsWith('greeting-') // Don't count greeting messages
-          );
-
-          const newUnreadCount = unreadMessages.length;
-          const id = window.setTimeout(() => {
-            setUnreadCount(newUnreadCount);
-          }, 0);
-
-          // Persist to localStorage
-          try {
-            localStorage.setItem(unreadStorageKey, newUnreadCount.toString());
-          } catch (error) {
-            logError(error as Error, { context: 'saveUnreadCount' });
-          }
-
-          return () => {
-            window.clearTimeout(id);
-          };
-        }
-      }
-    }
-  }, [messages, isCollapsed, lastReadMessageId, widgetConfig?.show_unread_badge, unreadStorageKey]);
-  useEffect(() => {
-    if (widgetConfig && window.parent !== window) {
-      const positionData = {
-        position: widgetConfig.position || 'bottom-right',
-        edge_offset: getNormalizedEdgeOffset(widgetConfig)
-      };
-
-      if (isCollapsed) {
-        // Send button size when collapsed
-        const buttonSize = getButtonPixelSize(widgetConfig.button_size || 'md');
-        const hoverSafePadding = 24; // shadow-lg extends ~22px, badge overhangs 4px
-        const collapsedViewportSize = buttonSize + (hoverSafePadding * 2);
-        safePostToParent({
-          type: EMBED_EVENTS.RESIZE,
-          data: {
-            width: collapsedViewportSize,
-            height: collapsedViewportSize,
-            ...positionData
-          }
-        });
-      } else {
-        // Send widget size when expanded — prefer `size` preset if provided.
-        const sizePreset = (widgetConfig as any)?.size;
-        const preset = sizePreset && (SIZE_PRESETS as any)[sizePreset] ? (SIZE_PRESETS as any)[sizePreset] : null;
-        const width = preset ? preset.w : DEFAULTS.WIDGET_WIDTH;
-        const height = preset ? preset.h : DEFAULTS.WIDGET_HEIGHT;
-        safePostToParent({
-          type: EMBED_EVENTS.RESIZE,
-          data: {
-            width,
-            height,
-            ...positionData
-          }
-        });
-      }
-    }
-  }, [widgetConfig, isCollapsed, initialParentOrigin, parentTargetOrigin]);
-  // Helper to make an authenticated API call with 401 retry logic
-  async function fetchWithAuthRetry(fetchFn: (token: string | null, ...rest: unknown[]) => Promise<Response>, ...args: unknown[]) {
-    let token = authTokenRef.current || authToken;
-    let response = await fetchFn(token, ...args);
-    if (response.status === 401) {
-      // Try to refresh token and retry once
-      try {
-        const newToken = await (getAuthToken as any)(initialClientId, initialParentOrigin);
-        if (newToken) {
-          authTokenRef.current = newToken;
-          token = newToken;
-          response = await fetchFn(token, ...args);
-        }
-      } catch {}
-    }
-    return response;
-  }
-
-  async function loadSessionMessages(sessionId: string, token?: string, isInitial = false, forceReload = false) {
-    setIsTyping(true);
-    try {
-      // Always use fetchWithAuthRetry for authenticated calls
-      const fetchFn = (tok: string | null) => fetch(API.sessionMessages(sessionId), {
-        headers: tok ? {
-          'Authorization': `Bearer ${tok}`,
-          ...embedHeaders,
-        } : {},
-      });
-      let response;
-      if (token && !forceReload) {
-        response = await fetchWithAuthRetry(fetchFn);
-      } else {
-        response = await fetch(API.sessionMessages(sessionId ?? undefined));
-      }
-
-      if (!response.ok) {
-        throw new Error(`Failed to load messages: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.status === 'success' && Array.isArray(data.data?.messages)) {
-        // ...existing code...
-        const loadedMessages: Message[] = (data.data.messages as unknown[])
-          .filter((msg: unknown) => {
-            // ...existing code...
-            const m = msg as { sender?: string; id?: string };
-            if (m.sender === 'assistant') {
-              // Greeting messages are always shown regardless of user message count
-              if (typeof m.id === 'string' && m.id.startsWith('greeting-')) return true;
-              const userMessages = (data.data.messages as unknown[]).filter(
-                (m2: unknown) => (m2 as { sender?: string }).sender === 'user'
-              );
-              return userMessages.length > 0;
-            }
-            return true;
-          })
-          .map((msg: unknown) => {
-            // ...existing code...
-            const m = msg as {
-              id: string;
-              content: string;
-              sender: string;
-              created_at?: string;
-              sources?: unknown[];
-              metadata?: Message['metadata'];
-            };
-            return {
-              id: m.id,
-              text: m.content,
-              from: (m.sender === 'assistant' ? 'agent' : m.sender) as 'user' | 'agent',
-              timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
-              sources: (m.sources as SourceData[]) || [],
-              metadata: m.metadata,
-            };
-          });
-
-        // ...existing code...
-        setMessages(prev => {
-          // ...existing code...
-          const serverIds = new Set(loadedMessages.map(m => m.id));
-          const inMemoryLocal = prev.filter(
-            (m) => m.id.startsWith('temp-') && !serverIds.has(m.id) && !(m as any).pending
-          );
-          let storedLocal: Message[] = [];
-          try {
-            const raw = localStorage.getItem(helpers.localMessagesStorageKey(sessionId));
-            if (raw) {
-              const parsed = JSON.parse(raw) as Message[];
-              if (Array.isArray(parsed)) {
-                const inMemoryIds = new Set(inMemoryLocal.map((m) => m.id));
-                storedLocal = parsed.filter((m) => {
-                  if (serverIds.has(m.id) || inMemoryIds.has(m.id)) return false;
-                  try {
-                    const isDup = loadedMessages.some(lm => ((lm.text || (lm as any).content || '') === (m.text || (m as any).content || '')) && Math.abs((lm.timestamp || 0) - (m.timestamp || 0)) < 30000);
-                    return !isDup;
-                  } catch {
-                    return true;
-                  }
-                });
-              }
-            }
-          } catch {
-            // ignore
-          }
-          const allLocal = [...inMemoryLocal, ...storedLocal];
-          return [...loadedMessages, ...allLocal].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-        });
-
-        hasLoadedMessagesRef.current = true;
-
-        try {
-          if (window.parent !== window) {
-            const last = loadedMessages[loadedMessages.length - 1];
-            if (last) {
-              if (parentSensitiveOrigin) {
-                window.parent.postMessage({ type: EMBED_EVENTS.MESSAGE, data: last }, parentSensitiveOrigin);
-                if (last.from === 'agent') {
-                  window.parent.postMessage({ type: EMBED_EVENTS.RESPONSE, data: last }, parentSensitiveOrigin);
-                }
-              }
-            }
-          }
-        } catch {
-          // ignore
-        }
-
-      } else {
-        throw new Error('Invalid messages response format');
-      }
-    } catch (err: any) {
-      if (!isInitial) {
-        throw err;
-      }
-      logError(err instanceof Error ? (err.message || 'Unknown error') : String(err), { sessionId, isInitial, source: 'loadSessionMessages' });
-      logError(err instanceof Error ? (err.message || 'Unknown error') : String(err), { sessionId, isInitial, action: 'loadSessionMessages' });
-      if (isInitial) {
-        setError(String(t.loadHistoryError));
-      }
-    } finally {
-      setIsTyping(false);
-    }
-  }
-
-  async function createSession(agent: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null, skipMessageLoad = false) {
-    try {
-      const visitorId = helpers.getVisitorId(initialClientId);
-      // Mutable so a 401/403 (expired token on a long-open widget) can refresh
-      // the token mid-retry and the next attempt uses the fresh one.
-      let activeToken = token;
-
-      // Use the config snapshot passed directly (avoids React state timing issue)
-      // where widgetConfig state hasn't updated yet when createSession is called.
-      const activeConfig = configSnapshot ?? widgetConfig;
-      let abMeta: Record<string, string | boolean>;
-      if (activeConfig?.variant_id) {
-        // Visitor was assigned to a specific A/B variant.
-        abMeta = { variant_id: activeConfig.variant_id, variant_name: activeConfig.variant_name ?? '' };
-      } else if (activeConfig?.id && initialConfigId) {
-        // Visitor is in the control group (base config, no variant).
-        // Tag the session so analytics can count the control group.
-        abMeta = { is_ab_control: true, widget_config_id: activeConfig.id };
-      } else {
-        abMeta = {};
-      }
-
-      // Single POST attempt. Returns the parsed response so the caller can
-      // inspect the status (e.g. to refresh the token on 401) without the
-      // refresh being treated as a retryable failure.
-      const postSession = async (tok: string) => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-        try {
-          const response = await fetch(API.sessions(), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${tok}`,
-              ...embedHeaders,
-            },
-            body: JSON.stringify({
-              agent_id: agent,
-              visitor_id: visitorId,
-              locale: activeLocale,
-              widget_config_id: activeConfig?.id ?? undefined,
-              metadata: Object.keys(abMeta).length > 0 ? abMeta : undefined,
-            }),
-            signal: controller.signal,
-          });
-          clearTimeout(timeoutId);
-          let data;
-          try {
-            data = await response.json();
-          } catch {
-            throw createSessionError(
-              'Invalid response from session server',
-              WidgetErrorCode.SESSION_CREATE_FAILED
-            );
-          }
-          return { response, data };
-        } catch (fetchError: unknown) {
-          clearTimeout(timeoutId);
-          const fe = fetchError as unknown as { name?: string };
-          if (fe.name === 'AbortError') {
-            throw createNetworkError(
-              'Session creation timed out',
-              WidgetErrorCode.NETWORK_TIMEOUT
-            );
-          }
-          throw fetchError;
-        }
-      };
-
-      const sessionData = await retryWithBackoff(
-        async () => {
-          let { response, data } = await postSession(activeToken);
-
-          // Expired/invalid token (the widget has likely been open past the
-          // 1h token lifetime). Refresh it once and re-issue the request inline
-          // with the fresh token. Doing this inline (rather than throwing to
-          // trigger a retry) keeps the recovery silent — a thrown error would
-          // be surfaced by the onRetry logger as a console error even though
-          // nothing actually failed.
-          if (response.status === 401 || response.status === 403) {
-            const refreshed = await getAuthToken(initialClientId, initialParentOrigin);
-            if (refreshed && refreshed !== activeToken) {
-              activeToken = refreshed;
-              authTokenRef.current = refreshed;
-              ({ response, data } = await postSession(activeToken));
-            }
-          }
-
-          if (!response.ok) {
-            const errorMessage = parseApiError(data, 'Failed to create session');
-
-            // 429: the server is explicitly rate-limiting session creation
-            // (5/min, 30/hr per visitor). Retrying with backoff (1s/2s/4s) stays
-            // inside the 60s window and just burns more quota — so mark it
-            // non-retryable and surface a localized "please wait" message.
-            if (response.status === 429) {
-              const retryAfterSec = response.headers.get('Retry-After');
-              const waitSec = retryAfterSec ? parseInt(retryAfterSec, 10) : 0;
-              const rateLimitMsg = waitSec > 0
-                ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
-                : String(t.sessionRateLimitGeneric ?? t.rateLimitGeneric);
-              const rateLimitErr = createNetworkError(rateLimitMsg, WidgetErrorCode.NETWORK_RATE_LIMITED);
-              rateLimitErr.retryable = false;
-              rateLimitErr.userMessage = rateLimitMsg;
-              throw rateLimitErr;
-            }
-
-            if (response.status >= 500) {
-              throw createNetworkError(
-                errorMessage,
-                WidgetErrorCode.NETWORK_SERVER_ERROR
-              );
-            }
-
-            throw createSessionError(
-              errorMessage,
-              WidgetErrorCode.SESSION_CREATE_FAILED
-            );
-          }
-
-          if (data.status !== 'success' || !data.data?.session_id) {
-            throw createSessionError(
-              'Invalid session response format',
-              WidgetErrorCode.SESSION_CREATE_FAILED
-            );
-          }
-
-          return data.data;
-        },
-        {
-          maxRetries: 3,
-          initialDelay: 1000,
-          onRetry: (attempt, error) => {
-            logError(error, { agent, attempt, action: 'createSession' });
-          },
-        }
-      );
-
-      setSessionId(sessionData.session_id);
-      // keep ref in sync for immediate callers
-      sessionIdRef.current = sessionData.session_id;
-      authTokenRef.current = activeToken ?? null;
-      setError(null);
-
-      // Store session data in localStorage. Use the legacy base key when
-      // calling the helpers so tests and external callers that mock the
-      // helper observe the original key. Internally we keep a locale-suffixed
-      // `sessionStorageKey` for runtime isolation.
-      if (sessionData.expires_at) {
-        helpers.storeSession(baseSessionKey, sessionData.session_id, sessionData.expires_at);
-      }
-
-      // Load messages after session creation — skip when recovering from expiry
-      // so existing in-memory messages are not wiped by the empty new session.
-      if (!skipMessageLoad) {
-        await loadSessionMessages(sessionData.session_id, activeToken, true);
-      }
-
-      // Attempt to flush any queued messages now that session/auth are available
-      try {
-        await flushQueuedMessages();
-      } catch {}
-    } catch (err: unknown) {
-      const e = err as unknown as { userMessage?: string; message?: string };
-      const errorMessage = e.userMessage || String(t.failedToCreateSession);
-      setError(errorMessage);
-      logError(e, { agent, action: 'createSession' });
-
-      // Notify parent window of error
-      if (window.parent !== window) {
-        if (parentSensitiveOrigin) {
-          window.parent.postMessage(
-            { type: EMBED_EVENTS.ERROR, data: { message: errorMessage } },
-            parentSensitiveOrigin
-          );
-        }
-      }
-    }
-  }
-
-  async function validateAndRestoreSession(sessionId: string, agentId: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null) {
-    try {
-      let response = await fetch(API.sessionMessages(sessionId ?? undefined), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          ...embedHeaders,
-        },
-      });
-
-      let data: any = null;
-      if (response.ok) {
-        try {
-          data = await response.json();
-        } catch {
-          data = null;
-        }
-      }
-
-      // Fallback for test harnesses/mocks that only handle bare GET calls.
-      if (!Array.isArray(data?.data?.messages)) {
-        response = await fetch(API.sessionMessages(sessionId ?? undefined));
-        if (response.ok) {
-          data = await response.json();
-        }
-      }
-      if (response.ok) {
-        if (data.status === 'success') {
-          // Session is valid, use it
-          setSessionId(sessionId);
-          // sync refs immediately so downstream flush can run
-          sessionIdRef.current = sessionId;
-          authTokenRef.current = token ?? null;
-          setError(null);
-
-          // Patch variant metadata on restored sessions so A/B analytics include
-          // returning visitors. The PATCH merges into existing metadata, so it is
-          // safe to call on every restore – the backend is idempotent.
-          if (configSnapshot?.variant_id || (configSnapshot?.id && initialConfigId)) {
-            try {
-              const patchMeta = configSnapshot.variant_id
-                ? { variant_id: configSnapshot.variant_id, variant_name: configSnapshot.variant_name ?? '' }
-                : { is_ab_control: true, widget_config_id: configSnapshot.id };
-              await fetch(API.session(sessionId), {
-                method: 'PATCH',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                  ...embedHeaders,
-                },
-                body: JSON.stringify({ metadata: patchMeta }),
-              });
-            } catch {
-              // Non-fatal: analytics may miss this session restore but the
-              // widget experience is unaffected.
-            }
-          }
-
-          // Load messages
-          type ApiMessage = {
-            sender: 'user' | 'assistant';
-            id: string;
-            content: string;
-            created_at?: string;
-          };
-
-          // If the backend already returned messages in the widget-friendly
-          // shape (e.g. tests or local fixtures), use them directly to
-          // preserve `pending` flags and other local-only fields.
-          if (Array.isArray(data.data.messages) && (data.data.messages as any)[0] && (data.data.messages as any)[0].text) {
-            const preloadedMessages = data.data.messages as Message[];
-            const preloadedIds = new Set(preloadedMessages.map((m: Message) => m.id));
-            let storedLocalPre: Message[] = [];
-            try {
-              const rawPre = localStorage.getItem(helpers.localMessagesStorageKey(sessionId));
-              if (rawPre) {
-                const parsedPre = JSON.parse(rawPre) as Message[];
-                if (Array.isArray(parsedPre)) {
-                  storedLocalPre = parsedPre.filter((m) => {
-                    if (preloadedIds.has(m.id)) return false;
-                    try {
-                      const isDup = preloadedMessages.some(pm => ((pm.text || (pm as any).content || '') === (m.text || (m as any).content || '')) && Math.abs((pm.timestamp || 0) - (m.timestamp || 0)) < 30000);
-                      return !isDup;
-                    } catch {
-                      return true;
-                    }
-                  });
-                }
-              }
-            } catch { /* ignore */ }
-            const mergedPre = [...preloadedMessages, ...storedLocalPre].sort(
-              (a, b) => (a.timestamp || 0) - (b.timestamp || 0)
-            );
-            setMessages(mergedPre);
-            hasLoadedMessagesRef.current = true;
-
-            // Restore feedback state from localStorage before hitting API
-            let alreadySubmitted = feedbackSubmitted;
-            if (!alreadySubmitted && sessionId) {
-              try {
-                const stored = localStorage.getItem(STORAGE_KEYS.feedbackKey(sessionId));
-                if (stored) {
-                  setFeedbackSubmitted(true);
-                  alreadySubmitted = true;
-                }
-              } catch {
-                // localStorage unavailable
-              }
-            }
-
-            if ((data.data.messages as any).length > 0 && !alreadySubmitted) {
-              checkFeedbackStatus(sessionId, token);
-            }
-            return;
-          }
-
-          const loadedMessages: Message[] = (data.data.messages as unknown[])
-            .filter((msg: unknown) => {
-              const apiMsg = msg as ApiMessage & { from?: string; text?: string };
-              const sender = (apiMsg.sender || (apiMsg as any).from) as string | undefined;
-              const id = (apiMsg as any).id as string | undefined;
-              if (sender === 'assistant') {
-                // Greeting messages are always shown regardless of user message count
-                if (typeof id === 'string' && id.startsWith('greeting-')) return true;
-                const userMessages = (data.data.messages as unknown[]).filter((m2: unknown) => ((m2 as any).sender || (m2 as any).from) === 'user');
-                return userMessages.length > 0;
-              }
-              return true;
-            })
-            .map((apiMsgRaw: unknown) => {
-              const apiMsg = apiMsgRaw as ApiMessage & { from?: string; text?: string };
-              const id = (apiMsg as any).id || ((apiMsg as any).message_id ?? '');
-              const text = (apiMsg as any).content ?? (apiMsg as any).text ?? '';
-              const rawFrom = ((apiMsg as any).sender ?? (apiMsg as any).from ?? 'user') as string;
-              const from = rawFrom === 'assistant' ? 'agent' : rawFrom;
-              const timestamp = apiMsg.created_at ? new Date(apiMsg.created_at).getTime() : ((apiMsg as any).timestamp || Date.now());
-              return {
-                id,
-                text,
-                from: from as 'user' | 'agent',
-                timestamp,
-              } as Message;
-            });
-
-          // Merge server messages with any local-only temp messages (e.g. button
-          // click user bubbles that were never sent to the server).
-          const serverIds = new Set(loadedMessages.map((m) => m.id));
-          let storedLocal: Message[] = [];
-          try {
-            const raw = localStorage.getItem(helpers.localMessagesStorageKey(sessionId));
-            if (raw) {
-              const parsed = JSON.parse(raw) as Message[];
-              if (Array.isArray(parsed)) {
-                storedLocal = parsed.filter((m) => {
-                  if (serverIds.has(m.id)) return false;
-                  try {
-                    const isDup = loadedMessages.some(lm => ((lm.text || (lm as any).content || '') === (m.text || (m as any).content || '')) && Math.abs((lm.timestamp || 0) - (m.timestamp || 0)) < 30000);
-                    return !isDup;
-                  } catch {
-                    return true;
-                  }
-                });
-              }
-            }
-          } catch {
-            // ignore
-          }
-          const mergedMessages = [...loadedMessages, ...storedLocal].sort(
-            (a, b) => (a.timestamp || 0) - (b.timestamp || 0)
-          );
-          setMessages(mergedMessages);
-          hasLoadedMessagesRef.current = true;
-
-          // Restore feedback state from localStorage before hitting API
-          let alreadySubmitted = feedbackSubmitted;
-          if (!alreadySubmitted && sessionId) {
-            try {
-              const stored = localStorage.getItem(STORAGE_KEYS.feedbackKey(sessionId));
-              if (stored) {
-                setFeedbackSubmitted(true);
-                alreadySubmitted = true;
-              }
-            } catch {
-              // localStorage unavailable
-            }
-          }
-          // Check if we should show feedback
-          if (loadedMessages.length > 0 && !alreadySubmitted) {
-            checkFeedbackStatus(sessionId, token);
-          }
-
-          // Attempt flush now that we've restored session/messages
-          try {
-            await flushQueuedMessages();
-          } catch {}
-
-          return;
-        }
-      }
-
-      // Session invalid or not found, create new one
-      logError(new Error('Session validation failed'), {
-        sessionId,
-        agentId,
-        status: response.status
-      });
-      helpers.clearStoredSession(sessionStorageKey);
-      await createSession(agentId, token, configSnapshot);
-    } catch (err) {
-      logError(err, { sessionId, agentId, action: 'validateAndRestoreSession' });
-      // On error, create new session. clearStoredSession swallows storage failures
-      // so a private-mode removeItem throw can't escape this catch. (#12)
-      helpers.clearStoredSession(sessionStorageKey);
-      await createSession(agentId, token, configSnapshot);
-    }
-  }
-
-  async function fetchAgentDetails(agentId: string, token: string) {
-    const start = Date.now();
-    try {
-      const response = await fetch(API.agent(agentId), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          ...embedHeaders,
-        },
-      });
-
-      if (response.ok) {
-          const data = await response.json();
-          // Accept success responses even if `name` is missing so tests that
-          // return a minimal payload don't cause the whole widget to abort
-          // validation. Missing agent name is non-fatal at runtime.
-          if (data.status === 'success') {
-            setAgentName(data.data?.name || '');
-          } else {
-            throw createAuthError('Invalid agent response', WidgetErrorCode.AUTH_TOKEN_FAILED);
-          }
-        } else if (response.status === 429) {
-          const retryAfterSec = response.headers.get('Retry-After');
-          const waitSec = retryAfterSec ? parseInt(retryAfterSec, 10) : 0;
-          const rateLimitMsg = waitSec > 0
-            ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
-            : String(t.rateLimitGeneric);
-          const rateLimitErr = createNetworkError(rateLimitMsg, WidgetErrorCode.NETWORK_RATE_LIMITED);
-          rateLimitErr.retryable = false;
-          rateLimitErr.userMessage = rateLimitMsg;
-          throw rateLimitErr;
-        } else {
-          const errorMessage = String(t.agentUnavailable);
-          throw createAuthError(errorMessage, WidgetErrorCode.AUTH_TOKEN_FAILED);
-        }
-    } catch (err) {
-      logError(err, { agentId, action: 'fetchAgentDetails' });
-      throw err; // Re-throw so it can be caught by the caller
-    } finally {
-      const duration = Date.now() - start;
-      logPerf('fetchAgentDetails', duration, { agentId });
-    }
-  }
-
-  async function fetchWidgetConfig(configId: string, token: string) {
-    const start = Date.now();
-    try {
-      // Pass visitor_id so the backend can deterministically assign an A/B variant.
-      // forceVariantId (admin-only) bypasses hash assignment for preview/testing.
-      const visitorId = helpers.getVisitorId(initialClientId);
-      const response = await fetch(API.widgetConfig(configId, visitorId, initialForceVariantId), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          ...embedHeaders,
-        },
-      });
-
-      if (!response.ok) {
-        const errorMessage = String(t.configUnavailable);
-        throw createAuthError(errorMessage, WidgetErrorCode.INVALID_CONFIG);
-      }
-
-      const data = await response.json();
-
-      if (data.status === 'success' && data.data) {
-
-        // Merge posted show_unread_badge if it was set via embed snippet
-        const configData = { ...data.data };
-        if (typeof postedShowUnreadBadge.current !== 'undefined') {
-          configData.show_unread_badge = postedShowUnreadBadge.current;
-        }
-        if (typeof postedEdgeOffset.current !== 'undefined') {
-          configData.edge_offset = postedEdgeOffset.current;
-        }
-        const { config: validatedConfig, typeMismatch } = validateConfig(configData, 'chat');
-        setWidgetConfig(validatedConfig);
-        if (typeMismatch) {
-          setError('Configuration warning: this config is set to "docs" type but is running in the chat widget. Check your widget_type setting in the admin.');
-        }
-        return validatedConfig;
-      } else {
-        throw createAuthError('Invalid config response format', WidgetErrorCode.INVALID_CONFIG);
-      }
-    } catch (err) {
-      logError(err, { configId, action: 'fetchWidgetConfig' });
-      throw err; // Re-throw so it can be caught by the caller
-    } finally {
-      const duration = Date.now() - start;
-      logPerf('fetchWidgetConfig', duration, { configId });
-    }
-  }
-
-  const checkFeedbackStatus = async (sessionId: string, token: string) => {
-    try {
-      const response = await fetch(API.sessionFeedback(sessionId), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          ...embedHeaders,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 'success' && data.data.has_feedback) {
-          setFeedbackSubmitted(true);
-        }
-      }
-    } catch (error) {
-      logError(error, { action: 'checkFeedbackStatus', sessionId });
-    }
-  };
-
-  // Detect conversation end (inactivity) and show feedback dialog
-  useEffect(() => {
-    if (!sessionId || !authToken || feedbackSubmitted || showFeedbackDialog) return;
-    if (messages.length === 0) return;
-
-    // Set a timer to show feedback dialog after 30 seconds of inactivity
-    const inactivityTimer = setTimeout(() => {
-      if (!feedbackSubmitted && messages.length > 0) {
-        setShowFeedbackDialog(true);
-      }
-    }, 30000); // 30 seconds
-
-    return () => clearTimeout(inactivityTimer);
-  }, [messages, sessionId, authToken, feedbackSubmitted, showFeedbackDialog]);
-
-  const handleFeedbackSubmit = (rating: string, comment: string) => {
-    // telemetry for feedback given includes rating/comment metadata
-    trackEvent(
-      'feedback_given',
-      initialAgentId,
-      { rating, comment },
-      initialClientId,
-      undefined,
-      embedHeaders,
-    ).catch(() => {});
-    setFeedbackSubmitted(true);
-    setShowFeedbackDialog(false);
-    // Store feedback submitted flag in localStorage
-    if (sessionId) {
-      localStorage.setItem(STORAGE_KEYS.feedbackKey(sessionId), 'true');
-    }
-  };
-
-  const handleFeedbackSkip = () => {
-    setShowFeedbackDialog(false);
-    setFeedbackSubmitted(true); // Don't show again this session
-    if (sessionId) {
-      localStorage.setItem(STORAGE_KEYS.feedbackKey(sessionId), 'skipped');
-    }
-  };
-
-  const handleSubmitMessageFeedback = async (messageId: string, feedbackType: string = 'incorrect') => {
-    if (!authToken) return;
-
-    try {
-      const response = await fetch(API.messageFeedback(messageId), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-          ...embedHeaders,
-        },
-        body: JSON.stringify({
-          feedback_type: feedbackType,
-        }),
-      });
-
-      if (response.ok) {
-        setMessageFeedbackSubmitted((prev) => new Set(prev).add(messageId));
-        // Show success toast if available
-      } else {
-        const errorText = await response.text();
-        logError(new Error('Failed to submit message feedback'), {
-          action: 'handleSubmitMessageFeedback',
-          messageId,
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText,
-        });
-      }
-    } catch (error) {
-      logError(error, { action: 'handleSubmitMessageFeedback', messageId });
-    }
-  };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [sessionStorageKey, authToken, loadSessionMessages]);
 
   const getLocalizedText = (textObj: { [lang: string]: string } | string | undefined): string => {
     if (textObj == null) return '';
@@ -3175,76 +1882,6 @@ export default function EmbedClient({
           />
         ) : undefined}
       />
-    </div>
-  );
-}
-type UnsureMessagesModalProps = {
-  messages: Array<{userMessage: string, agentMessage: string, timestamp: number}>;
-  onClose: () => void;
-  primaryColor: string;
-  backgroundColor: string;
-  textColor: string;
-  borderRadius: number;
-};
-
-function UnsureMessagesModal({ messages, onClose, primaryColor, backgroundColor, textColor, borderRadius }: UnsureMessagesModalProps) {
-  const { translations: t, locale } = useWidgetTranslation();
-  return (
-    <div
-      className="rounded-lg shadow-lg max-h-[80vh] overflow-hidden"
-      style={{ backgroundColor, color: textColor, borderRadius: `${borderRadius}px` }}
-    >
-      <div
-        className="p-4 border-b"
-        style={{ borderColor: primaryColor }}
-      >
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">{t.uncertaintyLogTitle as string}</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-xl leading-none"
-          >
-            ×
-          </button>
-        </div>
-        <p className="text-sm text-gray-600 mt-1">
-          {t.uncertaintyLogSubtitle as string}
-        </p>
-      </div>
-
-      <div className="p-4 max-h-96 overflow-y-auto">
-        {messages.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">{t.uncertaintyLogEmpty as string}</p>
-        ) : (
-          <div className="space-y-4">
-            {messages.map((msg, index) => (
-              <div key={index} className="border rounded p-3" style={{ borderColor: primaryColor + "20" }}>
-                <div className="mb-2">
-                  <span className="text-xs text-gray-500">{t.uncertaintyLogUser as string}</span>
-                  <p className="text-sm mt-1">{msg.userMessage}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-gray-500">{t.uncertaintyLogAgent as string}</span>
-                  <p className="text-sm mt-1 italic">{msg.agentMessage}</p>
-                </div>
-                <div className="text-xs text-gray-400 mt-2">
-                  {new Date(msg.timestamp).toLocaleString(locale)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="p-4 border-t" style={{ borderColor: primaryColor + "20" }}>
-        <button
-          onClick={onClose}
-          className="w-full py-2 px-4 rounded text-white hover:opacity-90"
-          style={{ backgroundColor: primaryColor, borderRadius: `${borderRadius}px` }}
-        >
-          {t.close as string}
-        </button>
-      </div>
     </div>
   );
 }

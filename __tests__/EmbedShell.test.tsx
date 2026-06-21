@@ -1,20 +1,21 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import EmbedShell from '../components/EmbedShell';
+import { useWidgetStyles } from '../hooks/useWidgetStyles';
+import { minimalProps, defaultStyles } from './__fixtures__/EmbedShell.fixtures';
 
-const minimalProps = {
-  isEmbedded: true,
-  isCollapsed: false,
-  toggleCollapsed: () => {},
-  messages: [],
-  isTyping: false,
-  input: '',
-  setInput: () => {},
-  handleSubmit: (e: any) => e.preventDefault(),
-  flowResponses: [],
-  widgetConfig: {},
-  getLocalizedText: (t: any) => (typeof t === 'string' ? t : (t?.en || '')),
-};
+// convenience alias to call in tests
+const widgetStylesMock = useWidgetStyles as jest.Mock;
+
+jest.mock('../hooks/useWidgetStyles', () => ({
+  useWidgetStyles: jest.fn(() => defaultStyles),
+}));
+
+
+jest.mock('../hooks/useWidgetTranslation', () => ({
+  useWidgetTranslation: () => ({ translations: { chat: 'Chat', typeYourMessage: 'Type...', send: 'Send' } })
+}));
 
 describe('EmbedShell', () => {
   test('renders greeting and buttons when provided', () => {
@@ -38,46 +39,6 @@ describe('EmbedShell', () => {
     expect(screen.getByRole('button', { name: /send/i })).toBeInTheDocument();
   });
 });
-import React from 'react';
-import '@testing-library/jest-dom';
-
-
-import { render, screen, fireEvent, act } from '@testing-library/react';
-import EmbedShell from '../components/EmbedShell';
-import { useWidgetStyles } from '../hooks/useWidgetStyles';
-
-// stub styles to control showMessageAvatars
-const defaultStyles = {
-  primaryColor: '#000',
-  secondaryColor: '#000',
-  backgroundColor: '#fff',
-  textColor: '#000',
-  borderRadius: 0,
-  fontStyles: {},
-  getShadowStyle: () => '',
-  getButtonSizeClasses: () => ({ width: 'w-8', height: 'h-8', icon: 'w-4 h-4' }),
-  widgetWidth: 300,
-  widgetHeight: 500,
-  messageBubbleRadius: 0,
-  buttonBorderRadius: 0,
-  backgroundOpacity: 1,
-  showTimestamps: false,
-  showTypingIndicator: false,
-  showMessageAvatars: true,
-  showUnreadBadge: false,
-};
-
-// convenience alias to call in tests
-const widgetStylesMock = useWidgetStyles as jest.Mock;
-
-jest.mock('../hooks/useWidgetStyles', () => ({
-  useWidgetStyles: jest.fn(() => defaultStyles),
-}));
-
-
-jest.mock('../hooks/useWidgetTranslation', () => ({
-  useWidgetTranslation: () => ({ translations: { chat: 'Chat', typeYourMessage: 'Type...', send: 'Send' } })
-}));
 
 describe('EmbedShell - logo and avatar', () => {
   it('renders header logo and agent avatar when provided', () => {

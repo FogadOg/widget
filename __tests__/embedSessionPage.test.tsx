@@ -1,38 +1,8 @@
 import React from 'react';
 
-import { createHmac } from 'node:crypto';
-
 import { renderToStaticMarkup } from 'react-dom/server';
 
-function toBase64Url(input: Buffer): string {
-
-  return input
-
-    .toString('base64')
-
-    .replace(/\+/g, '-')
-
-    .replace(/\//g, '_')
-
-    .replace(/=+$/g, '');
-
-}
-
-function createToken(payload: Record<string, unknown>, secret: string): string {
-
-  const header = { alg: 'HS256', typ: 'JWT' };
-
-  const headerB64 = toBase64Url(Buffer.from(JSON.stringify(header), 'utf8'));
-
-  const payloadB64 = toBase64Url(Buffer.from(JSON.stringify(payload), 'utf8'));
-
-  const signingInput = `${headerB64}.${payloadB64}`;
-
-  const sig = toBase64Url(createHmac('sha256', secret).update(signingInput).digest());
-
-  return `${signingInput}.${sig}`;
-
-}
+import { createToken } from './__helpers__/embedSessionPage.helpers';
 
 describe('Embed session page', () => {
 
@@ -713,4 +683,3 @@ describe('Embed session page', () => {
   });
 
 });
-

@@ -12,79 +12,10 @@
 
  */
 
-import path from 'path';
 
-const FILE = path.resolve(process.cwd(), 'src', 'embed', 'widget.js');
+import { VALID } from './__fixtures__/embed.widget.fixtures';
 
-const VALID: Record<string, string> = {
-
-  'data-client-id': 'c1',
-
-  'data-agent-id': 'a1',
-
-  'data-config-id': 'cfg1',
-
-  'data-locale': 'en',
-
-};
-
-/** Creates a stub <script>, appends to DOM, then requires the module fresh. */
-
-function loadWidget(attrs: Record<string, string> = {}) {
-
-  const stub = document.createElement('script');
-
-  stub.id = 'companin-widget-script';
-
-  for (const [k, v] of Object.entries(attrs)) stub.setAttribute(k, v);
-
-  document.body.appendChild(stub);
-
-  jest.resetModules();
-
-  require(FILE);
-
-  return {
-
-    api: (window as any).CompaninWidget as any,
-
-    widgets: (window as any).CompaninWidgets as any,
-
-    iframe: document.querySelector('iframe') as HTMLIFrameElement | null,
-
-  };
-
-}
-
-/** Attach a stable mock object as the iframe's contentWindow. */
-
-function mockCW(iframe: HTMLIFrameElement) {
-
-  const mock = { postMessage: jest.fn() };
-
-  Object.defineProperty(iframe, 'contentWindow', { get: () => mock, configurable: true });
-
-  return mock;
-
-}
-
-/** Dispatch a MessageEvent that looks as if it came from inside the iframe. */
-
-function fromIframe(
-
-  iframe: HTMLIFrameElement,
-
-  data: unknown,
-
-  origin = 'https://widget.companin.tech',
-
-) {
-
-  const cw = (iframe as any).contentWindow;
-
-  window.dispatchEvent(new MessageEvent('message', { data, origin, source: cw as any }));
-
-}
+import { loadWidget, mockCW, fromIframe, FILE } from './__helpers__/embed.widget.helpers';
 
 beforeEach(() => {
 

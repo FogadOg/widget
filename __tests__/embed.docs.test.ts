@@ -4,73 +4,8 @@
 
  */
 
-import path from 'path';
-
-const FILE = path.resolve(process.cwd(), 'src', 'embed', 'docs-widget.js');
-
-const VALID: Record<string, string> = {
-
-  'data-client-id': 'dc1',
-
-  'data-agent-id': 'da1',
-
-  'data-config-id': 'dcfg1',
-
-  'data-locale': 'en',
-
-};
-
-function loadDocsWidget(attrs: Record<string, string> = {}) {
-
-  const stub = document.createElement('script');
-
-  stub.id = 'companin-docs-widget-script';
-
-  for (const [k, v] of Object.entries(attrs)) stub.setAttribute(k, v);
-
-  document.body.appendChild(stub);
-
-  jest.resetModules();
-
-  require(FILE);
-
-  return {
-
-    api: (window as any).CompaninDocsWidget as any,
-
-    widgets: (window as any).CompaninDocsWidgets as any,
-
-    iframe: document.querySelector('iframe') as HTMLIFrameElement | null,
-
-  };
-
-}
-
-function mockCW(iframe: HTMLIFrameElement) {
-
-  const mock = { postMessage: jest.fn() };
-
-  Object.defineProperty(iframe, 'contentWindow', { get: () => mock, configurable: true });
-
-  return mock;
-
-}
-
-function fromIframe(
-
-  iframe: HTMLIFrameElement,
-
-  data: unknown,
-
-  origin = 'https://widget.companin.tech',
-
-) {
-
-  const cw = (iframe as any).contentWindow;
-
-  window.dispatchEvent(new MessageEvent('message', { data, origin, source: cw as any }));
-
-}
+import { VALID } from './__fixtures__/embed.docs.fixtures';
+import { loadDocsWidget, mockCW, fromIframe } from './__helpers__/embed.docs.helpers';
 
 beforeEach(() => {
 
