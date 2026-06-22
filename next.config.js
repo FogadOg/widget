@@ -25,7 +25,16 @@ const nextConfig = {
   turbopack: {
     root: __dirname,
   },
-  webpack(config, { isServer }) {
+  webpack(config, { isServer, dev }) {
+    // In dev (Docker bind mount on Windows/macOS) webpack can't get native fs
+    // events, so it polls. The default 1s interval hammers the mount and starves
+    // the compiler; 3s polling keeps HMR responsive while cutting wasted I/O.
+    if (dev) {
+      config.watchOptions = {
+        poll: 3000,
+        aggregateTimeout: 300,
+      };
+    }
     // Only load the Size Limit analysis plugins when explicitly analyzing
     // (ANALYZE=true). They are CI/analysis-only: `@size-limit/webpack-why`
     // retains the full module graph in memory and OOMs a normal `next dev`
