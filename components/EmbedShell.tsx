@@ -761,6 +761,7 @@ export default function EmbedShell({
             </button>
           ) : (
             <div
+              data-ignore-reduced-motion={!respectReducedMotion ? 'true' : undefined}
               style={{
                 position: 'fixed',
                 top: '50%',
@@ -775,9 +776,18 @@ export default function EmbedShell({
                 backgroundColor: 'transparent',
                 transition: '0.3s'
               }}
+              className={openAnimation !== 'none' ? `widget-panel--${openAnimation}` : undefined}
             >
-              <div className="h-full flex flex-col overflow-hidden" style={{ backgroundColor: `rgba(${hexToRgb(backgroundColor)}, ${backgroundOpacity})`, ...fontStyles }}>
-                <div className="p-3 flex items-center justify-between" style={{ backgroundColor: primaryColor, color: headerTextColor, borderRadius: `${borderRadius}px` }}>
+              <div
+                className="h-full flex flex-col overflow-hidden"
+                style={{
+                  backgroundColor: `rgba(${hexToRgb(backgroundColor)}, ${visualEffectStyles.backgroundOpacityOverride ?? backgroundOpacity})`,
+                  backdropFilter: visualEffectStyles.backdropFilter,
+                  WebkitBackdropFilter: visualEffectStyles.WebkitBackdropFilter,
+                  ...fontStyles
+                }}
+              >
+                <div className="p-3 flex items-center justify-between" style={{ backgroundColor: primaryColor, color: headerTextColor, borderRadius: `${borderRadius}px`, padding: spacingValues.padding }}>
                   <div className="flex items-center gap-3">
                     {widgetConfig?.logo && (
                       <img src={widgetConfig.logo} alt={(getText(widgetConfig?.title) || title || 'logo') + ' logo'} className="w-10 h-10 object-contain rounded" />
@@ -811,12 +821,13 @@ export default function EmbedShell({
 
                 <div
                   ref={scrollContainerRef}
-                  className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-3"
+                  className={`flex-1 overflow-y-auto overscroll-contain p-3 space-y-3${messageAnimation !== 'none' ? ` widget-messages--${messageAnimation}` : ''}`}
                   role="log"
                   aria-live="polite"
                   aria-relevant="additions text"
                   aria-atomic="false"
                   aria-label={translate(locale, 'chatMessages')}
+                  style={{ padding: spacingValues.padding, rowGap: spacingValues.gap }}
                 >
 
                   {showGreeting && greetingText && (
