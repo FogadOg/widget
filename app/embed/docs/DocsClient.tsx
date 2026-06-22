@@ -2,7 +2,7 @@
 
 
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -53,7 +53,8 @@ import {
 } from "@/components/ai-elements/reasoning"
 import { MessageResponse } from "@/components/ai-elements/message"
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion"
-import { getLocalizedText, resolveLocalizedSuggestions, resolveParentOrigin as resolveParentOriginUtil } from './DocsClient.utils'
+import { getLocalizedText, resolveLocalizedSuggestions, resolveParentOrigin as resolveParentOriginUtil, buildDocsTheme } from './DocsClient.utils'
+import { useWidgetStyles } from '../../../hooks/useWidgetStyles'
 import { Props, MessageType } from './DocsClient.types'
 import { initialMessages } from './DocsClient.constants'
 import { usePreviewMode } from './hooks/usePreviewMode'
@@ -207,11 +208,32 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   const placeholderText = getLocalizedText(widgetConfig?.data?.placeholder, activeLocale) || translate(activeLocale, 'typeYourMessage');
   const resolvedSuggestions = resolveLocalizedSuggestions(widgetConfig?.data?.suggestions, activeLocale, widgetConfig?.data?.default_language);
 
+  // Theme the docs widget from the config. The ai-elements consume shadcn CSS
+  // tokens, so mapping the config onto those custom properties re-themes the
+  // whole surface (colors, radius, font). See buildDocsTheme.
+  const widgetStyles = useWidgetStyles(widgetConfig?.data);
+  const theme = buildDocsTheme(widgetStyles);
+
+  // Load the selected Google Font (parity with the chat widget).
+  const fontSource = widgetConfig?.data?.font_source;
+  const fontFamily = widgetConfig?.data?.font_family;
+  useEffect(() => {
+    if (fontSource !== 'google' || !fontFamily || typeof document === 'undefined') return;
+    const id = `gf-${String(fontFamily).replace(/\s+/g, '-').toLowerCase()}`;
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@300;400;500;600;700&display=swap`;
+    document.head.appendChild(link);
+  }, [fontSource, fontFamily]);
+
   // Preview mode: bypass the Dialog stub entirely and render the widget as a
   // direct full-height panel so layout works correctly inside the preview iframe.
   if (initialPreviewConfig) {
     return (
       <PreviewModeWidget
+        theme={theme}
         liveMessage={liveMessage}
         title={title}
         subtitle={subtitle}
@@ -244,7 +266,10 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
       </div>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className='mb-8 flex h-[calc(100vh-20vh)] min-w-[calc(100vw-20vw)] flex-col justify-between gap-0 p-0'>
+        <DialogContent
+          className='mb-8 flex h-[calc(100vh-20vh)] min-w-[calc(100vw-20vw)] flex-col justify-between gap-0 p-0'
+          style={{ ...theme.vars, background: theme.panelBackground, backdropFilter: theme.backdropFilter, WebkitBackdropFilter: theme.backdropFilter }}
+        >
           <ScrollArea ref={scrollAreaRef} className='flex flex-col justify-between overflow-hidden'>
             <DialogHeader className='contents space-y-0 text-left'>
               <DialogTitle className='px-6 pt-6'>{getLocalizedText(widgetConfig?.data?.title, activeLocale) || translate(activeLocale, 'docsTitleFallback')}</DialogTitle>
@@ -308,7 +333,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                           ))}
                           {status === "streaming" && (
                             <div className="flex justify-start">
-                              <div className="p-3" style={{ backgroundColor: '#e5e7eb', borderRadius: '8px' }}>
+                              <div className="p-3" style={{ backgroundColor: 'var(--muted)', borderRadius: 'var(--radius)' }}>
                                 <div className="flex space-x-1">
                                   <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
                                   <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>

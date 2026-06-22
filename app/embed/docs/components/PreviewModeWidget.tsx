@@ -35,9 +35,10 @@ import {
 } from "@/components/ai-elements/reasoning"
 import { MessageResponse } from "@/components/ai-elements/message"
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion"
-import { MessageType } from '../DocsClient.types'
+import { MessageType, DocsTheme } from '../DocsClient.types'
 
 interface PreviewModeWidgetProps {
+  theme: DocsTheme;
   liveMessage: string;
   title: string;
   subtitle: string;
@@ -58,6 +59,7 @@ interface PreviewModeWidgetProps {
 }
 
 export function PreviewModeWidget({
+  theme,
   liveMessage,
   title,
   subtitle,
@@ -77,16 +79,16 @@ export function PreviewModeWidget({
   placeholderText,
 }: PreviewModeWidgetProps) {
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#fff', fontFamily: 'inherit', overflow: 'hidden' }}>
+    <div style={{ ...theme.vars, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: theme.panelBackground, backdropFilter: theme.backdropFilter, WebkitBackdropFilter: theme.backdropFilter, overflow: 'hidden' }}>
       <div
         aria-live="polite" aria-atomic="true"
         style={{ position: 'absolute', left: '-9999px', height: '1px', width: '1px', overflow: 'hidden' }}
       >{liveMessage}</div>
 
       {/* Header */}
-      <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
-        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#111827', lineHeight: 1.3 }}>{title}</h2>
-        {subtitle && <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#6b7280', lineHeight: 1.5 }}>{subtitle}</p>}
+      <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
+        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: theme.title, lineHeight: 1.3 }}>{title}</h2>
+        {subtitle && <p style={{ margin: '4px 0 0', fontSize: '14px', color: theme.subtitle, lineHeight: 1.5 }}>{subtitle}</p>}
         {error && (
           <div style={{ marginTop: '8px', background: '#fefce8', borderLeft: '4px solid #facc15', color: '#713f12', padding: '6px 12px', fontSize: '13px' }} role="alert">
             {error}
@@ -139,7 +141,7 @@ export function PreviewModeWidget({
             ))}
             {status === 'streaming' && (
               <div className="flex justify-start">
-                <div className="p-3" style={{ backgroundColor: '#e5e7eb', borderRadius: '8px' }}>
+                <div className="p-3" style={{ backgroundColor: 'var(--muted)', borderRadius: 'var(--radius)' }}>
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" />
                     <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
@@ -155,7 +157,7 @@ export function PreviewModeWidget({
       </div>
 
       {/* Footer */}
-      <div style={{ padding: '12px 24px 20px', borderTop: '1px solid #e5e7eb', flexShrink: 0 }}>
+      <div style={{ padding: '12px 24px 20px', borderTop: `1px solid ${theme.border}`, flexShrink: 0 }}>
         {resolvedSuggestions.length > 0 && (
           <div style={{ marginBottom: '10px' }}>
             <Suggestions>

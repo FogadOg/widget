@@ -1,3 +1,72 @@
+import type { CSSProperties } from 'react';
+import { hexToRgb } from '../../../lib/colors';
+import type { DocsTheme } from './DocsClient.types';
+
+/** Subset of useWidgetStyles() output that buildDocsTheme consumes. */
+type DocsStyleInput = {
+  primaryColor: string;
+  backgroundColor: string;
+  textColor: string;
+  readableOnPrimary: string;
+  mutedTextColor: string;
+  subtleBorderColor: string;
+  agentBubbleBg: string;
+  borderRadius: number;
+  fontStyles: { fontFamily: string; fontSize: string; fontWeight: string };
+  visualEffectStyles: { backdropFilter?: string; WebkitBackdropFilter?: string; backgroundOpacityOverride?: number };
+};
+
+/**
+ * Map the widget config (normalized by useWidgetStyles) onto the shadcn CSS
+ * custom properties the docs widget's ai-elements consume, plus the inline
+ * chrome colors. Setting these variables on a scope element re-themes every
+ * Dialog/Conversation/Message/PromptInput at once — colors, radius and font.
+ * A glassmorphism/frosted `visual_effect` becomes a translucent panel surface
+ * with a backdrop-filter. (Spacing density and open/message animations are
+ * chat-panel concepts and aren't mapped onto the docs modal.)
+ */
+export function buildDocsTheme(s: DocsStyleInput): DocsTheme {
+  const opacityOverride = s.visualEffectStyles.backgroundOpacityOverride;
+  const panelBackground =
+    opacityOverride != null
+      ? `rgba(${hexToRgb(s.backgroundColor)}, ${opacityOverride})`
+      : s.backgroundColor;
+
+  const vars = {
+    '--background': s.backgroundColor,
+    '--foreground': s.textColor,
+    '--card': s.backgroundColor,
+    '--card-foreground': s.textColor,
+    '--popover': s.backgroundColor,
+    '--popover-foreground': s.textColor,
+    '--primary': s.primaryColor,
+    '--primary-foreground': s.readableOnPrimary,
+    '--secondary': s.agentBubbleBg,
+    '--secondary-foreground': s.textColor,
+    '--muted': s.agentBubbleBg,
+    '--muted-foreground': s.mutedTextColor,
+    '--accent': s.agentBubbleBg,
+    '--accent-foreground': s.textColor,
+    '--border': s.subtleBorderColor,
+    '--input': s.subtleBorderColor,
+    '--ring': s.primaryColor,
+    '--radius': `${s.borderRadius}px`,
+    // Base color/font so any element without an explicit token still inherits.
+    color: s.textColor,
+    fontFamily: s.fontStyles.fontFamily,
+    fontSize: s.fontStyles.fontSize,
+  } as CSSProperties;
+
+  return {
+    vars,
+    panelBackground,
+    backdropFilter: s.visualEffectStyles.backdropFilter,
+    title: s.textColor,
+    subtitle: s.mutedTextColor,
+    border: s.subtleBorderColor,
+  };
+}
+
 // NOTE: exported for testing. Accepts explicit locale to avoid closure on hook.
 export function getLocalizedText(textObj: { [lang: string]: string } | undefined, loc?: string): string {
   if (!textObj) return '';
