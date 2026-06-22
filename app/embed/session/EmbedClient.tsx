@@ -48,6 +48,7 @@ import {
   isTrustedParentMessage,
   injectCustomAssetsFromConfig,
   injectCustomAssets,
+  injectGoogleFont,
 } from './EmbedClient.utils';
 import { PREVIEW_COLLAPSED_KEY } from './EmbedClient.constants';
 import {
@@ -698,6 +699,9 @@ export default function EmbedClient({
         const { config: validated } = validateConfig(decoded, 'chat');
         setWidgetConfig(validated);
         injectCustomAssetsFromConfig(validated as unknown as { custom_css?: string | null } | null);
+        if ((validated as any).font_source === 'google' && (validated as any).font_family) {
+          injectGoogleFont((validated as any).font_family);
+        }
       } catch {
         // ignore malformed preview config
       }

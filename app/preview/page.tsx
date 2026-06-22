@@ -51,7 +51,7 @@ export default async function PreviewPage({ searchParams }: Props) {
             configId="preview"
             previewConfig={previewConfigSentinel}
             locale={locale}
-            startOpen={false}
+            startOpen={true}
           />
         )}
       </ErrorBoundary>

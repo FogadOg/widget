@@ -125,6 +125,14 @@ export type WidgetConfig = {
   hide_branding?: boolean;
   /** When false, the org's plan doesn't include support tickets — the human-handoff flow is disabled. */
   support_tickets_enabled?: boolean;
+  // Design system
+  spacing?: 'compact' | 'comfortable' | 'spacious';
+  open_animation?: 'none' | 'slide' | 'spring' | 'fade';
+  bubble_animation?: 'none' | 'pulse' | 'bounce';
+  message_animation?: 'none' | 'fade' | 'slide';
+  respect_reduced_motion?: boolean;
+  visual_effect?: 'none' | 'glassmorphism' | 'frosted';
+  font_source?: 'system' | 'google';
 };
 
 /**

@@ -1,7 +1,13 @@
 import { useMemo } from 'react';
 import { DEFAULTS, DEFAULT_COLORS, SHADOW_INTENSITY, SIZE_PRESETS } from '../lib/constants';
 import type { WidgetConfig } from '../types/widget';
-import { normalizeHexColor, getReadableTextColor, getRelativeLuminance, withAlpha } from '../lib/colors';
+import { normalizeHexColor, getReadableTextColor, getRelativeLuminance, withAlpha, hexToRgb } from '../lib/colors';
+
+const SPACING_MAP = {
+  compact:     { padding: '8px',  gap: '6px'  },
+  comfortable: { padding: '12px', gap: '10px' },
+  spacious:    { padding: '20px', gap: '16px' },
+} as const;
 
 export function useWidgetStyles(widgetConfig?: WidgetConfig) {
   const primaryColor = normalizeHexColor(widgetConfig?.primary_color, DEFAULT_COLORS.PRIMARY);
@@ -42,6 +48,35 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
   const showTypingIndicator = widgetConfig?.show_typing_indicator ?? true;
   const showMessageAvatars = widgetConfig?.show_message_avatars ?? true;
   const showUnreadBadge = widgetConfig?.show_unread_badge ?? true;
+
+  // Design system
+  const spacing = widgetConfig?.spacing ?? 'comfortable';
+  const spacingValues = SPACING_MAP[spacing] ?? SPACING_MAP.comfortable;
+
+  const openAnimation = widgetConfig?.open_animation ?? 'slide';
+  const bubbleAnimation = widgetConfig?.bubble_animation ?? 'none';
+  const messageAnimation = widgetConfig?.message_animation ?? 'fade';
+  const respectReducedMotion = widgetConfig?.respect_reduced_motion ?? true;
+
+  const visualEffect = widgetConfig?.visual_effect ?? 'none';
+  const visualEffectStyles = useMemo(() => {
+    if (visualEffect === 'glassmorphism') {
+      return {
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        backgroundOpacityOverride: 0.75 as number | undefined,
+      };
+    }
+    if (visualEffect === 'frosted') {
+      return {
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        backgroundOpacityOverride: 0.45 as number | undefined,
+      };
+    }
+    return { backdropFilter: undefined, WebkitBackdropFilter: undefined, backgroundOpacityOverride: undefined };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visualEffect]);
 
   const getShadowStyle = useMemo(() => {
     const shadowValue = SHADOW_INTENSITY[shadowIntensity as keyof typeof SHADOW_INTENSITY] || SHADOW_INTENSITY.md;
@@ -90,5 +125,12 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
     showTypingIndicator,
     showMessageAvatars,
     showUnreadBadge,
+    // Design system
+    spacingValues,
+    openAnimation,
+    bubbleAnimation,
+    messageAnimation,
+    respectReducedMotion,
+    visualEffectStyles,
   };
 }

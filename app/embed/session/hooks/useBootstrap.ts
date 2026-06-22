@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { logError } from '../../../../lib/errorHandling';
 import { validateConfig } from '../../../../lib/validateConfig';
 import * as helpers from '../helpers';
-import { injectCustomAssetsFromConfig } from '../EmbedClient.utils';
+import { injectCustomAssetsFromConfig, injectGoogleFont } from '../EmbedClient.utils';
 import type { WidgetConfig } from '../../../../types/widget';
 
 export function useBootstrap({
@@ -59,6 +59,9 @@ export function useBootstrap({
           const { config: validatedConfig } = validateConfig(decoded, 'chat');
           setWidgetConfig(validatedConfig);
           injectCustomAssetsFromConfig(validatedConfig as unknown as { custom_css?: string | null } | null);
+          if ((validatedConfig as any).font_source === 'google' && (validatedConfig as any).font_family) {
+            injectGoogleFont((validatedConfig as any).font_family);
+          }
           // Treat the preview iframe as embedded so EmbedShell uses its responsive
           // 100% × 100% layout (maxWidth 400px / maxHeight 600px) instead of the
           // standalone fixed-pixel layout which overflows the 360px preview panel.
@@ -117,6 +120,9 @@ export function useBootstrap({
           // strips url() / position:fixed / @font-face etc., so even a compromised
           // config field can't exfiltrate or clickjack the host page.
           injectCustomAssetsFromConfig(fetchedConfig as unknown as { custom_css?: string | null } | null);
+          if ((fetchedConfig as any)?.font_source === 'google' && (fetchedConfig as any)?.font_family) {
+            injectGoogleFont((fetchedConfig as any).font_family);
+          }
           if (fetchedConfig?.ga_measurement_id && initialParentOrigin) {
             // GA measurement ID is non-sensitive but still gated on a known
             // parent origin so we don't leak it via '*' (LAUNCH-READINESS #6).

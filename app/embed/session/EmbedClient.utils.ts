@@ -68,3 +68,20 @@ export function injectCustomAssetsFromConfig(config: { custom_css?: string | nul
   const css = config.custom_css || undefined;
   if (css) injectCustomAssets(css);
 }
+
+// Inject a Google Fonts stylesheet for the configured font family.
+// Called when font_source === 'google' so the font is available inside the iframe.
+export function injectGoogleFont(fontFamily: string) {
+  if (!fontFamily || typeof document === 'undefined') return;
+  try {
+    const id = `gf-${fontFamily.replace(/\s+/g, '-').toLowerCase()}`;
+    if (document.getElementById(id)) return; // already loaded
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@300;400;500;600;700&display=swap`;
+    document.head.appendChild(link);
+  } catch (err) {
+    logError(err as Error, { action: 'injectGoogleFont', fontFamily });
+  }
+}
