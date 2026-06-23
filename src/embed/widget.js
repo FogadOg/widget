@@ -6,8 +6,9 @@
   const COMPANY_NAME = 'Companin';
   let POWERED_BY_TEXT = (typeof window !== 'undefined' && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`] && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`].poweredBy) || 'Powered by ';
   const BASE_WIDGET_HOST = 'https://widget.companin.tech';
-  // __WIDGET_VERSION__ is replaced at build time by scripts/build-embed.js using
-  // package.json's version. The literal token below is the build-time sentinel.
+  // The WIDGET_VERSION constant below is replaced at build time by
+  // scripts/build-embed.js using package.json's version. The quoted literal
+  // is the build-time sentinel.
   const WIDGET_VERSION = '__WIDGET_VERSION__';
   try {
     window.__COMPANIN_WIDGET_VERSION__ = WIDGET_VERSION;
