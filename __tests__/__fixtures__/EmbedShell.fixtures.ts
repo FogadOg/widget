@@ -30,6 +30,16 @@ export const defaultStyles = {
   showTypingIndicator: false,
   showMessageAvatars: true,
   showUnreadBadge: false,
+  spacingValues: { padding: '12px', gap: '10px' },
+  openAnimation: 'slide',
+  bubbleAnimation: 'none',
+  messageAnimation: 'fade',
+  respectReducedMotion: true,
+  visualEffectStyles: {
+    backdropFilter: undefined,
+    WebkitBackdropFilter: undefined,
+    backgroundOpacityOverride: undefined,
+  },
 };
 
 export const baseWidgetConfig = {
