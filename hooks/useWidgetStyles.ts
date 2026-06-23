@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { DEFAULTS, DEFAULT_COLORS, SHADOW_INTENSITY, SIZE_PRESETS } from '../lib/constants';
 import type { WidgetConfig } from '../types/widget';
-import { normalizeHexColor, getReadableTextColor, getRelativeLuminance, withAlpha, hexToRgb } from '../lib/colors';
+import { normalizeHexColor, getReadableTextColor, getRelativeLuminance, withAlpha } from '../lib/colors';
 
 const SPACING_MAP = {
   compact:     { padding: '8px',  gap: '6px'  },
@@ -75,7 +75,6 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
       };
     }
     return { backdropFilter: undefined, WebkitBackdropFilter: undefined, backgroundOpacityOverride: undefined };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visualEffect]);
 
   const getShadowStyle = useMemo(() => {
