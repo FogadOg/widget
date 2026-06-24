@@ -18,6 +18,10 @@ import { API, isApiConfigured, getApiBaseUrl, embedOriginHeader } from '../lib/a
 export function useWidgetAuth() {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  // Machine-readable code for the last auth failure (e.g. ORIGIN_NOT_ALLOWED),
+  // so consumers can relay a specific signal to the host page / dashboard
+  // instead of only a human-facing message.
+  const [authErrorCode, setAuthErrorCode] = useState<WidgetErrorCode | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   // Mirror retryCount into a ref so we can read it inside getAuthToken without
@@ -71,6 +75,7 @@ export function useWidgetAuth() {
 
     setIsLoading(true);
     setAuthError(null);
+    setAuthErrorCode(null);
 
     try {
       // Attempt to get auth token with retry logic
@@ -229,6 +234,7 @@ export function useWidgetAuth() {
 
       setAuthToken(tokenString);
       setAuthError(null);
+      setAuthErrorCode(null);
       retryCountRef.current = 0;
       setRetryCount(0);
       tokenExpiresAtRef.current = expiresAtMs;
@@ -260,6 +266,7 @@ export function useWidgetAuth() {
       }
 
       setAuthError(errorMessage);
+      setAuthErrorCode(typeof err?.code === 'number' ? err.code : null);
       setAuthToken(null);
       logError(err, { clientId, retryCount: retryCountRef.current });
 
@@ -272,6 +279,7 @@ export function useWidgetAuth() {
   const clearAuth = useCallback(() => {
     setAuthToken(null);
     setAuthError(null);
+    setAuthErrorCode(null);
     retryCountRef.current = 0;
     setRetryCount(0);
     tokenExpiresAtRef.current = null;
@@ -323,6 +331,7 @@ export function useWidgetAuth() {
     getAuthToken,
     authToken,
     authError,
+    authErrorCode,
     isLoading,
     retryCount,
     setAuthToken,

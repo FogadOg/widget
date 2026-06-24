@@ -68,6 +68,8 @@ jest.mock('../lib/errorHandling', () => ({
 
     INVALID_CONFIG: 'INVALID_CONFIG',
 
+    ORIGIN_NOT_ALLOWED: 1004,
+
   },
 
 }));
@@ -2037,6 +2039,54 @@ describe('EmbedClient Component', () => {
       // Component should render something even with error
 
       expect(container).toBeInTheDocument();
+
+    });
+
+    test('relays origin_not_allowed to the parent as a WIDGET_ERROR', async () => {
+
+      const useWidgetAuth = require('../hooks/useWidgetAuth').useWidgetAuth;
+
+      useWidgetAuth.mockReturnValue({
+
+        getAuthToken: jest.fn().mockResolvedValue(null),
+
+        authToken: null,
+
+        authError: 'This website origin is not allowed for this widget.',
+
+        authErrorCode: 1004, // WidgetErrorCode.ORIGIN_NOT_ALLOWED
+
+      });
+
+      mockFetch.mockImplementation(() => Promise.reject(new Error('No fetch')));
+
+      const postMessageSpy = jest.fn();
+
+      Object.defineProperty(window, 'parent', {
+
+        value: { postMessage: postMessageSpy },
+
+        writable: true,
+
+      });
+
+      // strictOrigin so the iframe posts to the concrete parent origin (not '*'),
+      // which is the only mode in which sensitive messages like this are relayed.
+      render(<EmbedClient {...defaultProps} strictOrigin={true} />);
+
+      await act(async () => {
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+      });
+
+      const widgetErrorCall = postMessageSpy.mock.calls.find(
+
+        ([msg]) => msg && msg.type === 'WIDGET_ERROR' && msg.data && msg.data.code === 'origin_not_allowed',
+
+      );
+
+      expect(widgetErrorCall).toBeTruthy();
 
     });
 

@@ -963,6 +963,8 @@ describe('useWidgetAuth', () => {
       expect(result.current.authError).toBe('This website origin is not allowed for this widget. Ask your admin to add this site to allowed origins.');
       expect(result.current.authToken).toBeNull();
       expect(result.current.isLoading).toBe(false);
+      // expose the machine-readable code so EmbedClient can relay origin_not_allowed
+      expect(result.current.authErrorCode).toBe(1004);
       expect(createAuthError).toHaveBeenCalledWith(
         expect.any(String),
         1004
@@ -985,6 +987,8 @@ describe('useWidgetAuth', () => {
       expect(result.current.authError).toBe('This website origin is not allowed for this widget. Ask your admin to add this site to allowed origins.');
       expect(result.current.authToken).toBeNull();
       expect(result.current.isLoading).toBe(false);
+      // expose the machine-readable code so EmbedClient can relay origin_not_allowed
+      expect(result.current.authErrorCode).toBe(1004);
       expect(createAuthError).toHaveBeenCalledWith(
         expect.any(String),
         1004

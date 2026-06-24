@@ -220,7 +220,7 @@ export default function EmbedClient({
       logError(error as Error, { context: 'initialTelemetry' });
     }
   }, [initialAgentId, initialClientId, initialStartOpen]);
-  const { getAuthToken, authToken, authError, scheduleAutoRefresh = () => {}, getTokenExpiresAt } = useWidgetAuth();
+  const { getAuthToken, authToken, authError, authErrorCode, scheduleAutoRefresh = () => {}, getTokenExpiresAt } = useWidgetAuth();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   // Tracks whether the initial loadSessionMessages has completed at least once.
@@ -522,6 +522,17 @@ export default function EmbedClient({
           if (window.parent !== window) {
             if (parentSensitiveOrigin) {
               window.parent.postMessage({ type: EMBED_EVENTS.AUTH_FAILURE, data: { message: authError } }, parentSensitiveOrigin);
+              // A denied origin is the most common silent first-install failure.
+              // Relay it as a WIDGET_ERROR carrying a machine-readable code so the
+              // loader emits an 'error' event (discoverable without ?widget_debug=1);
+              // the diagnostic signal that drives the dashboard travels via backend
+              // telemetry, not a visitor-facing card on the page.
+              if (authErrorCode === WidgetErrorCode.ORIGIN_NOT_ALLOWED) {
+                window.parent.postMessage(
+                  { type: EMBED_EVENTS.ERROR, data: { code: 'origin_not_allowed', source: 'embed-auth', message: authError } },
+                  parentSensitiveOrigin,
+                );
+              }
             }
           }
         } catch {
@@ -529,7 +540,7 @@ export default function EmbedClient({
         }
       return () => window.clearTimeout(id);
     }
-  }, [authError, widgetConfig, initialParentOrigin, parentSensitiveOrigin]);
+  }, [authError, authErrorCode, widgetConfig, initialParentOrigin, parentSensitiveOrigin]);
 
   // Localized "session expired" banner state (LAUNCH-READINESS #22). Surfaces
   // when the API returns 410 / 401 / 404 for the active session so the user
