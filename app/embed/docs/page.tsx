@@ -1,5 +1,6 @@
 import DocsClient from './DocsClient';
 import { getTranslations } from '../../../lib/i18n';
+import { API } from '../../../lib/api';
 import {
   getEmbedTokenSecretsFromEnv,
   isJwtLikeClientId,
@@ -10,6 +11,7 @@ import { renderDocsEmbedErrorCard } from './renderEmbedErrorCard';
 
 type Props = {
   searchParams: Promise<{
+    key?: string;
     clientId?: string;
     agentId?: string;
     configId?: string;
@@ -20,6 +22,31 @@ type Props = {
     loaderVersion?: string;
   }>;
 };
+
+/**
+ * Resolve a single install key (wgt_…) to the embed triple via the backend
+ * resolver, server-side. Returns null on any failure so the caller falls back
+ * to the standard "missing params" error card.
+ */
+async function resolveInstallKey(
+  key: string,
+): Promise<{ clientId: string; agentId: string; configId: string; locale?: string } | null> {
+  try {
+    const res = await fetch(API.embedResolve(key), { cache: 'no-store' });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const data = json?.data;
+    if (!data?.clientId || !data?.agentId || !data?.configId) return null;
+    return {
+      clientId: String(data.clientId),
+      agentId: String(data.agentId),
+      configId: String(data.configId),
+      locale: data.locale ? String(data.locale) : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
 
 function fromBase64Url(input: string): Buffer {
   const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
@@ -50,15 +77,27 @@ function decodeJwtPayloadUnsafe(token: string): Record<string, unknown> | null {
 export default async function DocsPage({ searchParams }: Props) {
   const params = await searchParams;
   const {
-    clientId,
-    agentId,
-    configId,
-    locale = 'en',
+    key,
     startOpen = 'false',
     pagePath,
     parentOrigin,
     loaderVersion,
   } = params;
+
+  let { clientId, agentId, configId } = params;
+  let locale = params.locale || 'en';
+
+  // Single-key snippet: resolve the public key to the triple server-side when
+  // the explicit IDs weren't supplied. The explicit form always wins.
+  if ((!clientId || !agentId || !configId) && key) {
+    const resolved = await resolveInstallKey(key);
+    if (resolved) {
+      clientId = resolved.clientId;
+      agentId = resolved.agentId;
+      configId = resolved.configId;
+      if (!params.locale && resolved.locale) locale = resolved.locale;
+    }
+  }
 
   const t = getTranslations(locale);
 
@@ -69,6 +108,9 @@ export default async function DocsPage({ searchParams }: Props) {
       <>
         <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
           {t.widgetConfigMissingParams as string}
+        </p>
+        <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
+          Provide a single <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>data-widget-key</code>, or all three of:
         </p>
         <ul style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.8' }}>
           <li><code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>data-client-id</code></li>

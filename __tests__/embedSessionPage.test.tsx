@@ -682,4 +682,127 @@ describe('Embed session page', () => {
 
   });
 
+  test('resolves a single install key to the embed triple via the resolver', async () => {
+
+    const embedClientPath = require.resolve('../app/embed/session/EmbedClient');
+
+    const errorBoundaryPath = require.resolve('../components/ErrorBoundary');
+
+    const i18nPath = require.resolve('../lib/i18n');
+
+    jest.doMock(embedClientPath, () => ({
+
+      __esModule: true,
+
+      default: (props: any) => React.createElement('div', { 'data-embed-client': '1', 'data-props': JSON.stringify(props) })
+
+    }));
+
+    jest.doMock(errorBoundaryPath, () => ({
+
+      __esModule: true,
+
+      default: ({ children }: any) => React.createElement('div', { 'data-error-boundary': '1' }, children)
+
+    }));
+
+    jest.doMock(i18nPath, () => ({
+
+      getLocaleDirection: () => 'ltr',
+
+      getTranslations: () => ({ widgetConfigError: 'Widget Configuration Error' }),
+
+    }));
+
+    const fetchMock = jest.fn().mockResolvedValue({
+
+      ok: true,
+
+      json: async () => ({ data: { clientId: 'c-resolved', agentId: 'a-resolved', configId: 'cfg-resolved', locale: 'fr' } }),
+
+    });
+
+    (global as any).fetch = fetchMock;
+
+    const page = require('../app/embed/session/page').default;
+
+    const element = await page({ searchParams: Promise.resolve({ key: 'wgt_test123' }) });
+
+    const html = renderToStaticMarkup(element as any);
+
+    // resolver was called with the key
+    expect(fetchMock).toHaveBeenCalledWith(
+
+      expect.stringContaining('/embed/resolve?key=wgt_test123'),
+
+      expect.anything(),
+
+    );
+
+    const m = html.match(/data-props="([^"]*)"/);
+
+    const props = JSON.parse((m ? m[1] : '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
+
+    expect(props.clientId).toBe('c-resolved');
+
+    expect(props.agentId).toBe('a-resolved');
+
+    expect(props.configId).toBe('cfg-resolved');
+
+    expect(props.locale).toBe('fr');
+
+  });
+
+  test('falls back to the error card when the key cannot be resolved', async () => {
+
+    const embedClientPath = require.resolve('../app/embed/session/EmbedClient');
+
+    const errorBoundaryPath = require.resolve('../components/ErrorBoundary');
+
+    const i18nPath = require.resolve('../lib/i18n');
+
+    jest.doMock(embedClientPath, () => ({
+
+      __esModule: true,
+
+      default: (props: any) => React.createElement('div', { 'data-embed-client': '1', 'data-props': JSON.stringify(props) })
+
+    }));
+
+    jest.doMock(errorBoundaryPath, () => ({
+
+      __esModule: true,
+
+      default: ({ children }: any) => React.createElement('div', { 'data-error-boundary': '1' }, children)
+
+    }));
+
+    jest.doMock(i18nPath, () => ({
+
+      getLocaleDirection: () => 'ltr',
+
+      getTranslations: () => ({
+
+        widgetConfigError: 'Widget Configuration Error',
+
+        widgetConfigMissingParams: 'Missing required parameters.',
+
+        widgetConfigOurDocumentation: 'our documentation',
+
+      }),
+
+    }));
+
+    (global as any).fetch = jest.fn().mockResolvedValue({ ok: false, json: async () => ({}) });
+
+    const page = require('../app/embed/session/page').default;
+
+    const element = await page({ searchParams: Promise.resolve({ key: 'wgt_bad' }) });
+
+    const html = renderToStaticMarkup(element as any);
+
+    expect(html).toContain('Widget Configuration Error');
+
+  });
+
 });

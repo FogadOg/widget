@@ -97,8 +97,15 @@
       script.getAttribute("data-key");
     const startOpen = script.getAttribute("data-start-open") === "true";
 
+    // Single install key (data-widget-key): one opaque key resolves the
+    // client-id/agent-id/config-id triple server-side. Used only when the
+    // explicit triple is absent, so the three-attribute form keeps working.
+    // (data-key remains the instance-id alias above — do NOT reuse it here.)
+    const installKey = script.getAttribute("data-widget-key");
+    const usingInstallKey = !!installKey && (!clientId || !agentId || !configId);
+
     // Validate required attributes
-    if (!clientId || !agentId || !configId) {
+    if (!usingInstallKey && (!clientId || !agentId || !configId)) {
       const missing = [];
       if (!clientId) missing.push("data-client-id");
       if (!agentId) missing.push("data-agent-id");
@@ -109,10 +116,21 @@
       // Show user-friendly error
       showErrorWidget(
         "Configuration Error",
-        `Missing required attributes: ${missing.join(", ")}. Please check your docs widget installation.`
+        `Missing required attributes: ${missing.join(", ")} (or a single data-widget-key). Please check your docs widget installation.`
       );
       return;
     }
+
+    // Identity query params for the embed URL — either the single key or the triple.
+    const setIdentityParams = (params) => {
+      if (usingInstallKey) {
+        params.set("key", installKey);
+      } else {
+        params.set("clientId", clientId);
+        params.set("agentId", agentId);
+        params.set("configId", configId);
+      }
+    };
 
     // Determine the base URL with fallback. Treat `data-dev=true` as local-only
     // so production pages do not try to load loopback resources.
@@ -132,7 +150,8 @@
     // 1) `data-powered-by` attribute on the script tag, or
     // 2) a host-provided global `window.__COMPANIN_WIDGET_LOCALES__` object.
 
-    const requestedInstanceId = explicitInstanceId || `${clientId}::${agentId}::${configId}::${locale}`;
+    const requestedInstanceId = explicitInstanceId
+      || (usingInstallKey ? `${installKey}::${locale}` : `${clientId}::${agentId}::${configId}::${locale}`);
     const registry = getOrCreateRegistry();
     let instanceId = sanitizeInstanceId(requestedInstanceId);
     if (registry[instanceId]) {
@@ -299,15 +318,13 @@
         // Create iframe with error handling
         const iframe = document.createElement("iframe");
         const params = new URLSearchParams({
-          clientId,
-          agentId,
-          configId,
           locale,
           startOpen: startOpen.toString(),
           pagePath: window.location.pathname,
           parentOrigin: window.location.origin,
           loaderVersion: WIDGET_VERSION,
         });
+        setIdentityParams(params);
 
         iframe.src = `${baseUrl}/embed/docs?${params.toString()}`;
         iframe.style.cssText = `

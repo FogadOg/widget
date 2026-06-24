@@ -190,7 +190,14 @@
     // not persist visitor IDs / sessions in localStorage until the host page
     // calls window.CompaninWidget.grantConsent(). Required for GDPR-strict deploys.
     const consentRequired = script.getAttribute("data-consent-required") === "true";
-    if (!clientId || !agentId || !configId) {
+    // Single install key (data-widget-key): a snippet can carry one opaque key
+    // instead of the client-id/agent-id/config-id triple. The embed page resolves
+    // it server-side. We only use it when the explicit triple is absent, so the
+    // three-attribute form keeps working unchanged for multi-instance setups.
+    // (Note: data-key remains the instance-id alias above — do NOT reuse it here.)
+    const installKey = script.getAttribute("data-widget-key");
+    const usingInstallKey = !!installKey && (!clientId || !agentId || !configId);
+    if (!usingInstallKey && (!clientId || !agentId || !configId)) {
       const missing = [];
       if (!clientId) missing.push("data-client-id");
       if (!agentId) missing.push("data-agent-id");
@@ -201,10 +208,23 @@
       // Show user-friendly error in widget space
       showErrorWidget(
         "Configuration Error",
-        `Missing required attributes: ${missing.join(", ")}. Please check your widget installation.`
+        `Missing required attributes: ${missing.join(", ")} (or a single data-widget-key). Please check your widget installation.`
       );
       return;
     }
+
+    // Build the identity query params for the embed session URL — either the
+    // single key, or the explicit triple. Shared by the prefetch hint and the
+    // real iframe src so they stay in sync.
+    const setIdentityParams = (params) => {
+      if (usingInstallKey) {
+        params.set("key", installKey);
+      } else {
+        params.set("clientId", clientId);
+        params.set("agentId", agentId);
+        params.set("configId", configId);
+      }
+    };
 
     // Determine the base URL with fallback. Treat `data-dev=true` as local-only
     // so production pages do not try to prefetch or load loopback resources.
@@ -243,15 +263,13 @@
           const pf = document.createElement('link');
           pf.rel = 'prefetch';
           const pfParams = new URLSearchParams({
-            clientId,
-            agentId,
-            configId,
             locale,
             startOpen: startOpen.toString(),
             pagePath: window.location.pathname,
             parentOrigin: window.location.origin,
             loaderVersion: WIDGET_VERSION,
           });
+          setIdentityParams(pfParams);
           pf.href = `${baseUrl}/embed/session?${pfParams.toString()}`;
           pf.crossOrigin = 'anonymous';
           document.head.appendChild(pf);
@@ -261,7 +279,8 @@
       }
     })();
 
-    const requestedInstanceId = explicitInstanceId || `${clientId}::${agentId}::${configId}::${locale}`;
+    const requestedInstanceId = explicitInstanceId
+      || (usingInstallKey ? `${installKey}::${locale}` : `${clientId}::${agentId}::${configId}::${locale}`);
     const registry = getOrCreateRegistry();
     let instanceId = sanitizeInstanceId(requestedInstanceId);
     if (registry[instanceId]) {
@@ -422,15 +441,13 @@
         // we no longer render a placeholder button; build iframe immediately
         const iframe = document.createElement("iframe");
         const params = new URLSearchParams({
-          clientId,
-          agentId,
-          configId,
           locale,
           startOpen: startOpen.toString(),
           pagePath: window.location.pathname,
           parentOrigin: window.location.origin,
           loaderVersion: WIDGET_VERSION,
         });
+        setIdentityParams(params);
 
         // Custom CSS is no longer forwarded via the URL query (LAUNCH-READINESS #20).
         // The dashboard now stores it on WidgetConfig.custom_css and the embed

@@ -2,11 +2,11 @@
   "docs-widget": {
     "version": "0.1.0",
     "file": "/docs-widget-0.1.0.js",
-    "integrity": "sha384-TX0yzyydYHL9KMgDrKvzwm56pagMq9dFmvR/nL7n1ZMPce+h8cqFcdEyboDsWOoy"
+    "integrity": "sha384-fAhz/CeAUnGZJ+ZTzVRJxbSXc0dFJWAwuCUmXJsX0v4B67+KtSuVGlAfEsLM3pNu"
   },
   "widget": {
     "version": "0.1.0",
     "file": "/widget-0.1.0.js",
-    "integrity": "sha384-gN/TW/JEimoNs9/boO8AYYdH3NnWtgNbBNZmIQft+hBDGHaK4UiCgUZoc9Ff4due"
+    "integrity": "sha384-rZJ74F5HlaPSeYHFbMim+pGLN6yNkzR6GBIDB0VaTc7c5a8WVM3eWz49y+b7N/eF"
   }
 }

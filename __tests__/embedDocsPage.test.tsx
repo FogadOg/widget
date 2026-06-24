@@ -388,5 +388,43 @@ describe('Docs page server component', () => {
 
   });
 
+  test('resolves a single install key to the embed triple via the resolver', async () => {
+
+    const fetchMock = jest.fn().mockResolvedValue({
+
+      ok: true,
+
+      json: async () => ({ data: { clientId: 'c-docs', agentId: 'a-docs', configId: 'cfg-docs', locale: 'de' } }),
+
+    });
+
+    (global as any).fetch = fetchMock;
+
+    const element = await (DocsPage as any)({ searchParams: Promise.resolve({ key: 'wgt_docs123' }) });
+
+    const html = renderToStaticMarkup(element as any);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+
+      expect.stringContaining('/embed/resolve?key=wgt_docs123'),
+
+      expect.anything(),
+
+    );
+
+    const m = html.match(/data-props="([^"]*)"/);
+
+    const props = JSON.parse((m ? m[1] : '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
+
+    expect(props.clientId).toBe('c-docs');
+
+    expect(props.agentId).toBe('a-docs');
+
+    expect(props.configId).toBe('cfg-docs');
+
+    expect(props.locale).toBe('de');
+
+  });
+
 });
 

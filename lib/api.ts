@@ -46,6 +46,9 @@ export const API = {
   // Agent endpoints
   agent: (agentId: string) => `${getApiV1BaseUrl()}/agents/${agentId}`,
 
+  // Single-key resolver: maps a public install key (wgt_…) to the embed triple.
+  embedResolve: (key: string) => `${getApiV1BaseUrl()}/embed/resolve?key=${encodeURIComponent(key)}`,
+
   // Config endpoints. Widget runtime now uses the read-only public projection
   // (LAUNCH-READINESS #17) so a widget_visitor JWT can load the config without
   // impersonating an admin user. The admin dashboard continues to call the
