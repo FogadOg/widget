@@ -57,7 +57,7 @@
     } catch (e) {}
     try {
       const tags = document.querySelectorAll(
-        'script[data-client-id],script[data-agent-id],#companin-widget-script,[id^="companin-widget-script"]'
+        'script[data-client-id],script[data-agent-id],script[data-widget-key],#companin-widget-script,[id^="companin-widget-script"]'
       );
       for (let i = 0; i < tags.length; i++) {
         if (tags[i].getAttribute && tags[i].getAttribute('data-dev') === 'true') return true;

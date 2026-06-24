@@ -36,7 +36,7 @@ async function resolveInstallKey(
   key: string,
 ): Promise<{ clientId: string; agentId: string; configId: string; locale?: string } | null> {
   try {
-    const res = await fetch(API.embedResolve(key), { cache: 'no-store' });
+    const res = await fetch(API.embedResolveServer(key), { cache: 'no-store' });
     if (!res.ok) return null;
     const json = await res.json();
     const data = json?.data;

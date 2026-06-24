@@ -23,6 +23,22 @@ export const getApiV1BaseUrl = (): string => {
 };
 
 /**
+ * Server-side (Node) API base URL. The browser-facing NEXT_PUBLIC_API_BASE_URL
+ * (e.g. http://localhost:8000) is NOT reachable from inside a container — there
+ * `localhost` is the widget itself, not the backend. For server-side fetches
+ * (e.g. resolving the install key in the embed page) prefer INTERNAL_API_BASE_URL
+ * (e.g. http://backend:8000), falling back to the public URL — which is correct
+ * in production, where it's a real public host reachable from the server too.
+ */
+export const getServerApiBaseUrl = (): string => {
+  return process.env.INTERNAL_API_BASE_URL || getApiBaseUrl();
+};
+
+export const getServerApiV1BaseUrl = (): string => {
+  return `${getServerApiBaseUrl()}/api/v1`;
+};
+
+/**
  * Construct full API endpoint URLs
  */
 export const API = {
@@ -47,7 +63,10 @@ export const API = {
   agent: (agentId: string) => `${getApiV1BaseUrl()}/agents/${agentId}`,
 
   // Single-key resolver: maps a public install key (wgt_…) to the embed triple.
+  // `embedResolve` is browser-facing; `embedResolveServer` is for server-side
+  // calls (embed page) that must reach the backend via the internal host.
   embedResolve: (key: string) => `${getApiV1BaseUrl()}/embed/resolve?key=${encodeURIComponent(key)}`,
+  embedResolveServer: (key: string) => `${getServerApiV1BaseUrl()}/embed/resolve?key=${encodeURIComponent(key)}`,
 
   // Config endpoints. Widget runtime now uses the read-only public projection
   // (LAUNCH-READINESS #17) so a widget_visitor JWT can load the config without
