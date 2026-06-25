@@ -72,6 +72,7 @@ export {
 } from './embed.utils';
 import type { EmbedClientProps } from './EmbedClient.types';
 import { UnsureMessagesModal } from './components/UnsureMessagesModal';
+import { WidgetNotAuthorized } from '../../../components/WidgetNotAuthorized';
 import { useStreamingMessage } from './hooks/useStreamingMessage';
 import { useUnreadTracking } from './hooks/useUnreadTracking';
 import { useWidgetResize } from './hooks/useWidgetResize';
@@ -528,8 +529,10 @@ export default function EmbedClient({
               // the diagnostic signal that drives the dashboard travels via backend
               // telemetry, not a visitor-facing card on the page.
               if (authErrorCode === WidgetErrorCode.ORIGIN_NOT_ALLOWED) {
+                // Use source:'embed-error' so widget.js calls applyErrorContainerLayout
+                // and makes the container visible (the iframe renders WidgetNotAuthorized).
                 window.parent.postMessage(
-                  { type: EMBED_EVENTS.ERROR, data: { code: 'origin_not_allowed', source: 'embed-auth', message: authError } },
+                  { type: EMBED_EVENTS.ERROR, data: { code: 'origin_not_allowed', source: 'embed-error', width: 320, height: 140, message: authError } },
                   parentSensitiveOrigin,
                 );
               }
@@ -1763,6 +1766,12 @@ export default function EmbedClient({
   ]);
 
   if (fatalError) {
+    // Origin violations show a visible error even in production — a blank widget
+    // on an unauthorized domain is indistinguishable from a load failure for site
+    // owners. All other fatal errors stay silent (parent got AUTH_FAILURE).
+    if (authErrorCode === WidgetErrorCode.ORIGIN_NOT_ALLOWED) {
+      return <WidgetNotAuthorized />;
+    }
     // In production integrations, silently render nothing — a broken widget
     // is less disruptive than a red error box on the host site. The parent
     // already received an AUTH_FAILURE postMessage for programmatic handling.
