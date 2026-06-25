@@ -118,9 +118,7 @@ export default async function GettingStartedPage() {
 
             In the dashboard, go to <strong className="text-zinc-900 dark:text-zinc-100">{t.gettingStartedStep1Customize}</strong>,
 
-            select your widget config, and copy the Config ID. Find your Client ID and Agent ID
-
-            under <strong className="text-zinc-900 dark:text-zinc-100">{t.gettingStartedStep1Datasources}</strong>.
+            select your widget config, and copy its <strong className="text-zinc-900 dark:text-zinc-100">Widget ID</strong>. That single value is all the snippet needs.
 
           </p>
 
@@ -144,11 +142,11 @@ export default async function GettingStartedPage() {
 
           <p className="text-zinc-600 dark:text-zinc-400 pl-10">
 
-            {t.gettingStartedStep2Desc.split('{configId}')[0]}
+            {t.gettingStartedStep2Desc.split('{key}')[0]}
 
-            <code className="font-mono text-sm bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">YOUR_CONFIG_ID</code>
+            <code className="font-mono text-sm bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">YOUR_WIDGET_KEY</code>
 
-            {t.gettingStartedStep2Desc.split('{configId}')[1]}
+            {t.gettingStartedStep2Desc.split('{key}')[1]}
 
           </p>
 
@@ -216,7 +214,7 @@ export default async function GettingStartedPage() {
 
             'HTML / JS':
 
-`<script\n  src="${docsWidgetSrc}"${docsIntegrityAttr ? `\n  ${docsIntegrityAttr}` : ''}\n  data-client-id="YOUR_CLIENT_ID"\n  data-agent-id="YOUR_AGENT_ID"\n  data-config-id="YOUR_CONFIG_ID"\n  data-instance-id="docs-help"\n  data-locale="en"\n  async>\n</script>
+`<script\n  src="${docsWidgetSrc}"${docsIntegrityAttr ? `\n  ${docsIntegrityAttr}` : ''}\n  data-widget-key="YOUR_WIDGET_KEY"\n  data-instance-id="docs-help"\n  data-locale="en"\n  async>\n</script>
 
 <button onclick="window.CompaninDocsWidget.open()">
 
@@ -240,11 +238,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
     script.src = '${docsWidgetSrc}';
 
-    script.dataset.clientId = 'YOUR_CLIENT_ID';
-
-    script.dataset.agentId = 'YOUR_AGENT_ID';
-
-    script.dataset.configId = 'YOUR_CONFIG_ID';
+    script.dataset.widgetKey = 'YOUR_WIDGET_KEY';
 
     script.dataset.instanceId = 'docs-help';
 
@@ -274,11 +268,7 @@ export default function App() {
 
     script.src = '${docsWidgetSrc}';
 
-    script.dataset.clientId = 'YOUR_CLIENT_ID';
-
-    script.dataset.agentId = 'YOUR_AGENT_ID';
-
-    script.dataset.configId = 'YOUR_CONFIG_ID';
+    script.dataset.widgetKey = 'YOUR_WIDGET_KEY';
 
     script.dataset.instanceId = 'docs-help';
 
@@ -322,11 +312,7 @@ export class AppComponent implements OnInit {
 
     script.src = '${docsWidgetSrc}';
 
-    script.dataset['clientId'] = 'YOUR_CLIENT_ID';
-
-    script.dataset['agentId'] = 'YOUR_AGENT_ID';
-
-    script.dataset['configId'] = 'YOUR_CONFIG_ID';
+    script.dataset['widgetKey'] = 'YOUR_WIDGET_KEY';
 
     script.dataset['instanceId'] = 'docs-help';
 
@@ -358,11 +344,7 @@ onMounted(() => {
 
   script.src = '${docsWidgetSrc}';
 
-  script.dataset.clientId = 'YOUR_CLIENT_ID';
-
-  script.dataset.agentId = 'YOUR_AGENT_ID';
-
-  script.dataset.configId = 'YOUR_CONFIG_ID';
+  script.dataset.widgetKey = 'YOUR_WIDGET_KEY';
 
   script.dataset.instanceId = 'docs-help';
 

@@ -14,7 +14,7 @@ function buildSnippets(src: string, integrityAttr: string): Record<TabKey, strin
 
   return {
 
-    'HTML / JS': `<script\n  src="${src}"${integrityLine}\n  data-client-id="YOUR_CLIENT_ID"\n  data-agent-id="YOUR_AGENT_ID"\n  data-config-id="YOUR_CONFIG_ID"\n  data-locale="en"\n  async>\n<\/script>`,
+    'HTML / JS': `<script\n  src="${src}"${integrityLine}\n  data-widget-key="YOUR_WIDGET_KEY"\n  data-locale="en"\n  async>\n<\/script>`,
 
     'Next.js': `// app/layout.tsx (or pages/_app.tsx)
 
@@ -30,11 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
     script.src = '${src}';
 
-    script.dataset.clientId = 'YOUR_CLIENT_ID';
-
-    script.dataset.agentId = 'YOUR_AGENT_ID';
-
-    script.dataset.configId = 'YOUR_CONFIG_ID';
+    script.dataset.widgetKey = 'YOUR_WIDGET_KEY';
 
     script.dataset.locale = 'en';
 
@@ -62,11 +58,7 @@ export default function App() {
 
     script.src = '${src}';
 
-    script.dataset.clientId = 'YOUR_CLIENT_ID';
-
-    script.dataset.agentId = 'YOUR_AGENT_ID';
-
-    script.dataset.configId = 'YOUR_CONFIG_ID';
+    script.dataset.widgetKey = 'YOUR_WIDGET_KEY';
 
     script.dataset.locale = 'en';
 
@@ -96,11 +88,7 @@ export class AppComponent implements OnInit {
 
     script.src = '${src}';
 
-    script.dataset['clientId'] = 'YOUR_CLIENT_ID';
-
-    script.dataset['agentId'] = 'YOUR_AGENT_ID';
-
-    script.dataset['configId'] = 'YOUR_CONFIG_ID';
+    script.dataset['widgetKey'] = 'YOUR_WIDGET_KEY';
 
     script.dataset['locale'] = 'en';
 
@@ -122,11 +110,7 @@ onMounted(() => {
 
   script.src = '${src}';
 
-  script.dataset.clientId = 'YOUR_CLIENT_ID';
-
-  script.dataset.agentId = 'YOUR_AGENT_ID';
-
-  script.dataset.configId = 'YOUR_CONFIG_ID';
+  script.dataset.widgetKey = 'YOUR_WIDGET_KEY';
 
   script.dataset.locale = 'en';
 

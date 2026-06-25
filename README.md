@@ -62,7 +62,11 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
 
 ### Required Parameters
 
-When embedding the widget, you must provide these data attributes on the script tag:
+Provide your Widget ID on the script tag — the recommended form:
+
+- `data-widget-key`: Your widget's Widget ID (the config's UUID, shown on the Install page). It resolves the client, agent, and config server-side, so it's the only identity value most installs need.
+
+**Advanced (explicit IDs)** — for multi-instance setups you can pass these three instead of `data-widget-key`:
 
 - `data-client-id`: Your OAuth client ID
 
@@ -106,11 +110,7 @@ The widget fetches its configuration from the config endpoint using the config_i
 
   src="https://widget.companin.tech/widget.js"
 
-  data-client-id="YOUR_CLIENT_ID"
-
-  data-agent-id="YOUR_AGENT_ID"
-
-  data-config-id="YOUR_CONFIG_ID"
+  data-widget-key="YOUR_WIDGET_KEY"
 
   data-locale="en"
 
@@ -126,7 +126,7 @@ The widget fetches its configuration from the config endpoint using the config_i
 
 <iframe
 
-  src="https://widget.companin.tech/embed/session?clientId=YOUR_CLIENT_ID&agentId=YOUR_AGENT_ID&configId=YOUR_CONFIG_ID&locale=en"
+  src="https://widget.companin.tech/embed/session?key=YOUR_WIDGET_KEY&locale=en"
 
   style="border: none; z-index: 999999; background-color: transparent; width: auto; height: auto;"
 
@@ -234,11 +234,7 @@ Set the locale in your script tag:
 
   src="https://widget.companin.tech/widget.js"
 
-  data-client-id="YOUR_CLIENT_ID"
-
-  data-agent-id="YOUR_AGENT_ID"
-
-  data-config-id="YOUR_CONFIG_ID"
+  data-widget-key="YOUR_WIDGET_KEY"
 
   data-locale="es">
 

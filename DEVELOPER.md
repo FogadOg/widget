@@ -46,11 +46,7 @@ For local development of the widget-app, just run `next dev` (NODE_ENV=developme
 
   src="https://your-cdn.com/widget.js"
 
-  data-client-id="..."
-
-  data-agent-id="..."
-
-  data-config-id="..."
+  data-widget-key="YOUR_WIDGET_ID"
 
   data-dev="true"
 
