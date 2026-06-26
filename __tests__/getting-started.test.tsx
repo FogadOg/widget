@@ -53,7 +53,7 @@ describe('FrameworkTabs', () => {
 
   it('shows HTML / JS snippet by default', () => {
     render(<FrameworkTabs />)
-    expect(screen.getByText(/YOUR_CONFIG_ID/)).toBeInTheDocument()
+    expect(screen.getByText(/YOUR_WIDGET_KEY/)).toBeInTheDocument()
     expect(screen.getByText(/widget\.companin\.tech\/widget\.js/)).toBeInTheDocument()
   })
 
@@ -107,10 +107,8 @@ describe('FrameworkTabs', () => {
 
   it('HTML snippet includes widget data attributes', () => {
     render(<FrameworkTabs />)
-    const pre = screen.getByText(/YOUR_CONFIG_ID/).closest('pre')
-    expect(pre?.textContent).toContain('data-client-id')
-    expect(pre?.textContent).toContain('data-agent-id')
-    expect(pre?.textContent).toContain('data-config-id')
+    const pre = screen.getByText(/YOUR_WIDGET_KEY/).closest('pre')
+    expect(pre?.textContent).toContain('data-widget-key')
     expect(pre?.textContent).toContain('data-locale')
   })
 })
@@ -134,7 +132,7 @@ describe('GettingStartedPage', () => {
   it('renders all three step headings', async () => {
     const jsx = await (GettingStartedPage as any)()
     render(jsx)
-    expect(screen.getByRole('heading', { name: /get your credentials/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /get your widget id/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /add the snippet/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /done/i })).toBeInTheDocument()
   })
@@ -162,10 +160,10 @@ describe('GettingStartedPage', () => {
     expect(screen.getByText('3')).toBeInTheDocument()
   })
 
-  it('mentions YOUR_CONFIG_ID placeholder in snippet instructions', async () => {
+  it('mentions YOUR_WIDGET_KEY placeholder in snippet instructions', async () => {
     const jsx = await (GettingStartedPage as any)()
     render(jsx)
-    expect(screen.getAllByText(/YOUR_CONFIG_ID/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/YOUR_WIDGET_KEY/).length).toBeGreaterThan(0)
   })
 })
 
