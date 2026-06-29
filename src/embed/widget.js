@@ -1349,6 +1349,30 @@
                 emitEvent('file.uploaded', data, { rawType: type });
                 break;
 
+              case "WIDGET_MESSAGE":
+                try {
+                  if (__lastHostMessage && data && data.id && __lastHostMessage.id && data.id === __lastHostMessage.id) {
+                    __lastHostMessage = null;
+                  } else {
+                    __lastHostMessage = data;
+                    emitEvent('message', data, { rawType: type, debounceMs: 120 });
+                    const _gaMsgText = (data && (data.content || data.message || data.text)) || '';
+                    _gaTrack('widget_message_sent', { agent_id: agentId, message_length: _gaMsgText.length });
+                  }
+                } catch (e) { logError('onMessage handler threw', { error: e && e.message }); }
+                break;
+
+              case "WIDGET_RESPONSE":
+                try {
+                  emitEvent('response', data, { rawType: type, debounceMs: 120 });
+                  _gaTrack('widget_response_received', { agent_id: agentId });
+                } catch (e) { logError('onResponse handler threw', { error: e && e.message }); }
+                break;
+
+              case "WIDGET_AUTH_FAILURE":
+                emitEvent('authFailure', data, { rawType: type });
+                break;
+
               case "WIDGET_ERROR":
                 logError("Widget reported an error", data);
                 if ((data && data.source === 'embed-error') || isCompactContainer()) {
@@ -1387,7 +1411,7 @@
               const t = (type || '').toString().toLowerCase();
 
               // Response-like events
-              if (t.includes('response') || t.endsWith('_response')) {
+              if (type !== 'WIDGET_RESPONSE' && (t.includes('response') || t.endsWith('_response'))) {
                 try {
                   emitEvent('response', data, { rawType: type, debounceMs: 120 });
                   _gaTrack('widget_response_received', { agent_id: agentId });
@@ -1395,14 +1419,14 @@
               }
 
               // Auth failure events
-              if (t.includes('auth') && (t.includes('fail') || t.includes('error') || t.includes('failure'))) {
+              if (type !== 'WIDGET_AUTH_FAILURE' && t.includes('auth') && (t.includes('fail') || t.includes('error') || t.includes('failure'))) {
                 try {
                   emitEvent('authFailure', data, { rawType: type });
                 } catch (e) { logError('onAuthFailure hook threw', { error: e && e.message }); }
               }
 
               // Message events (e.g., widget notifies about a sent message or incoming message)
-              if (t.includes('message') || t.includes('msg')) {
+              if (type !== 'WIDGET_MESSAGE' && (t.includes('message') || t.includes('msg'))) {
                 try {
                   // If this message matches the last host-initiated message, skip duplicate delivery
                   if (__lastHostMessage && data && data.id && __lastHostMessage.id && data.id === __lastHostMessage.id) {

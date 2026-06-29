@@ -871,6 +871,12 @@
                 _gaTrack('widget_close', { agent_id: agentId });
                 break;
 
+              case "WIDGET_MINIMIZE":
+                _isOpen = false;
+                emitEvent("close", data || { source: "widget" }, { rawType: type });
+                _gaTrack('widget_close', { agent_id: agentId });
+                break;
+
               case "WIDGET_SHOW":
                 _isOpen = true;
                 _isReady = true;
@@ -883,6 +889,12 @@
                 } else {
                   container.style.display = "block";
                 }
+                emitEvent("open", data || { source: "widget" }, { rawType: type });
+                _gaTrack('widget_open', { agent_id: agentId });
+                break;
+
+              case "WIDGET_RESTORE":
+                _isOpen = true;
                 emitEvent("open", data || { source: "widget" }, { rawType: type });
                 _gaTrack('widget_open', { agent_id: agentId });
                 break;
@@ -909,6 +921,10 @@
 
               case "WIDGET_FILE_UPLOADED":
                 emitNow('file.uploaded', data || {}, type);
+                break;
+
+              case "WIDGET_MESSAGE":
+                emitEvent("message", data, { rawType: type, debounceMs: 120 });
                 break;
 
               case "WIDGET_RESPONSE":
@@ -942,7 +958,7 @@
             // Track message sent events
             try {
               const t = (type || '').toString().toLowerCase();
-              if (t.includes('message') || t.includes('msg')) {
+              if (type !== 'WIDGET_MESSAGE' && (t.includes('message') || t.includes('msg'))) {
                 const _gaMessageText = (data && (data.content || data.message || data.text)) || '';
                 _gaTrack('widget_message_sent', { agent_id: agentId, message_length: _gaMessageText.length });
               }
