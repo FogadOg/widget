@@ -108,6 +108,22 @@ export default function EmbedClient({
   const [messages, setMessages] = useState<Message[]>([]);
   const [flowResponses, setFlowResponses] = useState<FlowResponse[]>([]);
 
+  // User identity set via chat.identify() — stored as a ref so the fetch
+  // closure always sees the latest value without needing it in deps arrays.
+  const identifiedUserRef = useRef<{
+    userId?: string | null;
+    email?: string | null;
+    name?: string | null;
+    metadata?: Record<string, unknown> | null;
+  } | null>(null);
+
+  // Page context pushed via chat.setContext() — merged into every API request.
+  const pageContextRef = useRef<Record<string, unknown>>({});
+
+  // Track the last session ID we emitted WIDGET_CONVERSATION_CREATED for so we
+  // don't fire it twice on re-renders.
+  const lastEmittedSessionIdRef = useRef<string | null>(null);
+
   // Keep <html lang> and <html dir> in sync with the widget's locale so that
   // screen readers, browser spell-check, and RTL CSS all use the correct language.
   useEffect(() => {
@@ -360,6 +376,34 @@ export default function EmbedClient({
     },
     [parentTargetOrigin],
   );
+
+  // Emit WIDGET_READY once after the bootstrap phase completes.
+  useEffect(() => {
+    if (isBootstrapping) return;
+    if (!parentSensitiveOrigin) return;
+    try {
+      window.parent.postMessage({ type: EMBED_EVENTS.READY }, parentSensitiveOrigin);
+    } catch {
+      // ignore — host may be navigating
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBootstrapping]);
+
+  // Emit WIDGET_CONVERSATION_CREATED whenever a new session ID appears.
+  useEffect(() => {
+    if (!sessionId || sessionId === lastEmittedSessionIdRef.current) return;
+    if (!parentSensitiveOrigin) return;
+    lastEmittedSessionIdRef.current = sessionId;
+    try {
+      window.parent.postMessage(
+        { type: EMBED_EVENTS.CONVERSATION_CREATED, data: { sessionId } },
+        parentSensitiveOrigin,
+      );
+    } catch {
+      // ignore
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   // Listen for consent grant/revoke from the host page via the widget loader's
   // postMessage relay (window.CompaninWidget.grantConsent / revokeConsent).
@@ -1071,7 +1115,13 @@ export default function EmbedClient({
               body: JSON.stringify({
                 content: message,
                 locale: activeLocale,
-                page_context: helpers.getPageContext(),
+                page_context: {
+                  ...helpers.getPageContext(),
+                  ...pageContextRef.current,
+                },
+                ...(identifiedUserRef.current
+                  ? { user_context: identifiedUserRef.current }
+                  : {}),
               }),
               signal: controller.signal,
             });
@@ -1682,6 +1732,64 @@ export default function EmbedClient({
 
           if (command.action === 'close' && !isCollapsed) {
             toggleCollapsed();
+            return;
+          }
+
+          if (command.action === 'reset') {
+            // Clear conversation history; mark session as gone so the next
+            // handleSubmit call opens a fresh one automatically.
+            setMessages([]);
+            setFlowResponses([]);
+            sessionIdRef.current = null;
+            hasLoadedMessagesRef.current = false;
+            lastEmittedSessionIdRef.current = null;
+            if (parentSensitiveOrigin) {
+              try {
+                window.parent.postMessage({ type: EMBED_EVENTS.CONVERSATION_CLOSED }, parentSensitiveOrigin);
+              } catch { /* ignore */ }
+            }
+            return;
+          }
+
+          if (command.action === 'identify') {
+            const u = command.data as Record<string, unknown> | null | undefined;
+            if (u && typeof u === 'object') {
+              const safe = {
+                userId: ((u.userId || u.id) as string | null) ?? null,
+                email: typeof u.email === 'string' ? u.email : null,
+                name: typeof u.name === 'string' ? u.name : null,
+                metadata: (u.metadata && typeof u.metadata === 'object')
+                  ? u.metadata as Record<string, unknown>
+                  : null,
+              };
+              identifiedUserRef.current = safe;
+              if (parentSensitiveOrigin) {
+                try {
+                  window.parent.postMessage(
+                    { type: EMBED_EVENTS.USER_UPDATED, data: safe },
+                    parentSensitiveOrigin,
+                  );
+                } catch { /* ignore */ }
+              }
+            }
+            return;
+          }
+
+          if (command.action === 'prefill') {
+            const d = command.data as Record<string, unknown> | null | undefined;
+            const text = typeof d?.text === 'string' ? d.text : '';
+            if (text) setInput(text);
+            return;
+          }
+
+          if (command.action === 'context') {
+            const d = command.data as Record<string, unknown> | null | undefined;
+            if (d && typeof d === 'object') {
+              // Merge into the ref — excluded keys are internal action routing fields.
+              const { action: _a, ...rest } = d as { action?: unknown; [k: string]: unknown };
+              pageContextRef.current = { ...pageContextRef.current, ...rest };
+            }
+            return;
           }
 
           return;

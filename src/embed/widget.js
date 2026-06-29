@@ -1,5 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 (function () {
+  // Capture any commands queued before this script finished loading.
+  // Enables async/deferred script loading: callers can do
+  //   window.chat = window.chat || []; window.chat.push(['open']);
+  // and the commands are replayed once the real API is installed.
+  const _preInitQueue = (function () {
+    try {
+      const ex = window.CompaninWidget || window.chat;
+      if (Array.isArray(ex)) return ex.slice();
+      if (ex && ex._isQueue && Array.isArray(ex._q)) return ex._q.slice();
+    } catch (e) {}
+    return null;
+  })();
+
   // Local constants to mirror centralized app constants (keeps single-place edits easy)
   const STORAGE_PREFIX = 'companin-';
   const WIDGET_SCRIPT_ID = 'companin-widget';
@@ -573,24 +586,34 @@
       window.addEventListener("message", handleMessage);
 
       // Expose API for programmatic control
-        const eventNames = ["open", "close", "message", "response", "authFailure", "error"];
-        const callbackRegistry = eventNames.reduce((acc, name) => {
-          acc[name] = new Set();
-          return acc;
-        }, {});
+        // Dynamic registry — any event name is accepted (new dotted names like
+        // 'message.sent' live alongside the legacy flat names like 'message').
+        const callbackRegistry = {};
         const lastEventEnvelope = {};
         const debounceState = {};
         let __lastHostMessage = null;
 
+        // Backward-compat aliases: old flat names the caller might pass → canonical name.
+        // New dotted names pass through unchanged.
+        const LEGACY_NAME_MAP = {
+          auth_failure: 'authFailure',
+          authfailure: 'authFailure',
+        };
         function normalizeEventName(name) {
           if (!name) return null;
-          const normalized = String(name).toLowerCase();
-          if (normalized === 'auth_failure' || normalized === 'authfailure') return 'authFailure';
-          if (normalized === 'open' || normalized === 'close' || normalized === 'message' || normalized === 'response' || normalized === 'error' || normalized === 'authfailure') {
-            return normalized === 'authfailure' ? 'authFailure' : normalized;
-          }
-          return null;
+          const s = String(name);
+          return LEGACY_NAME_MAP[s.toLowerCase()] || s;
         }
+
+        // Emit aliases alongside the canonical event so callers can use either style.
+        // e.g. emitting 'open' also fires 'widget.opened'.
+        const EMIT_ALIASES = {
+          open:        ['widget.opened'],
+          close:       ['widget.closed'],
+          message:     ['message.sent'],
+          response:    ['message.received'],
+          authFailure: ['auth.failed'],
+        };
 
         function invokeCallbackSafely(fn, payload, label) {
           setTimeout(() => {
@@ -634,9 +657,24 @@
           const envelope = createEventEnvelope(name, data, rawType);
           lastEventEnvelope[name] = envelope;
 
-          const handlers = Array.from(callbackRegistry[name] || []);
+          if (!callbackRegistry[name]) callbackRegistry[name] = new Set();
+          const handlers = Array.from(callbackRegistry[name]);
           handlers.forEach((handler) => invokeCallbackSafely(handler, envelope, name));
           dispatchDomEvents(name, envelope);
+
+          // Fire dotted-name aliases alongside the canonical event
+          const aliases = EMIT_ALIASES[name];
+          if (aliases) {
+            aliases.forEach(function (alias) {
+              const aliasEnvelope = createEventEnvelope(alias, data, rawType);
+              lastEventEnvelope[alias] = aliasEnvelope;
+              if (!callbackRegistry[alias]) callbackRegistry[alias] = new Set();
+              Array.from(callbackRegistry[alias]).forEach(function (h) {
+                invokeCallbackSafely(h, aliasEnvelope, alias);
+              });
+              dispatchDomEvents(alias, aliasEnvelope);
+            });
+          }
 
           return envelope;
         }
@@ -676,14 +714,18 @@
           try {
             const normalized = normalizeEventName(eventName);
             if (!normalized || typeof handler !== 'function') return () => {};
+            if (!callbackRegistry[normalized]) callbackRegistry[normalized] = new Set();
             callbackRegistry[normalized].add(handler);
 
+            // Replay the last envelope for this event so late subscribers catch up
             if (lastEventEnvelope[normalized]) {
               invokeCallbackSafely(handler, lastEventEnvelope[normalized], normalized);
             }
 
             return () => {
-              try { callbackRegistry[normalized].delete(handler); } catch (e) {}
+              try {
+                if (callbackRegistry[normalized]) callbackRegistry[normalized].delete(handler);
+              } catch (e) {}
             };
           } catch (e) {
             logError('Failed to register event handler', { eventName, error: e && e.message });
@@ -695,7 +737,9 @@
           try {
             const normalized = normalizeEventName(eventName);
             if (!normalized || typeof handler !== 'function') return false;
-            return callbackRegistry[normalized].delete(handler);
+            return callbackRegistry[normalized]
+              ? callbackRegistry[normalized].delete(handler)
+              : false;
           } catch (e) {
             logError('Failed to unregister event handler', { eventName, error: e && e.message });
             return false;
@@ -738,6 +782,7 @@
 
           show: () => {
             try {
+              allowDisplay = true;
               container.style.display = "block";
               emitEvent('open', { source: 'host-api' }, { rawType: 'HOST_SHOW' });
             } catch (err) {
@@ -747,6 +792,7 @@
           },
           hide: () => {
             try {
+              allowDisplay = false;
               container.style.display = "none";
               emitEvent('close', { source: 'host-api' }, { rawType: 'HOST_HIDE' });
             } catch (err) {
@@ -830,14 +876,236 @@
               } catch (e) {}
               try {
                 const remainingIds = Object.keys(registry);
+                const fallback = remainingIds.length ? registry[remainingIds[remainingIds.length - 1]] : undefined;
                 if (window.CompaninWidget === widgetApi) {
-                  window.CompaninWidget = remainingIds.length ? registry[remainingIds[remainingIds.length - 1]] : undefined;
+                  window.CompaninWidget = fallback;
+                }
+                if (window.chat === widgetApi) {
+                  window.chat = fallback;
                 }
               } catch (e) {
-                logError("Failed to update global CompaninWidget reference", { error: e && e.message });
+                logError("Failed to update global widget references", { error: e && e.message });
               }
             } catch (err) {
               logError("Failed to destroy widget", { error: err.message });
+            }
+          },
+
+          // --------------- new lifecycle & control methods ---------------
+
+          /**
+           * init(config?) — idempotent initialiser.
+           * If the widget is already running this is a no-op that returns a
+           * resolved Promise so callers can safely `await chat.init()`.
+           * Passing a config object forwards it to the iframe as a live
+           * config-update (useful for single-page apps that know the config
+           * only after the script tag has already executed).
+           */
+          init: (config) => {
+            // If a config override is passed, forward it to the iframe via the
+            // existing WIDGET_INIT_CONFIG channel (already handled by events.ts).
+            try {
+              if (config && typeof config === 'object') {
+                if (iframe.contentWindow) {
+                  iframe.contentWindow.postMessage(
+                    { type: 'WIDGET_INIT_CONFIG', data: config },
+                    targetOrigin
+                  );
+                }
+              }
+            } catch (err) {
+              logError('init: failed to forward config update', { error: err && err.message });
+            }
+            return Promise.resolve(widgetApi);
+          },
+
+          /**
+           * open() — make the widget container visible AND tell the iframe
+           * to expand the chat panel.
+           * Uses the HOST_MESSAGE + { action: 'open' } protocol that the
+           * iframe's EmbedClient already understands.
+           */
+          open: () => {
+            try {
+              allowDisplay = true;
+              container.style.display = 'block';
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'HOST_MESSAGE', data: { action: 'open' } },
+                  targetOrigin
+                );
+              }
+              emitEvent('open', { source: 'host-api' }, { rawType: 'HOST_OPEN' });
+              _gaTrack('widget_open', { agent_id: agentId });
+            } catch (err) {
+              logError('Failed to open widget', { error: err.message });
+              emitEvent('error', { message: err.message, code: 'OPEN_FAILED' }, { rawType: 'HOST_OPEN_ERROR' });
+            }
+          },
+
+          /**
+           * close() — tell the iframe to collapse / minimize the chat panel.
+           * The launcher button stays visible; call hide() to remove the
+           * container entirely.
+           * Uses the HOST_MESSAGE + { action: 'close' } protocol.
+           */
+          close: () => {
+            try {
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'HOST_MESSAGE', data: { action: 'close' } },
+                  targetOrigin
+                );
+              }
+              emitEvent('close', { source: 'host-api' }, { rawType: 'HOST_CLOSE' });
+              _gaTrack('widget_close', { agent_id: agentId });
+            } catch (err) {
+              logError('Failed to close widget', { error: err.message });
+              emitEvent('error', { message: err.message, code: 'CLOSE_FAILED' }, { rawType: 'HOST_CLOSE_ERROR' });
+            }
+          },
+
+          /**
+           * reset() — clear the conversation and start a fresh session.
+           * Clears host-side cached event state and posts HOST_MESSAGE with
+           * { action: 'reset' } so the iframe can wipe its conversation.
+           */
+          reset: () => {
+            try {
+              // Clear cached event envelopes so stale 'last event' isn't replayed
+              Object.keys(lastEventEnvelope).forEach(function (k) {
+                delete lastEventEnvelope[k];
+              });
+              // Cancel any in-flight debounce timers
+              Object.keys(debounceState).forEach(function (k) {
+                const state = debounceState[k];
+                if (state && state.timer) clearTimeout(state.timer);
+                delete debounceState[k];
+              });
+              __lastHostMessage = null;
+              _isOpen = false;
+              _isReady = false;
+              _hasEmittedReady = false;
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'HOST_MESSAGE', data: { action: 'reset' } },
+                  targetOrigin
+                );
+              }
+            } catch (err) {
+              logError('Failed to reset widget', { error: err.message });
+            }
+          },
+
+          // ── New control & inspection methods ────────────────────────────────
+
+          /** Toggle the chat panel open/closed. */
+          toggle: () => {
+            try {
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'HOST_MESSAGE', data: { action: 'toggle' } },
+                  targetOrigin
+                );
+              }
+            } catch (err) {
+              logError('Failed to toggle widget', { error: err.message });
+            }
+          },
+
+          /** Whether the chat panel is currently expanded (not minimized). */
+          isOpen: () => _isOpen,
+
+          /** Whether the widget container is visible (display:block). */
+          isVisible: () => {
+            try { return container.style.display !== 'none'; }
+            catch (e) { return false; }
+          },
+
+          /** Whether the iframe has completed its bootstrap handshake. */
+          isReady: () => _isReady,
+
+          /**
+           * identify(user) — attach user identity to the session.
+           * Forwards the data to the iframe and emits 'user.updated' locally.
+           *
+           * @param {{ userId?:string, id?:string, email?:string, name?:string, metadata?:object }} user
+           */
+          identify: (user) => {
+            try {
+              if (!user || typeof user !== 'object') {
+                logError('identify() requires a non-null object', {});
+                return;
+              }
+              const safe = {
+                userId: user.userId || user.id || null,
+                email: typeof user.email === 'string' ? user.email : null,
+                name: typeof user.name === 'string' ? user.name : null,
+                metadata: (user.metadata && typeof user.metadata === 'object') ? user.metadata : null,
+              };
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'HOST_MESSAGE', data: Object.assign({ action: 'identify' }, safe) },
+                  targetOrigin
+                );
+              }
+              emitEvent('user.updated', safe, { rawType: 'HOST_IDENTIFY' });
+            } catch (err) {
+              logError('Failed to identify user', { error: err.message });
+            }
+          },
+
+          /**
+           * prefill(text) — pre-populate the chat input field.
+           * Call before open() so the user can edit before sending.
+           */
+          prefill: (text) => {
+            try {
+              if (typeof text !== 'string') return;
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'HOST_MESSAGE', data: { action: 'prefill', text } },
+                  targetOrigin
+                );
+              }
+            } catch (err) {
+              logError('Failed to prefill input', { error: err.message });
+            }
+          },
+
+          /**
+           * setContext(data) — push page-level context to the widget.
+           * The iframe merges this into the next API request's page_context.
+           */
+          setContext: (data) => {
+            try {
+              if (!data || typeof data !== 'object') return;
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'HOST_MESSAGE', data: Object.assign({ action: 'context' }, data) },
+                  targetOrigin
+                );
+              }
+            } catch (err) {
+              logError('Failed to set context', { error: err.message });
+            }
+          },
+
+          /**
+           * update(config) — live-update widget configuration.
+           * Forwards a partial WidgetConfig to the iframe via WIDGET_INIT_CONFIG.
+           */
+          update: (config) => {
+            try {
+              if (!config || typeof config !== 'object') return;
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'WIDGET_INIT_CONFIG', data: config },
+                  targetOrigin
+                );
+              }
+            } catch (err) {
+              logError('Failed to update config', { error: err.message });
             }
           },
         };
@@ -855,7 +1123,38 @@
         };
         window.CompaninWidget = widgetApi;
 
+        // Expose a `chat` convenience alias so callers can write:
+        //   const chat = window.chat;  chat.open(); chat.close(); etc.
+        // Only claim the name if it is free or still a pre-init queue.
+        try {
+          if (typeof window.chat === 'undefined' || (window.chat && window.chat._isQueue)) {
+            window.chat = widgetApi;
+          }
+        } catch (e) {}
+
+        // Replay any commands that were queued before this script ran
+        // (happens when the script tag has async/defer).
+        if (_preInitQueue && _preInitQueue.length) {
+          _preInitQueue.forEach(function (item) {
+            try {
+              const method = Array.isArray(item) ? item[0] : String(item);
+              const args = Array.isArray(item) && item.length > 1 ? item.slice(1) : [];
+              if (typeof widgetApi[method] === 'function') {
+                widgetApi[method].apply(widgetApi, args);
+              }
+            } catch (e) {
+              logError('Failed to replay pre-init queued command', { item: String(item), error: e && e.message });
+            }
+          });
+        }
+
         let allowDisplay = false;
+        // Tracks whether the chat panel is currently expanded (not the same as
+        // container visibility — the launcher button is visible even when closed).
+        let _isOpen = false;
+        // Turns true once the iframe has sent its first WIDGET_SHOW/WIDGET_READY.
+        let _isReady = false;
+        let _hasEmittedReady = false;
 
         function handleMessage(event) {
           try {
@@ -987,14 +1286,14 @@
 
               case "WIDGET_HIDE":
                 allowDisplay = false;
+                _isOpen = false;
                 container.style.display = "none";
                 emitEvent('close', data, { rawType: type });
                 _gaTrack('widget_close', { agent_id: agentId });
                 break;
 
               case "WIDGET_MINIMIZE":
-                // Widget requested minimize -> show minimized button state
-                // Don't hide container; let the iframe handle its own UI state
+                _isOpen = false;
                 emitEvent('close', data, { rawType: type });
                 _gaTrack('widget_close', { agent_id: agentId });
                 break;
@@ -1005,6 +1304,7 @@
                   visibilityFallbackTimeout = null;
                 }
                 allowDisplay = true;
+                _isOpen = true;
                 if (data && data.source === 'embed-error') {
                   applyErrorContainerLayout(data);
                 } else {
@@ -1012,13 +1312,41 @@
                 }
                 emitEvent('open', data, { rawType: type });
                 _gaTrack('widget_open', { agent_id: agentId });
+                if (!_isReady) {
+                  _isReady = true;
+                  _hasEmittedReady = true;
+                  emitEvent('widget.ready', data, { rawType: 'WIDGET_READY' });
+                }
                 break;
 
               case "WIDGET_RESTORE":
-                // Widget requested restore/expand -> treat as open
-                // Container stays visible; iframe handles its own expanded state
+                _isOpen = true;
                 emitEvent('open', data, { rawType: type });
                 _gaTrack('widget_open', { agent_id: agentId });
+                break;
+
+              case "WIDGET_READY":
+                if (!_isReady) {
+                  _isReady = true;
+                  _hasEmittedReady = true;
+                  emitEvent('widget.ready', data, { rawType: type });
+                }
+                break;
+
+              case "WIDGET_CONVERSATION_CREATED":
+                emitEvent('conversation.created', data, { rawType: type });
+                break;
+
+              case "WIDGET_CONVERSATION_CLOSED":
+                emitEvent('conversation.closed', data, { rawType: type });
+                break;
+
+              case "WIDGET_USER_UPDATED":
+                emitEvent('user.updated', data, { rawType: type });
+                break;
+
+              case "WIDGET_FILE_UPLOADED":
+                emitEvent('file.uploaded', data, { rawType: type });
                 break;
 
               case "WIDGET_ERROR":
@@ -1027,7 +1355,6 @@
                   applyErrorContainerLayout(data);
                 }
                 emitEvent('error', data, { rawType: type });
-                // If error indicates auth failure, call auth hook
                 try {
                   const code = data && (data.code || data.error || '').toString().toLowerCase();
                   if (code && code.includes('auth')) {
@@ -1046,8 +1373,6 @@
                 break;
 
               case 'WIDGET_HMR_RELOAD':
-                // Dev-only: Next.js HMR fired inside the iframe. Reload just the
-                // iframe so the host page doesn't have to be hard-refreshed.
                 if (isDev) {
                   try { iframe.src = iframe.src; } catch (e) {}
                 }

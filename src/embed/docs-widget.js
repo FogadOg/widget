@@ -36,6 +36,16 @@
     return window[DOCS_REGISTRY_KEY];
   };
 
+  // Capture any commands queued before this script executed (async/defer).
+  const _preInitQueue = (function () {
+    try {
+      const ex = window.CompaninDocsWidget;
+      if (Array.isArray(ex)) return ex.slice();
+      if (ex && ex._isQueue && Array.isArray(ex._q)) return ex._q.slice();
+    } catch (e) {}
+    return null;
+  })();
+
     try {
 
     // Error tracking
@@ -437,30 +447,24 @@
         // Listen for widget events with error handling
         window.addEventListener("message", handleMessage);
 
-        const eventNames = ["open", "close", "message", "response", "authFailure", "error"];
-        const callbackRegistry = eventNames.reduce((acc, name) => {
-          acc[name] = new Set();
-          return acc;
-        }, {});
+        const callbackRegistry = {};
         const lastEventEnvelope = {};
         const debounceState = {};
 
+        const LEGACY_NAME_MAP = { auth_failure: 'authFailure', authfailure: 'authFailure' };
         function normalizeEventName(name) {
           if (!name) return null;
-          const normalized = String(name).toLowerCase();
-          if (normalized === "auth_failure" || normalized === "authfailure") return "authFailure";
-          if (
-            normalized === "open" ||
-            normalized === "close" ||
-            normalized === "message" ||
-            normalized === "response" ||
-            normalized === "error" ||
-            normalized === "authfailure"
-          ) {
-            return normalized === "authfailure" ? "authFailure" : normalized;
-          }
-          return null;
+          const s = String(name);
+          return LEGACY_NAME_MAP[s.toLowerCase()] || s;
         }
+
+        const EMIT_ALIASES = {
+          open:        ['widget.opened'],
+          close:       ['widget.closed'],
+          message:     ['message.sent'],
+          response:    ['message.received'],
+          authFailure: ['auth.failed'],
+        };
 
         function invokeCallbackSafely(fn, payload, label) {
           setTimeout(() => {
@@ -505,11 +509,22 @@
         function emitNow(name, data, rawType) {
           const envelope = createEventEnvelope(name, data, rawType);
           lastEventEnvelope[name] = envelope;
-
-          const handlers = Array.from(callbackRegistry[name] || []);
+          if (!callbackRegistry[name]) callbackRegistry[name] = new Set();
+          const handlers = Array.from(callbackRegistry[name]);
           handlers.forEach((handler) => invokeCallbackSafely(handler, envelope, name));
           dispatchDomEvents(name, envelope);
-
+          const aliases = EMIT_ALIASES[name];
+          if (aliases) {
+            aliases.forEach(function (alias) {
+              const aliasEnvelope = createEventEnvelope(alias, data, rawType);
+              lastEventEnvelope[alias] = aliasEnvelope;
+              if (!callbackRegistry[alias]) callbackRegistry[alias] = new Set();
+              Array.from(callbackRegistry[alias]).forEach(function (h) {
+                invokeCallbackSafely(h, aliasEnvelope, alias);
+              });
+              dispatchDomEvents(alias, aliasEnvelope);
+            });
+          }
           return envelope;
         }
 
@@ -551,6 +566,7 @@
           try {
             const normalized = normalizeEventName(eventName);
             if (!normalized || typeof handler !== "function") return () => {};
+            if (!callbackRegistry[normalized]) callbackRegistry[normalized] = new Set();
             callbackRegistry[normalized].add(handler);
 
             if (lastEventEnvelope[normalized]) {
@@ -559,7 +575,7 @@
 
             return () => {
               try {
-                callbackRegistry[normalized].delete(handler);
+                if (callbackRegistry[normalized]) callbackRegistry[normalized].delete(handler);
               } catch {
                 // ignore
               }
@@ -574,6 +590,7 @@
           try {
             const normalized = normalizeEventName(eventName);
             if (!normalized || typeof handler !== "function") return false;
+            if (!callbackRegistry[normalized]) return false;
             return callbackRegistry[normalized].delete(handler);
           } catch (e) {
             logError("Failed to unregister event handler", { eventName, error: e && e.message });
@@ -592,8 +609,17 @@
           });
         }
 
+        // State tracking for isOpen/isReady/isVisible queries
+        // allowDisplay starts true: docs widget uses WIDGET_RESIZE for initial display.
+        // hide() sets it false to block re-appearance; show() restores it.
+        let allowDisplay = true;
+        let _isOpen = false;
+        let _isReady = false;
+        let _hasEmittedReady = false;
+
         // Expose API for programmatic control
         const docsWidgetApi = {
+          init: () => Promise.resolve(docsWidgetApi),
           on,
           off,
           onOpen: (fn) => registerLegacyHook("open", fn),
@@ -634,6 +660,7 @@
           },
           show: () => {
             try {
+              allowDisplay = true;
               container.style.display = "block";
               emitEvent("open", { source: "host-api" }, { rawType: "HOST_SHOW" });
             } catch (err) {
@@ -643,11 +670,66 @@
           },
           hide: () => {
             try {
+              allowDisplay = false;
               container.style.display = "none";
               emitEvent("close", { source: "host-api" }, { rawType: "HOST_HIDE" });
             } catch (err) {
               logError("Failed to hide docs widget", { error: err.message });
               emitEvent("error", { message: err.message, code: "HIDE_FAILED" }, { rawType: "HOST_HIDE_ERROR" });
+            }
+          },
+          toggle: () => {
+            if (_isOpen) {
+              docsWidgetApi.close();
+            } else {
+              docsWidgetApi.open();
+            }
+          },
+          isOpen: () => _isOpen,
+          isVisible: () => container.style.display !== "none",
+          isReady: () => _isReady,
+          identify: (user) => {
+            try {
+              if (!user || typeof user !== 'object') return;
+              postToIframe({ type: 'HOST_MESSAGE', data: { action: 'identify', ...user } });
+              emitEvent('user.updated', { source: 'host-api', user }, { rawType: 'HOST_IDENTIFY' });
+            } catch (err) {
+              logError('Failed to identify user in docs widget', { error: err.message });
+            }
+          },
+          prefill: (text) => {
+            try {
+              if (typeof text !== 'string') return;
+              postToIframe({ type: 'HOST_MESSAGE', data: { action: 'prefill', text } });
+            } catch (err) {
+              logError('Failed to prefill docs widget', { error: err.message });
+            }
+          },
+          setContext: (data) => {
+            try {
+              if (!data || typeof data !== 'object') return;
+              postToIframe({ type: 'HOST_MESSAGE', data: { action: 'context', ...data } });
+            } catch (err) {
+              logError('Failed to set context on docs widget', { error: err.message });
+            }
+          },
+          update: (config) => {
+            try {
+              if (!config || typeof config !== 'object') return;
+              postToIframe({ type: 'WIDGET_INIT_CONFIG', data: config });
+            } catch (err) {
+              logError('Failed to update docs widget config', { error: err.message });
+            }
+          },
+          reset: () => {
+            try {
+              _isOpen = false;
+              _isReady = false;
+              _hasEmittedReady = false;
+              postToIframe({ type: 'HOST_MESSAGE', data: { action: 'reset' } });
+              emitEvent('conversation.closed', { source: 'host-api' }, { rawType: 'HOST_RESET' });
+            } catch (err) {
+              logError('Failed to reset docs widget', { error: err.message });
             }
           },
           sendMessage: (message) => {
@@ -670,6 +752,10 @@
                 const state = debounceState[eventName];
                 if (state && state.timer) clearTimeout(state.timer);
               });
+              _isOpen = false;
+              _isReady = false;
+              _hasEmittedReady = false;
+              allowDisplay = false;
               if (container.parentNode) {
                 container.parentNode.removeChild(container);
               }
@@ -703,6 +789,22 @@
         };
         window.CompaninDocsWidget = docsWidgetApi;
 
+        // Replay commands that were queued before the script executed.
+        if (_preInitQueue) {
+          _preInitQueue.forEach(function (cmd) {
+            try {
+              if (!cmd) return;
+              if (typeof cmd === 'function') { cmd(docsWidgetApi); return; }
+              if (Array.isArray(cmd)) {
+                const [method, ...args] = cmd;
+                if (typeof docsWidgetApi[method] === 'function') docsWidgetApi[method](...args);
+              }
+            } catch (e) {
+              logError('Pre-init queue replay error', { error: e && e.message });
+            }
+          });
+        }
+
         function handleMessage(event) {
           try {
             if (event.source !== iframe.contentWindow) return;
@@ -728,7 +830,6 @@
             switch (type) {
               case "WIDGET_RESIZE":
                 if (data?.hide) {
-                  // Hide the container
                   container.style.display = "none";
                   container.style.width = "0";
                   container.style.height = "0";
@@ -739,8 +840,9 @@
                   const containerPadding = getContainerPadding(parsedWidth, parsedHeight);
                   container.style.padding = `${containerPadding}px`;
                   if (data.height === "100vh") {
-                    // Full screen mode
-                    container.style.display = "block";
+                    if (allowDisplay) {
+                      container.style.display = "block";
+                    }
                     container.style.height = "100vh";
                     container.style.width = "100vw";
                     container.style.top = "0";
@@ -748,6 +850,9 @@
                   } else {
                     const effectiveHeight = parsedHeight !== null ? parsedHeight + (containerPadding * 2) : data.height;
                     container.style.height = `${effectiveHeight}px`;
+                    if (allowDisplay) {
+                      container.style.display = "block";
+                    }
                   }
                 }
                 if (data?.width && data.width !== "100vw") {
@@ -760,12 +865,15 @@
                 break;
 
               case "WIDGET_HIDE":
+                _isOpen = false;
                 container.style.display = "none";
                 emitEvent("close", data || { source: "widget" }, { rawType: type });
                 _gaTrack('widget_close', { agent_id: agentId });
                 break;
 
               case "WIDGET_SHOW":
+                _isOpen = true;
+                _isReady = true;
                 if (visibilityFallbackTimeout) {
                   clearTimeout(visibilityFallbackTimeout);
                   visibilityFallbackTimeout = null;
@@ -777,6 +885,30 @@
                 }
                 emitEvent("open", data || { source: "widget" }, { rawType: type });
                 _gaTrack('widget_open', { agent_id: agentId });
+                break;
+
+              case "WIDGET_READY":
+                _isReady = true;
+                if (!_hasEmittedReady) {
+                  _hasEmittedReady = true;
+                  emitNow('widget.ready', data || {}, type);
+                }
+                break;
+
+              case "WIDGET_CONVERSATION_CREATED":
+                emitNow('conversation.created', data || {}, type);
+                break;
+
+              case "WIDGET_CONVERSATION_CLOSED":
+                emitNow('conversation.closed', data || {}, type);
+                break;
+
+              case "WIDGET_USER_UPDATED":
+                emitNow('user.updated', data || {}, type);
+                break;
+
+              case "WIDGET_FILE_UPLOADED":
+                emitNow('file.uploaded', data || {}, type);
                 break;
 
               case "WIDGET_RESPONSE":

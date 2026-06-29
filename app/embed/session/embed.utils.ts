@@ -33,6 +33,7 @@ export function parseHostMessageCommand(raw: unknown): ParsedHostMessageCommand 
     if (cmd === 'open' || cmd === 'show' || cmd === 'restore') return { kind: 'action', action: 'open' };
     if (cmd === 'close' || cmd === 'hide' || cmd === 'minimize') return { kind: 'action', action: 'close' };
     if (cmd === 'toggle') return { kind: 'action', action: 'toggle' };
+    if (cmd === 'reset') return { kind: 'action', action: 'reset' };
     return { kind: 'message', text };
   }
 
@@ -56,6 +57,22 @@ export function parseHostMessageCommand(raw: unknown): ParsedHostMessageCommand 
 
     if (command === 'toggle') {
       return { kind: 'action', action: 'toggle' };
+    }
+
+    if (command === 'reset') {
+      return { kind: 'action', action: 'reset' };
+    }
+
+    if (command === 'identify') {
+      return { kind: 'action', action: 'identify', data: payload };
+    }
+
+    if (command === 'prefill') {
+      return { kind: 'action', action: 'prefill', data: payload };
+    }
+
+    if (command === 'context') {
+      return { kind: 'action', action: 'context', data: payload };
     }
   }
 

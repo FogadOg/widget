@@ -26,10 +26,12 @@ export type EmbedClientProps = {
   previewConfig?: string;
 };
 
-export type HostWidgetAction = 'open' | 'close' | 'toggle';
+export type HostWidgetAction =
+  | 'open' | 'close' | 'toggle' | 'reset'
+  | 'identify' | 'prefill' | 'context';
 
 export type ParsedHostMessageCommand =
-  | { kind: 'action'; action: HostWidgetAction }
+  | { kind: 'action'; action: HostWidgetAction; data?: unknown }
   | { kind: 'message'; text: string }
   | null;
 
