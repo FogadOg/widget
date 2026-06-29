@@ -32,6 +32,14 @@ export const EMBED_EVENTS = {
   USER_UPDATED: 'WIDGET_USER_UPDATED',
   /** A file was uploaded by the user (future). */
   FILE_UPLOADED: 'WIDGET_FILE_UPLOADED',
+
+  // ── Message interceptors ──────────────────────────────────────────────────
+  /** Iframe requests parent to run interceptors; parent replies with INTERCEPT_RESPONSE. */
+  INTERCEPT_REQUEST: 'WIDGET_INTERCEPT_REQUEST',
+  /** Parent sends intercepted (possibly modified) content back to the iframe. */
+  INTERCEPT_RESPONSE: 'HOST_INTERCEPT_RESPONSE',
+  /** Parent notifies iframe that at least one interceptor has been registered. */
+  INTERCEPT_ACTIVE: 'HOST_INTERCEPT_ACTIVE',
 } as const;
 import { STORAGE_PREFIX } from "./constants";
 

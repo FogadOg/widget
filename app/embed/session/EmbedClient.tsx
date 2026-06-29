@@ -180,6 +180,10 @@ export default function EmbedClient({
     handleStopStreaming,
   } = useStreamingMessage();
   const isSubmittingRef = useRef(false);
+  // Interceptor support: pending callbacks keyed by requestId, and a flags ref
+  // tracking which interceptor types are active in the parent page.
+  const interceptCallbacksRef = useRef<Map<string, (content: string | null) => void>>(new Map());
+  const interceptorsActiveRef = useRef({ beforeSend: false, afterReceive: false });
   const [isCollapsed, setIsCollapsed] = useState(true);
   // Guards preview open/closed persistence: stays false until the stored state
   // has been restored, so the initial default `true` can't clobber it first.
@@ -464,6 +468,37 @@ export default function EmbedClient({
       document.documentElement.dir = getLocaleDirection(activeLocale);
     }
   }, [activeLocale]);
+
+  // Handle HOST_INTERCEPT_ACTIVE — parent notifies us it has registered interceptors.
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (!isTrustedParentMessage(event, parentTargetOrigin)) return;
+      const { type, data } = (event.data || {}) as { type?: string; data?: Record<string, boolean> };
+      if (type !== EMBED_EVENTS.INTERCEPT_ACTIVE || !data) return;
+      if (data.beforeSend) interceptorsActiveRef.current.beforeSend = true;
+      if (data.afterReceive) interceptorsActiveRef.current.afterReceive = true;
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [parentTargetOrigin]);
+
+  // Handle HOST_INTERCEPT_RESPONSE — parent sends back the (possibly modified) content.
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (!isTrustedParentMessage(event, parentTargetOrigin)) return;
+      const { type, requestId, content } = (event.data || {}) as {
+        type?: string; requestId?: string; content?: string | null;
+      };
+      if (type !== EMBED_EVENTS.INTERCEPT_RESPONSE || !requestId) return;
+      const resolve = interceptCallbacksRef.current.get(requestId);
+      if (resolve) {
+        interceptCallbacksRef.current.delete(requestId);
+        resolve(content ?? null);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [parentTargetOrigin]);
 
 
 
@@ -954,16 +989,59 @@ export default function EmbedClient({
     return true;
   };
 
+  // Sends a single interceptor round-trip to the parent page and returns the
+  // (possibly modified) content. Falls back to the original after 500 ms so a
+  // slow/missing parent never blocks the chat. Returns null only when a
+  // beforeSend interceptor explicitly returns null (cancel the send).
+  const runInterceptors = useCallback(
+    (interceptType: 'before_send' | 'after_receive', content: string): Promise<string | null> => {
+      if (window.parent === window || !parentSensitiveOrigin) return Promise.resolve(content);
+      return new Promise<string | null>((resolve) => {
+        const requestId = `ic-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+        const timer = setTimeout(() => {
+          interceptCallbacksRef.current.delete(requestId);
+          resolve(content);
+        }, 500);
+        interceptCallbacksRef.current.set(requestId, (result) => {
+          clearTimeout(timer);
+          resolve(result);
+        });
+        try {
+          window.parent.postMessage(
+            { type: EMBED_EVENTS.INTERCEPT_REQUEST, interceptType, requestId, content },
+            parentSensitiveOrigin,
+          );
+        } catch {
+          clearTimeout(timer);
+          interceptCallbacksRef.current.delete(requestId);
+          resolve(content);
+        }
+      });
+    },
+    [parentSensitiveOrigin],
+  );
+
   const handleSubmit = useCallback(async (e: React.FormEvent, messageText?: string, skipAddingUserMessage?: boolean) => {
     e.preventDefault();
-    const message = messageText || input;
-    if (!message.trim()) return;
+    const rawMessage = messageText || input;
+    if (!rawMessage.trim()) return;
     // Re-entrancy guard: block ANY submit while a send/stream is in flight. Button
     // and suggestion submits (skipAddingUserMessage) previously bypassed this, which
     // let a rapid double-click spawn concurrent streams that clobbered the shared
     // stream refs. (#7)
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
+
+    // Apply beforeSend interceptors when the parent has registered any.
+    let message = rawMessage;
+    if (interceptorsActiveRef.current.beforeSend) {
+      const intercepted = await runInterceptors('before_send', rawMessage);
+      if (intercepted === null) {
+        isSubmittingRef.current = false;
+        return;
+      }
+      message = intercepted;
+    }
 
     // Preview mode: add user message only — no dummy agent reply
     if (initialPreviewConfig) {
@@ -1314,6 +1392,14 @@ export default function EmbedClient({
       // directly from the response — no extra round-trip, no visible flash.
       const serverUser = messageData?.user_message;
       const serverAgent = messageData?.assistant_message;
+
+      // Apply afterReceive interceptors to the final agent content before render.
+      let agentDisplayContent = serverAgent?.content ?? '';
+      if (serverAgent && interceptorsActiveRef.current.afterReceive) {
+        const intercepted = await runInterceptors('after_receive', agentDisplayContent);
+        agentDisplayContent = intercepted ?? agentDisplayContent;
+      }
+
       setMessages(prev => {
         const withoutTemp = skipAddingUserMessage
           ? prev
@@ -1331,7 +1417,7 @@ export default function EmbedClient({
         if (serverAgent) {
           next.push({
             id: serverAgent.id,
-            text: serverAgent.content,
+            text: agentDisplayContent,
             from: 'agent' as const,
             timestamp: serverAgent.created_at ? new Date(serverAgent.created_at).getTime() : Date.now(),
             sources: (serverAgent.sources as SourceData[]) || [],
@@ -1450,6 +1536,7 @@ export default function EmbedClient({
     initialClientId,
     loadSessionMessages,
     sessionStorageKey,
+    runInterceptors,
   ]);
 
   const handleFollowUpButtonClick = (button: ButtonLike) => {

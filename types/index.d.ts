@@ -69,6 +69,20 @@ export type MessageEvent = {
 };
 
 /**
+ * Interceptor registered with `chat.beforeSend()`.
+ * Receives the user's message text.
+ * Return a (possibly modified) string to continue, or `null` to cancel the send.
+ */
+export type BeforeSendInterceptor = (message: string) => string | null | Promise<string | null>;
+
+/**
+ * Interceptor registered with `chat.afterReceive()`.
+ * Receives the agent's complete response text after streaming finishes.
+ * Return the (possibly modified) string to display.
+ */
+export type AfterReceiveInterceptor = (message: string) => string | Promise<string>;
+
+/**
  * All known event names the widget emits.
  * Pass to `chat.on()` for type-safe subscriptions.
  */
@@ -244,6 +258,44 @@ export interface WidgetAPI {
    * instance. Accepts a partial `WidgetConfig`.
    */
   update(config: Partial<WidgetConfig>): void;
+
+  // ── Message interceptors ──────────────────────────────────────────────────
+
+  /**
+   * Register an interceptor that runs **before** a user message is sent to the
+   * API. The function receives the raw message text and must return a
+   * (possibly modified) string or a `Promise` that resolves to one.
+   * Return `null` to cancel the send entirely. Multiple interceptors are
+   * chained in registration order; if any returns `null` the chain stops.
+   *
+   * @returns The `WidgetAPI` instance for chaining.
+   *
+   * @example
+   * // Append context to every message
+   * chat.beforeSend(msg => `${msg} [page: ${location.pathname}]`);
+   *
+   * // Block messages containing a keyword
+   * chat.beforeSend(msg => msg.includes('password') ? null : msg);
+   */
+  beforeSend(fn: BeforeSendInterceptor): WidgetAPI;
+
+  /**
+   * Register an interceptor that runs **after** the agent's complete response
+   * is received, before it is rendered in the chat UI. The function receives
+   * the full response text and must return a (possibly modified) string or a
+   * `Promise` that resolves to one. Multiple interceptors are chained in
+   * registration order.
+   *
+   * @returns The `WidgetAPI` instance for chaining.
+   *
+   * @example
+   * // Replace placeholders in agent responses
+   * chat.afterReceive(msg => msg.replace(/\{\{name\}\}/g, currentUser.name));
+   *
+   * // Async: translate response on the fly
+   * chat.afterReceive(async msg => await translate(msg, userLocale));
+   */
+  afterReceive(fn: AfterReceiveInterceptor): WidgetAPI;
 
   // ── Convenience / debug ───────────────────────────────────────────────────
 

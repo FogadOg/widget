@@ -447,6 +447,9 @@
         // Listen for widget events with error handling
         window.addEventListener("message", handleMessage);
 
+        const _beforeSendFns = [];
+        const _afterReceiveFns = [];
+
         const callbackRegistry = {};
         const lastEventEnvelope = {};
         const debounceState = {};
@@ -744,6 +747,45 @@
               emitEvent("error", { message: err.message, code: "SEND_MESSAGE_FAILED", payload: message }, { rawType: "HOST_MESSAGE_ERROR" });
             }
           },
+
+          /**
+           * beforeSend(fn) — register an interceptor that runs before a user
+           * message is sent to the API. Return a modified string to continue,
+           * or `null` to cancel the send. Multiple interceptors run in order.
+           *
+           * @param {(message: string) => string | null | Promise<string | null>} fn
+           * @returns chainable
+           */
+          beforeSend: (fn) => {
+            try {
+              if (typeof fn !== 'function') return docsWidgetApi;
+              _beforeSendFns.push(fn);
+              postToIframe({ type: 'HOST_INTERCEPT_ACTIVE', data: { beforeSend: true } });
+            } catch (err) {
+              logError('Failed to register beforeSend interceptor', { error: err && err.message });
+            }
+            return docsWidgetApi;
+          },
+
+          /**
+           * afterReceive(fn) — register an interceptor that runs after the
+           * agent's complete response is received, before it is rendered.
+           * Return the (possibly modified) string to display.
+           *
+           * @param {(message: string) => string | Promise<string>} fn
+           * @returns chainable
+           */
+          afterReceive: (fn) => {
+            try {
+              if (typeof fn !== 'function') return docsWidgetApi;
+              _afterReceiveFns.push(fn);
+              postToIframe({ type: 'HOST_INTERCEPT_ACTIVE', data: { afterReceive: true } });
+            } catch (err) {
+              logError('Failed to register afterReceive interceptor', { error: err && err.message });
+            }
+            return docsWidgetApi;
+          },
+
           getErrors: () => errors,
           destroy: () => {
             try {
@@ -935,6 +977,32 @@
               case "WIDGET_AUTH_FAILURE":
                 emitEvent("authFailure", data, { rawType: type });
                 break;
+
+              case 'WIDGET_INTERCEPT_REQUEST': {
+                var _reqId = data && data.requestId;
+                var _interceptType = data && data.interceptType;
+                var _origContent = (data && data.content != null) ? data.content : null;
+                var _fns = _interceptType === 'before_send' ? _beforeSendFns
+                         : _interceptType === 'after_receive' ? _afterReceiveFns
+                         : [];
+                Promise.resolve(_origContent)
+                  .then(function(_val) {
+                    return _fns.reduce(function(p, fn) {
+                      return p.then(function(v) {
+                        if (v === null || v === undefined) return null;
+                        try { return Promise.resolve(fn(v)); } catch (e) { return v; }
+                      });
+                    }, Promise.resolve(_val));
+                  })
+                  .catch(function() { return _origContent; })
+                  .then(function(result) {
+                    postToIframe({
+                      type: 'HOST_INTERCEPT_RESPONSE', requestId: _reqId,
+                      content: result != null ? String(result) : null,
+                    });
+                  });
+                break;
+              }
 
               case 'WIDGET_GA_INIT':
                 if (data && data.gaMeasurementId) {

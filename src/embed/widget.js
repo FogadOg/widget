@@ -586,6 +586,11 @@
       window.addEventListener("message", handleMessage);
 
       // Expose API for programmatic control
+        // Message interceptor registries — functions run in the parent before
+        // the message is sent or after the agent response is received.
+        const _beforeSendFns = [];
+        const _afterReceiveFns = [];
+
         // Dynamic registry — any event name is accepted (new dotted names like
         // 'message.sent' live alongside the legacy flat names like 'message').
         const callbackRegistry = {};
@@ -1108,6 +1113,58 @@
               logError('Failed to update config', { error: err.message });
             }
           },
+
+          /**
+           * beforeSend(fn) — register an interceptor that runs before a user
+           * message is sent to the API. The function receives the message string
+           * and must return a (possibly modified) string or a Promise that
+           * resolves to one. Return `null` to cancel the send entirely.
+           * Multiple interceptors run in registration order.
+           *
+           * @param {(message: string) => string | null | Promise<string | null>} fn
+           * @returns chainable
+           */
+          beforeSend: (fn) => {
+            try {
+              if (typeof fn !== 'function') return widgetApi;
+              _beforeSendFns.push(fn);
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'HOST_INTERCEPT_ACTIVE', data: { beforeSend: true } },
+                  targetOrigin
+                );
+              }
+            } catch (err) {
+              logError('Failed to register beforeSend interceptor', { error: err && err.message });
+            }
+            return widgetApi;
+          },
+
+          /**
+           * afterReceive(fn) — register an interceptor that runs after the
+           * agent's complete response is received, before it is rendered.
+           * The function receives the agent message string and must return a
+           * (possibly modified) string or a Promise that resolves to one.
+           * Multiple interceptors run in registration order.
+           *
+           * @param {(message: string) => string | Promise<string>} fn
+           * @returns chainable
+           */
+          afterReceive: (fn) => {
+            try {
+              if (typeof fn !== 'function') return widgetApi;
+              _afterReceiveFns.push(fn);
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'HOST_INTERCEPT_ACTIVE', data: { afterReceive: true } },
+                  targetOrigin
+                );
+              }
+            } catch (err) {
+              logError('Failed to register afterReceive interceptor', { error: err && err.message });
+            }
+            return widgetApi;
+          },
         };
 
         registry[instanceId] = widgetApi;
@@ -1389,6 +1446,42 @@
                 }
                 _gaTrack('widget_error', { agent_id: agentId, error_type: data && data.errorType });
                 break;
+
+              case 'WIDGET_INTERCEPT_REQUEST': {
+                // Iframe asked the parent to run its registered interceptors.
+                // Run them in order, then reply with the (possibly modified) content.
+                var _reqId = data && data.requestId;
+                var _interceptType = data && data.interceptType;
+                var _origContent = (data && data.content != null) ? data.content : null;
+                var _fns = _interceptType === 'before_send' ? _beforeSendFns
+                         : _interceptType === 'after_receive' ? _afterReceiveFns
+                         : [];
+                Promise.resolve(_origContent)
+                  .then(function(_val) {
+                    // Run each interceptor sequentially, stopping on null.
+                    return _fns.reduce(function(p, fn) {
+                      return p.then(function(v) {
+                        if (v === null || v === undefined) return null;
+                        try { return Promise.resolve(fn(v)); } catch (e) { return v; }
+                      });
+                    }, Promise.resolve(_val));
+                  })
+                  .catch(function() { return _origContent; })
+                  .then(function(result) {
+                    try {
+                      if (iframe.contentWindow) {
+                        iframe.contentWindow.postMessage(
+                          { type: 'HOST_INTERCEPT_RESPONSE', requestId: _reqId,
+                            content: result != null ? String(result) : null },
+                          targetOrigin
+                        );
+                      }
+                    } catch (e) {
+                      logError('Failed to send intercept response', { error: e && e.message });
+                    }
+                  });
+                break;
+              }
 
               case 'WIDGET_GA_INIT':
                 if (data && data.gaMeasurementId) {

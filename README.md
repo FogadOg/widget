@@ -254,6 +254,88 @@ Add translation files to the `locales/` directory and update the language detect
 
 4. Update the `useWidgetTranslation` hook to include the new locale
 
+## Message Interceptors
+
+Interceptors let host pages inspect and transform messages before they are sent
+to the AI agent or before they are displayed to the user. They are registered on
+the `window.CompaninWidget` / `window.chat` API object (and
+`window.CompaninDocsWidget` for the docs widget).
+
+### `chat.beforeSend(fn)`
+
+Runs **before** a user message is sent to the API. The interceptor receives the
+raw message string and must return a (possibly modified) string or a `Promise`
+that resolves to one. Return `null` to cancel the send entirely. Multiple
+interceptors are chained in registration order; if any returns `null` the chain
+stops.
+
+```js
+const chat = window.CompaninWidget;
+
+// Append page context to every outgoing message
+chat.beforeSend(message => `${message} [page: ${location.pathname}]`);
+
+// Block messages that contain sensitive terms
+chat.beforeSend(message => {
+  if (message.toLowerCase().includes('password')) return null; // cancel
+  return message;
+});
+
+// Async — enrich with data from your own API
+chat.beforeSend(async message => {
+  const ctx = await fetchUserContext();
+  return `${message}\n\nUser plan: ${ctx.plan}`;
+});
+```
+
+### `chat.afterReceive(fn)`
+
+Runs **after** the agent's complete response is received, before it is rendered
+in the chat UI. The interceptor receives the full response text and must return
+a (possibly modified) string or a `Promise` that resolves to one. Multiple
+interceptors are chained in registration order.
+
+```js
+// Replace template variables in agent responses
+chat.afterReceive(message =>
+  message.replace(/\{\{firstName\}\}/g, currentUser.firstName)
+);
+
+// Async — translate the response on the fly
+chat.afterReceive(async message => {
+  if (userLocale === 'es') return await translate(message, 'es');
+  return message;
+});
+```
+
+### Chaining
+
+Both methods return the `WidgetAPI` instance so calls can be chained:
+
+```js
+chat
+  .beforeSend(msg => msg.trim())
+  .afterReceive(msg => msg.replace(/\bAI\b/g, 'Assistant'));
+```
+
+### Docs widget
+
+The same API is available on `window.CompaninDocsWidget`:
+
+```js
+window.CompaninDocsWidget.beforeSend(msg => msg + ' [docs]');
+window.CompaninDocsWidget.afterReceive(msg => sanitize(msg));
+```
+
+### How it works
+
+Interceptors run in the **host page** (not inside the widget iframe). When the
+iframe is about to send a message or has just received an agent response, it
+posts a `WIDGET_INTERCEPT_REQUEST` postMessage to the parent. The loader runs
+your registered functions and replies with `HOST_INTERCEPT_RESPONSE`. The iframe
+waits up to 500 ms; if no reply arrives it falls back to the original content
+so a slow or missing parent page never blocks the chat.
+
 ## Error Handling
 
 The widget displays user-friendly error messages for:
