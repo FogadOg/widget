@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import { validateConfig } from '../../../../lib/validateConfig'
+import { enableDebug, disableDebug } from '../../../../src/components/DevOverlay'
 import {
   getStoredSession as helpersGetStoredSession,
 } from '../helpers'
@@ -162,7 +163,7 @@ export function useDialogState({
     }
   }, [widgetConfig, parentOrigin]);
 
-  // Listen for messages from parent to open/close dialog
+  // Listen for messages from parent to open/close dialog or toggle debug mode
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       const { type } = event.data || {};
@@ -171,6 +172,10 @@ export function useDialogState({
         handleOpenChange(true);
       } else if (type === 'CLOSE_DOCS_DIALOG') {
         handleOpenChange(false);
+      } else if (type === 'WIDGET_DEBUG_ENABLE') {
+        enableDebug();
+      } else if (type === 'WIDGET_DEBUG_DISABLE') {
+        disableDebug();
       }
     };
 

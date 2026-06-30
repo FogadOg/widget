@@ -786,6 +786,25 @@
             return docsWidgetApi;
           },
 
+          enableDebug: () => {
+            try {
+              postToIframe({ type: 'WIDGET_DEBUG_ENABLE' });
+              emitEvent('debug.enabled', { source: 'host-api' }, { rawType: 'HOST_ENABLE_DEBUG' });
+            } catch (err) {
+              logError('Failed to enable debug mode', { error: err && err.message });
+            }
+            return docsWidgetApi;
+          },
+          disableDebug: () => {
+            try {
+              postToIframe({ type: 'WIDGET_DEBUG_DISABLE' });
+              emitEvent('debug.disabled', { source: 'host-api' }, { rawType: 'HOST_DISABLE_DEBUG' });
+            } catch (err) {
+              logError('Failed to disable debug mode', { error: err && err.message });
+            }
+            return docsWidgetApi;
+          },
+
           getErrors: () => errors,
           destroy: () => {
             try {

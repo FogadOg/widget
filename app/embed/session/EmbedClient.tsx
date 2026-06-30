@@ -428,11 +428,11 @@ export default function EmbedClient({
     return () => window.removeEventListener('message', handler);
   }, [initialConsentRequired, parentTargetOrigin]);
 
-  // Allow the host page to toggle debug mode via postMessage (non-production only).
-  // Origin-validated even though it is dev-gated, so preview deploys can't be
-  // toggled into verbose logging by an arbitrary framing page.
+  // Allow the host page to toggle debug mode via postMessage. Works in
+  // production so integrators can debug a live embed (chat.enableDebug()).
+  // Origin-validated, so only the legitimate host page can flip it — an
+  // arbitrary framing page can't toggle a widget into verbose logging.
   useEffect(() => {
-    if (process.env.NODE_ENV === 'production') return;
     const handler = (event: MessageEvent) => {
       if (!isTrustedParentMessage(event, parentTargetOrigin)) return;
       const t = event?.data?.type;
@@ -1188,6 +1188,11 @@ export default function EmbedClient({
                 // Negotiate Server-Sent Events so the server streams the
                 // agent reply token-by-token; falls back to JSON otherwise.
                 'Accept': 'text/event-stream, application/json',
+                // Stable per-message key. If this stream commits server-side but
+                // the client misses `done` (drop) and re-sends via the offline
+                // queue, the same key lets the server replay instead of
+                // duplicating the reply. Queue retries reuse this id.
+                'Idempotency-Key': String(userMessage.id),
                 ...embedHeaders,
               },
               body: JSON.stringify({
@@ -1927,8 +1932,9 @@ export default function EmbedClient({
   }, [parentTargetOrigin, isCollapsed, toggleCollapsed, handleSubmit]);
 
 
-  // Developer overlay: only active in non-production when debug mode is on
-  // (?widget_debug=1, localStorage, data-dev, or CompaninWidget.enableDebug()).
+  // Developer overlay: active whenever debug mode is on — including production
+  // embeds, so integrators can debug a live widget (?widget_debug=1,
+  // localStorage, data-dev, or chat.enableDebug() / CompaninWidget.enableDebug()).
   const isDebug = useDebugMode();
 
   // Feed the live state snapshot to the DevOverlay "State" tab. No-op cost when

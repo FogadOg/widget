@@ -17,6 +17,7 @@ import { useWidgetTranslation } from '../../../hooks/useWidgetTranslation'
 import { t as translate } from '../../../lib/i18n'
 import { embedOriginHeader } from '../../../lib/api'
 import { validateConfig } from '../../../lib/validateConfig'
+import { STATUS_COLORS } from '../../../lib/constants'
 import {
   MessageBranch,
   MessageBranchContent,
@@ -65,6 +66,7 @@ import { useMessageOperations } from './hooks/useMessageOperations'
 import { useDialogState } from './hooks/useDialogState'
 import { PreviewModeWidget } from './components/PreviewModeWidget'
 import { MessageFeedbackButtons } from './components/MessageFeedbackButtons'
+import { DevOverlay, useDebugMode, reportDevState } from '../../../src/components/DevOverlay'
 
 export { getLocalizedText, resolveLocalizedSuggestions }
 
@@ -166,7 +168,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     setError,
   });
 
-  const { sendMessageToAPI, handleSubmitMessageFeedback, addUserMessage, handleSubmit, handleSuggestionClick } = useMessageOperations({
+  const { sendMessageToAPI, handleSubmitMessageFeedback, addUserMessage, handleSubmit, handleSuggestionClick, flushQueue, retryQueuedMessage } = useMessageOperations({
     sessionId,
     authToken,
     activeLocale,
@@ -180,6 +182,30 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     setText,
     loadSessionMessages,
   });
+
+  // Connectivity: detect offline/online so the user is never left wondering why
+  // a message didn't go through. Going offline shows a banner; coming back
+  // online flushes any messages queued while disconnected (auto-reconnect).
+  // Preview mode skips this — it never touches the network.
+  const [isOffline, setIsOffline] = useState<boolean>(false);
+  const flushQueueRef = useRef(flushQueue);
+  flushQueueRef.current = flushQueue;
+  useEffect(() => {
+    if (initialPreviewConfig || typeof window === 'undefined') return;
+    setIsOffline(!navigator.onLine);
+    const onOffline = () => setIsOffline(true);
+    const onOnline = () => {
+      setIsOffline(false);
+      // Defer to let any session/auth refresh settle before resending.
+      flushQueueRef.current?.();
+    };
+    window.addEventListener('offline', onOffline);
+    window.addEventListener('online', onOnline);
+    return () => {
+      window.removeEventListener('offline', onOffline);
+      window.removeEventListener('online', onOnline);
+    };
+  }, [initialPreviewConfig]);
 
   const { handleOpenChange } = useDialogState({
     open,
@@ -202,6 +228,27 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     validateAndRestoreSession,
     resolveParentOrigin,
   });
+
+  // Developer overlay: active when debug mode is on (?widget_debug=1,
+  // localStorage, or chat.enableDebug() from the host page). Works in
+  // production embeds so integrators can debug their live widget.
+  const isDebug = useDebugMode();
+
+  // Feed the live state snapshot to the DevOverlay "State" tab. No-op cost when
+  // not debugging — the overlay isn't mounted so there are no listeners.
+  useEffect(() => {
+    if (!isDebug) return;
+    reportDevState({
+      sessionId,
+      clientId,
+      agentId,
+      configId,
+      messageCount: messages.length,
+      offline: isOffline,
+      handshake: sessionId ? 'CONNECTED' : 'READY',
+      config: (widgetConfig as unknown as Record<string, unknown>) ?? null,
+    });
+  }, [isDebug, sessionId, messages.length, isOffline, widgetConfig, clientId, agentId, configId]);
 
   const title = getLocalizedText(widgetConfig?.data?.title, activeLocale) || translate(activeLocale, 'docsTitleFallback');
   const subtitle = getLocalizedText(widgetConfig?.data?.subtitle, activeLocale) || translate(activeLocale, 'docsSubtitleFallback');
@@ -232,26 +279,29 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   // direct full-height panel so layout works correctly inside the preview iframe.
   if (initialPreviewConfig) {
     return (
-      <PreviewModeWidget
-        theme={theme}
-        liveMessage={liveMessage}
-        title={title}
-        subtitle={subtitle}
-        error={error}
-        messages={messages}
-        messageFeedbackSubmitted={messageFeedbackSubmitted}
-        handleSubmitMessageFeedback={handleSubmitMessageFeedback}
-        activeLocale={activeLocale}
-        feedbackSubmittedMessage={typeof t.feedbackSubmittedMessage === 'string' ? t.feedbackSubmittedMessage : String(t.feedbackSubmittedMessage)}
-        status={status}
-        conversationEndRef={conversationEndRef}
-        resolvedSuggestions={resolvedSuggestions}
-        handleSuggestionClick={handleSuggestionClick}
-        handleSubmit={handleSubmit}
-        text={text}
-        setText={setText}
-        placeholderText={placeholderText}
-      />
+      <>
+        <PreviewModeWidget
+          theme={theme}
+          liveMessage={liveMessage}
+          title={title}
+          subtitle={subtitle}
+          error={error}
+          messages={messages}
+          messageFeedbackSubmitted={messageFeedbackSubmitted}
+          handleSubmitMessageFeedback={handleSubmitMessageFeedback}
+          activeLocale={activeLocale}
+          feedbackSubmittedMessage={typeof t.feedbackSubmittedMessage === 'string' ? t.feedbackSubmittedMessage : String(t.feedbackSubmittedMessage)}
+          status={status}
+          conversationEndRef={conversationEndRef}
+          resolvedSuggestions={resolvedSuggestions}
+          handleSuggestionClick={handleSuggestionClick}
+          handleSubmit={handleSubmit}
+          text={text}
+          setText={setText}
+          placeholderText={placeholderText}
+        />
+        {isDebug && <DevOverlay />}
+      </>
     );
   }
 
@@ -276,6 +326,15 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
               <DialogDescription className='px-6 text-sm text-muted-foreground'>
                 {getLocalizedText(widgetConfig?.data?.subtitle, activeLocale) || translate(activeLocale, 'docsSubtitleFallback')}
               </DialogDescription>
+              {isOffline && (
+                <div
+                  className="border-l-4 px-6 py-2 text-sm"
+                  style={{ backgroundColor: STATUS_COLORS.offline.bg, borderColor: STATUS_COLORS.offline.border, color: STATUS_COLORS.offline.text }}
+                  role="status"
+                >
+                  {translate(activeLocale, 'offlineBannerTitle')}
+                </div>
+              )}
               {error && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 px-6 py-2 text-sm" role="alert">
                   {error}
@@ -317,6 +376,24 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                                           feedbackThumbsDown={typeof t.feedbackThumbsDown === 'string' ? t.feedbackThumbsDown : String(t.feedbackThumbsDown)}
                                           feedbackSubmittedMessage={typeof t.feedbackSubmittedMessage === 'string' ? t.feedbackSubmittedMessage : String(t.feedbackSubmittedMessage)}
                                         />
+                                      )}
+                                      {message.from === 'user' && message.failed && (
+                                        <div className="mt-1 flex items-center gap-2 text-xs" role="alert" style={{ color: STATUS_COLORS.error.text }}>
+                                          <span>{translate(activeLocale, 'failedSend')}</span>
+                                          <button
+                                            type="button"
+                                            className="underline"
+                                            style={{ color: STATUS_COLORS.error.text }}
+                                            onClick={() => message.queueId && retryQueuedMessage(message.queueId)}
+                                          >
+                                            {translate(activeLocale, 'retry')}
+                                          </button>
+                                        </div>
+                                      )}
+                                      {message.from === 'user' && message.pending && !message.failed && (
+                                        <div className="mt-1 text-xs" style={{ color: STATUS_COLORS.offline.text }}>
+                                          {translate(activeLocale, 'deliveringStatus')}
+                                        </div>
                                       )}
                                     </div>
                                   </Message>
@@ -408,6 +485,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {isDebug && <DevOverlay />}
     </div>
   );
 }
