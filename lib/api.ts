@@ -55,6 +55,7 @@ export const API = {
     return `${getApiV1BaseUrl()}/sessions/${sessionId}/messages`;
   },
   sessionFeedback: (sessionId: string) => `${getApiV1BaseUrl()}/sessions/${sessionId}/feedback`,
+  sessionHeartbeat: (sessionId: string) => `${getApiV1BaseUrl()}/sessions/${sessionId}/heartbeat`,
 
   // Message endpoints
   messageFeedback: (messageId: string) => `${getApiV1BaseUrl()}/message/${messageId}/feedback`,

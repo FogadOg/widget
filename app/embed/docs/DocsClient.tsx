@@ -61,6 +61,7 @@ import { initialMessages } from './DocsClient.constants'
 import { usePreviewMode } from './hooks/usePreviewMode'
 import { useWidgetLifecycle } from './hooks/useWidgetLifecycle'
 import { useSessionManagement } from './hooks/useSessionManagement'
+import { useHeartbeat } from '../useHeartbeat'
 import { useWidgetConfig } from './hooks/useWidgetConfig'
 import { useMessageOperations } from './hooks/useMessageOperations'
 import { useDialogState } from './hooks/useDialogState'
@@ -159,6 +160,9 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     setMessages,
     setIsInitialLoad,
   });
+
+  // Presence heartbeat — keeps the admin "live visitors" count accurate.
+  useHeartbeat({ sessionId, token: authToken, embedHeaders });
 
   const { fetchWidgetConfig } = useWidgetConfig({
     clientId,

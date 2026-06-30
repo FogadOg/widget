@@ -40,6 +40,12 @@ export const SESSION_CONFIG = {
   EXPIRY_BUFFER: 5 * 60 * 1000,  // 5 minutes buffer before expiry
 } as const;
 
+// Presence heartbeat: how often the widget pings the backend while its tab is
+// visible, driving the admin "live visitors" count. Keep the backend's
+// LIVE_VISITOR_WINDOW_SECONDS >= 2x this so a single dropped beat doesn't blink
+// a visitor off the count.
+export const HEARTBEAT_INTERVAL_MS = 20_000;
+
 // Widget sizing
 export const BUTTON_SIZES = {
   sm: 48,

@@ -78,6 +78,7 @@ import { useUnreadTracking } from './hooks/useUnreadTracking';
 import { useWidgetResize } from './hooks/useWidgetResize';
 import { useAutoOpen } from './hooks/useAutoOpen';
 import { useSessionManagement } from './hooks/useSessionManagement';
+import { useHeartbeat } from '../useHeartbeat';
 import { useQueuedMessageManagement } from './hooks/useQueuedMessageManagement';
 import { useFeedbackManagement } from './hooks/useFeedbackManagement';
 import { useBootstrap } from './hooks/useBootstrap';
@@ -697,6 +698,9 @@ export default function EmbedClient({
     postedShowUnreadBadge,
     postedEdgeOffset,
   });
+
+  // Presence heartbeat — keeps the admin "live visitors" count accurate.
+  useHeartbeat({ sessionId, token: authToken, embedHeaders });
 
   // Queued message management via hook
   const { flushQueuedMessages } = useQueuedMessageManagement({
