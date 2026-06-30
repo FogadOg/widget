@@ -127,6 +127,9 @@ export function useQueuedMessageManagement({
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,
+              // Stable per-message key → server de-dupes this retry instead of
+              // creating a second message + reply.
+              'Idempotency-Key': String(item.id),
               ...embedHeaders,
             },
             body: JSON.stringify({ content: item.text, locale: activeLocale, page_context: helpers.getPageContext() }),
@@ -236,6 +239,9 @@ export function useQueuedMessageManagement({
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,
+              // Stable per-message key → server de-dupes this retry instead of
+              // creating a second message + reply.
+              'Idempotency-Key': String(item.id),
               ...embedHeaders,
             },
             body: JSON.stringify({ content: item.text, locale: activeLocale, page_context: helpers.getPageContext() }),

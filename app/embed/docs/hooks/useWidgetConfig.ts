@@ -1,7 +1,9 @@
 import { useCallback } from 'react'
 import { API } from '../../../../lib/api'
+import { TIMEOUTS } from '../../../../lib/constants'
 import { validateConfig } from '../../../../lib/validateConfig'
 import { getVisitorId as helpersGetVisitorId } from '../helpers'
+import { fetchWithTimeout } from '../resilientFetch'
 
 interface UseWidgetConfigParams {
   clientId: string;
@@ -22,13 +24,13 @@ export function useWidgetConfig({
   const fetchWidgetConfig = useCallback(async (configId: string, token: string): Promise<{ variant_id?: string; variant_name?: string } | undefined> => {
     try {
       const visitorId = helpersGetVisitorId(clientId);
-      const response = await fetch(API.widgetConfig(configId, visitorId), {
+      const response = await fetchWithTimeout(API.widgetConfig(configId, visitorId), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           ...embedHeaders,
         },
-      });
+      }, TIMEOUTS.WIDGET_LOAD);
 
       const data = await response.json();
 

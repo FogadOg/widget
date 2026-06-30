@@ -46,4 +46,15 @@ export type MessageType = {
     content: string;
     duration: number;
   };
+  /**
+   * Offline-queue / retry correlation id. Set on optimistic user messages so a
+   * failed send can be matched back to its queued payload and retried.
+   */
+  queueId?: string;
+  /** Message is queued/in-flight (sent while offline or awaiting retry). */
+  pending?: boolean;
+  /** Send permanently failed (non-retryable, or retries exhausted). */
+  failed?: boolean;
+  /** Delivery attempts so far, for surfacing "delivering…" vs "failed". */
+  attempts?: number;
 };

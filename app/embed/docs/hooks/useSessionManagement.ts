@@ -1,10 +1,13 @@
 import React, { useCallback } from 'react'
 import { API } from '../../../../lib/api'
+import { TIMEOUTS } from '../../../../lib/constants'
+import { t as translate } from '../../../../lib/i18n'
 import {
   getSessionStorageKey,
   getVisitorId as helpersGetVisitorId,
   storeSession as helpersStoreSession,
 } from '../helpers'
+import { fetchWithTimeout } from '../resilientFetch'
 import { MessageType } from '../DocsClient.types'
 import { initialMessages } from '../DocsClient.constants'
 
@@ -38,13 +41,13 @@ export function useSessionManagement({
       return;
     }
     try {
-      const response = await fetch(API.sessionMessages(sessionId), {
+      const response = await fetchWithTimeout(API.sessionMessages(sessionId), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           ...embedHeaders,
         },
-      });
+      }, TIMEOUTS.SESSION_CREATE);
 
       if (response.ok) {
         const data = await response.json();
@@ -87,7 +90,7 @@ export function useSessionManagement({
         ...(variantInfo?.variant_id ? { metadata: { variant_id: variantInfo.variant_id, variant_name: variantInfo.variant_name } } : {}),
             };
 
-      const response = await fetch(API.sessions(), {
+      const response = await fetchWithTimeout(API.sessions(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -95,7 +98,7 @@ export function useSessionManagement({
           ...embedHeaders,
         },
         body: JSON.stringify(requestBody),
-      });
+      }, TIMEOUTS.SESSION_CREATE);
 
       const data = await response.json();
 
@@ -109,14 +112,18 @@ export function useSessionManagement({
         // Load messages after session creation
         await loadSessionMessages(data.data.session_id, token, true);
       } else {
-        const errorMsg = data.detail || 'Failed to create session';
+        // Server-provided `detail` (rate limits, config issues) is already meant
+        // to be user-facing; fall back to a localized generic when it's absent.
+        const errorMsg = data.detail || translate(activeLocale, 'failedToCreateSession');
         console.error('Session creation failed:', errorMsg);
         setError(errorMsg);
       }
     } catch (err) {
-      const errorMsg = 'Network error: Unable to connect';
+      // Network drop / timeout — show a friendly, localized message rather than
+      // a raw "Network error" string. The session auto-recovers on the next
+      // open or when connectivity returns (useDocsConnectivity).
       console.error('Session creation error:', err);
-      setError(errorMsg);
+      setError(translate(activeLocale, 'networkErrorConnect'));
     }
   }, [agentId, activeLocale, clientId, initialParentOrigin]);
 
@@ -127,13 +134,13 @@ export function useSessionManagement({
       return;
     }
     try {
-      const response = await fetch(API.sessionMessages(sessionId), {
+      const response = await fetchWithTimeout(API.sessionMessages(sessionId), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           ...embedHeaders,
         },
-      });
+      }, TIMEOUTS.SESSION_CREATE);
 
       if (response.ok) {
         const data = await response.json();

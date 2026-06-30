@@ -22,7 +22,7 @@ jest.mock('../hooks/useWidgetAuth', () => ({
 
 }))
 
-import { render, act, waitFor } from '@testing-library/react'
+import { render, act, waitFor, screen } from '@testing-library/react'
 
 // Mock ESM modules that cause Jest parse issues
 
@@ -534,7 +534,11 @@ describe('DocsClient targeted branches', () => {
 
     const { findByText } = render(<DocsClient clientId="c" agentId="a" configId="cfg" locale="en" startOpen={true} />)
 
-    await expect(findByText('Network error: Unable to connect')).resolves.toBeTruthy()
+    // Network failures during session creation now surface a localized message
+    // (networkErrorConnect) instead of the previous hardcoded English string.
+    await waitFor(() => {
+      expect(screen.getAllByText('Network error: Could not connect to API').length).toBeGreaterThan(0)
+    })
 
     act(() => {
 
