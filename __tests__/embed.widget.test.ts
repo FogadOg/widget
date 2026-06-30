@@ -443,6 +443,60 @@ describe('API — show / hide / resize / sendMessage / getErrors', () => {
 
   });
 
+  it('enableDebug() posts WIDGET_DEBUG_ENABLE to the iframe', () => {
+
+    api.enableDebug();
+
+    expect(cw.postMessage).toHaveBeenCalledWith(
+
+      { type: 'WIDGET_DEBUG_ENABLE' },
+
+      expect.anything(),
+
+    );
+
+  });
+
+  it('disableDebug() posts WIDGET_DEBUG_DISABLE to the iframe', () => {
+
+    api.disableDebug();
+
+    expect(cw.postMessage).toHaveBeenCalledWith(
+
+      { type: 'WIDGET_DEBUG_DISABLE' },
+
+      expect.anything(),
+
+    );
+
+  });
+
+  it('enableDebug() / disableDebug() are chainable (return the api)', () => {
+
+    expect(api.enableDebug()).toBe(api);
+
+    expect(api.disableDebug()).toBe(api);
+
+  });
+
+  it('enableDebug() emits a debug.enabled event', () => {
+
+    const spy = jest.fn();
+
+    api.on('debug.enabled', spy);
+
+    api.enableDebug();
+
+    return new Promise<void>((res) => setTimeout(() => {
+
+      expect(spy).toHaveBeenCalled();
+
+      res();
+
+    }, 0));
+
+  });
+
 });
 
 // ---------------------------------------------------------------------------

@@ -322,6 +322,44 @@ describe('public/docs-widget.js loader', () => {
 
   });
 
+  it('enableDebug/disableDebug post debug toggle messages to iframe', () => {
+
+    inject({
+
+      'data-client-id': 'c',
+
+      'data-agent-id': 'a',
+
+      'data-config-id': 'cfg',
+
+    });
+
+    const iframe = document.querySelector(`[id^="${DOCS_WIDGET_SCRIPT_ID}-container-"] iframe`) as HTMLIFrameElement;
+
+    const postSpy = jest.fn();
+
+    Object.defineProperty(iframe, 'contentWindow', {
+
+      writable: true,
+
+      value: { postMessage: postSpy },
+
+    });
+
+    iframe.onload!(new Event('load'));
+
+    const ret = window.CompaninDocsWidget.enableDebug();
+
+    expect(postSpy).toHaveBeenCalledWith({ type: 'WIDGET_DEBUG_ENABLE' }, expect.any(String));
+
+    expect(ret).toBe(window.CompaninDocsWidget);
+
+    window.CompaninDocsWidget.disableDebug();
+
+    expect(postSpy).toHaveBeenCalledWith({ type: 'WIDGET_DEBUG_DISABLE' }, expect.any(String));
+
+  });
+
   it('show/hide manipulate container display', () => {
 
     inject({

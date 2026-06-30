@@ -55,6 +55,31 @@ describe('detectDebugMode', () => {
     document.body.appendChild(script);
     expect(detectDebugMode()).toBe(false);
   });
+
+  // Debug mode is intentionally NOT gated to non-production: integrators must
+  // be able to debug live embeds via chat.enableDebug() / ?widget_debug=1.
+  describe('production environment', () => {
+    const prev = process.env.NODE_ENV;
+    beforeAll(() => {
+      Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', configurable: true });
+    });
+    afterAll(() => {
+      Object.defineProperty(process.env, 'NODE_ENV', { value: prev, configurable: true });
+    });
+
+    it('still activates from ?widget_debug=1 in production', () => {
+      window.history.pushState({}, '', '/?widget_debug=1');
+      expect(detectDebugMode()).toBe(true);
+    });
+
+    it('enableDebug() still sets the flag in production', () => {
+      enableDebug();
+      expect(localStorage.getItem('widget_debug')).toBe('1');
+      expect(detectDebugMode()).toBe(true);
+      disableDebug();
+      expect(localStorage.getItem('widget_debug')).toBeNull();
+    });
+  });
 });
 
 // ── DevOverlay component ──────────────────────────────────────────────────────

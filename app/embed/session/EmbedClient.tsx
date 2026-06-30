@@ -2131,6 +2131,7 @@ export default function EmbedClient({
           />
         ) : undefined}
       />
+      {isDebug && <DevOverlay />}
     </div>
   );
 }

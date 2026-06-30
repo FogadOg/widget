@@ -20,7 +20,7 @@ npm run dev     # start Next.js dev server on :3001
 
 ## Debug mode
 
-The widget ships a dev overlay (`src/components/DevOverlay.tsx`) that is **only visible when debug mode is active**.  Debug mode also enables verbose console logging. It can be enabled via any of the following sources (checked in priority order):
+The widget ships a dev overlay (`src/components/DevOverlay.tsx`) that is **only visible when debug mode is active**.  Debug mode also enables verbose console logging. It works in **all environments including production** — integrators can debug a live embed without redeploying. It can be enabled via any of the following sources (checked in priority order):
 
 ### 0. Build-time env variable in the host app (recommended for staging deploys)
 
@@ -96,19 +96,36 @@ location.reload();
 
 ```
 
-### 4. Runtime API
+### 4. Runtime API (host page)
 
-Once the widget is loaded, call from the browser console or host code:
+Call from the **host page** via the public embed API (both `chat` and docs widgets):
+
+```js
+
+// Chat widget
+const chat = window.CompaninWidget;
+chat.enableDebug();   // activate overlay — works in production
+chat.disableDebug();  // deactivate
+
+// Docs widget
+const chat = window.CompaninDocsWidget;
+chat.enableDebug();
+chat.disableDebug();
+
+```
+
+Both methods are chainable: `chat.enableDebug().open()`.
+
+Or from the **browser console** (inner iframe globals — useful when debugging without host-page access):
 
 ```js
 
 window.CompaninWidget?.enableDebug();
-
-// or
-
 window.CompaninWidget?.disableDebug();
 
 ```
+
+**Security model**: the host-API path is postMessage-based and origin-validated — only the legitimate embedding page can trigger it. The overlay only ever shows the current visitor their own session data. No cross-user exposure.
 
 ### Summary: which variable controls what?
 

@@ -865,6 +865,38 @@
               logError('Failed to forward consent revoke', { error: err && err.message });
             }
           },
+          // Debug API — flips the in-iframe DevOverlay / verbose logging on or
+          // off. Works in production; the iframe origin-validates the message so
+          // only this host page can toggle it, and the overlay only ever shows
+          // the current visitor their own session.
+          enableDebug: () => {
+            try {
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'WIDGET_DEBUG_ENABLE' },
+                  targetOrigin
+                );
+                emitEvent('debug.enabled', { source: 'host-api' }, { rawType: 'HOST_ENABLE_DEBUG' });
+              }
+            } catch (err) {
+              logError('Failed to enable debug mode', { error: err && err.message });
+            }
+            return widgetApi;
+          },
+          disableDebug: () => {
+            try {
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'WIDGET_DEBUG_DISABLE' },
+                  targetOrigin
+                );
+                emitEvent('debug.disabled', { source: 'host-api' }, { rawType: 'HOST_DISABLE_DEBUG' });
+              }
+            } catch (err) {
+              logError('Failed to disable debug mode', { error: err && err.message });
+            }
+            return widgetApi;
+          },
           destroy: () => {
             try {
               window.removeEventListener("message", handleMessage);

@@ -996,6 +996,32 @@ describe('DocsClient missing effect/flow coverage', () => {
 
   })
 
+  it('WIDGET_DEBUG_ENABLE / DISABLE messages toggle the debug flag', async () => {
+
+    localStorage.removeItem('widget_debug')
+
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ data: {} }) })) as any
+
+    render(<DocsClient clientId="c13" agentId="a13" configId="cfg13" locale="en" startOpen={false} />)
+
+    act(() => {
+
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'WIDGET_DEBUG_ENABLE' } }))
+
+    })
+
+    expect(localStorage.getItem('widget_debug')).toBe('1')
+
+    act(() => {
+
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'WIDGET_DEBUG_DISABLE' } }))
+
+    })
+
+    expect(localStorage.getItem('widget_debug')).toBeNull()
+
+  })
+
   it('covers createSession failure and network catch branches', async () => {
 
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
