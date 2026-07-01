@@ -1092,7 +1092,13 @@ export default function EmbedClient({
     // Apply beforeSend interceptors when the parent has registered any.
     let message = rawMessage;
     if (interceptorsActiveRef.current.beforeSend) {
-      const intercepted = await runInterceptors('before_send', rawMessage);
+      let intercepted: string | null;
+      try {
+        intercepted = await runInterceptors('before_send', rawMessage);
+      } catch {
+        isSubmittingRef.current = false;
+        return;
+      }
       if (intercepted === null) {
         isSubmittingRef.current = false;
         return;

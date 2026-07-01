@@ -187,7 +187,20 @@ export const logError = (error: any, context?: Record<string, any>) => {
 
   // Log to console in development
   if (process.env.NODE_ENV === 'development') {
-    console.error('Widget Error:', errorInfo);
+    // Use warn (not error) for expected network failures so the Next.js dev
+    // overlay doesn't capture them as Console TypeErrors — these are handled
+    // gracefully (message queued, pending state shown) and are not bugs.
+    const msg = (error?.message || '').toLowerCase();
+    const isExpectedNetworkFailure =
+      error instanceof WidgetError
+        ? error.type === WidgetErrorType.NETWORK_ERROR
+        : (error?.name === 'TypeError' || error?.name === 'NetworkError') &&
+          (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('network request'));
+    if (isExpectedNetworkFailure) {
+      console.warn('Widget network error (handled):', errorInfo);
+    } else {
+      console.error('Widget Error:', errorInfo);
+    }
   }
 
   // In production, you could send to error tracking service

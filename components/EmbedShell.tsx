@@ -176,7 +176,11 @@ export default function EmbedShell({
 
   const handleFormSubmit = useCallback(
     (e: React.FormEvent, messageText?: string) => {
-      handleSubmit(e, messageText);
+      // handleSubmit is async — void it explicitly so the floating Promise is
+      // intentional. handleSubmit catches all its own errors; this .catch is a
+      // last-resort guard so any unexpected rejection never surfaces as an
+      // unhandled rejection in the Next.js dev overlay.
+      void handleSubmit(e, messageText).catch(() => {});
       // Keep focus in the composer after sending (textarea is not unmounted).
       window.setTimeout(() => inputRef.current?.focus(), 0);
     },
