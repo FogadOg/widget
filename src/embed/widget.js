@@ -967,9 +967,25 @@
           },
           setLogLevel: (level) => {
             try {
-              if (iframe.contentWindow) iframe.contentWindow.postMessage({ type: 'WIDGET_SET_LOG_LEVEL', level }, targetOrigin);
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'WIDGET_SET_LOG_LEVEL', level }, targetOrigin);
+                if (level === 'debug') {
+                  iframe.contentWindow.postMessage({ type: 'WIDGET_ENABLE_LOG_STREAM' }, targetOrigin);
+                } else {
+                  iframe.contentWindow.postMessage({ type: 'WIDGET_DISABLE_LOG_STREAM' }, targetOrigin);
+                }
+              }
             } catch (err) {
               logError('Failed to set log level', { error: err && err.message });
+            }
+            return widgetApi;
+          },
+          getVersion: () => WIDGET_VERSION,
+          reloadWidget: () => {
+            try {
+              iframe.src = iframe.src;
+            } catch (err) {
+              logError('Failed to reload widget', { error: err && err.message });
             }
             return widgetApi;
           },
@@ -1297,6 +1313,17 @@
           }
         } catch (e) {}
 
+        // Keyboard shortcut: Shift+Alt+D toggles the DevOverlay.
+        // Lets integrators activate debug mode on a live page without opening
+        // the browser console — useful when testing inside third-party CMSes.
+        try {
+          document.addEventListener('keydown', function _debugShortcut(e) {
+            if (e.shiftKey && e.altKey && (e.key === 'D' || e.key === 'd')) {
+              if (_debugActive) { widgetApi.disableDebug(); } else { widgetApi.enableDebug(); }
+            }
+          });
+        } catch (e) {}
+
         // Replay any commands that were queued before this script ran
         // (happens when the script tag has async/defer).
         if (_preInitQueue && _preInitQueue.length) {
@@ -1594,6 +1621,21 @@
               case 'WIDGET_GA_INIT':
                 if (data && data.gaMeasurementId) {
                   initGA(data.gaMeasurementId);
+                }
+                break;
+
+              case 'WIDGET_LOG_STREAM':
+                // Relay iframe log lines to the host page console + a DOM event so
+                // host-page scripts can subscribe without opening iframe DevTools.
+                if (_debugActive) {
+                  try {
+                    const lvl = (data && data.level) || 'debug';
+                    const msg = '[Widget] ' + (data && data.message || '');
+                    if (lvl === 'error') console.error(msg, data && data.context || '');
+                    else if (lvl === 'warn') console.warn(msg, data && data.context || '');
+                    else console.debug(msg, data && data.context || '');
+                    window.dispatchEvent(new CustomEvent('companin:log', { detail: data }));
+                  } catch (e) {}
                 }
                 break;
 

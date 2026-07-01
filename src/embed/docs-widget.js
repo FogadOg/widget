@@ -865,8 +865,24 @@
             return docsWidgetApi;
           },
           setLogLevel: (level) => {
-            try { postToIframe({ type: 'WIDGET_SET_LOG_LEVEL', level }); } catch (err) {
+            try {
+              postToIframe({ type: 'WIDGET_SET_LOG_LEVEL', level });
+              if (level === 'debug') {
+                postToIframe({ type: 'WIDGET_ENABLE_LOG_STREAM' });
+              } else {
+                postToIframe({ type: 'WIDGET_DISABLE_LOG_STREAM' });
+              }
+            } catch (err) {
               logError('Failed to set log level', { error: err && err.message });
+            }
+            return docsWidgetApi;
+          },
+          getVersion: () => WIDGET_VERSION,
+          reloadWidget: () => {
+            try {
+              iframe.src = iframe.src;
+            } catch (err) {
+              logError('Failed to reload widget', { error: err && err.message });
             }
             return docsWidgetApi;
           },
@@ -915,6 +931,15 @@
           },
         };
         window.CompaninDocsWidget = docsWidgetApi;
+
+        // Keyboard shortcut: Shift+Alt+D toggles the DevOverlay.
+        try {
+          document.addEventListener('keydown', function _debugShortcut(e) {
+            if (e.shiftKey && e.altKey && (e.key === 'D' || e.key === 'd')) {
+              if (_debugActive) { docsWidgetApi.disableDebug(); } else { docsWidgetApi.enableDebug(); }
+            }
+          });
+        } catch (e) {}
 
         // Replay commands that were queued before the script executed.
         if (_preInitQueue) {
@@ -1102,6 +1127,19 @@
                 }
                 emitEvent("error", data, { rawType: type });
                 _gaTrack('widget_error', { agent_id: agentId, error_type: data && data.errorType });
+                break;
+
+              case 'WIDGET_LOG_STREAM':
+                if (_debugActive) {
+                  try {
+                    const lvl = (data && data.level) || 'debug';
+                    const msg = '[Widget] ' + (data && data.message || '');
+                    if (lvl === 'error') console.error(msg, data && data.context || '');
+                    else if (lvl === 'warn') console.warn(msg, data && data.context || '');
+                    else console.debug(msg, data && data.context || '');
+                    window.dispatchEvent(new CustomEvent('companin:log', { detail: data }));
+                  } catch (e) {}
+                }
                 break;
 
               default:

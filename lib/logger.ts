@@ -57,6 +57,19 @@ class Logger {
   }
 
   private _minLevel: LogLevel | 'silent' = process.env.NODE_ENV !== 'production' ? 'debug' : 'error';
+  private _stream = false;
+
+  enableStream(): void { this._stream = true; }
+  disableStream(): void { this._stream = false; }
+  isStreaming(): boolean { return this._stream; }
+
+  private _streamToParent(level: LogLevel, message: string, context?: LogContext): void {
+    try {
+      if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'WIDGET_LOG_STREAM', level, message, context, timestamp: Date.now() }, '*');
+      }
+    } catch { /* ignore */ }
+  }
   private errorBuffer: Array<{
     level: LogLevel;
     message: string;
@@ -94,9 +107,9 @@ class Logger {
       const [pfx, style] = this.prefix('error');
       console.error(`${pfx} Error: ${message}`, style, this.mergedCtx(context) ?? '');
     } else {
-      // In production, send to a configurable tracking endpoint
       this.sendToErrorTracking('error', message, this.mergedCtx(context));
     }
+    if (this._stream) this._streamToParent('error', message, context);
   }
 
   /**
@@ -107,6 +120,7 @@ class Logger {
       const [pfx, style] = this.prefix('warn');
       console.warn(`${pfx} Warn: ${message}`, style, this.mergedCtx(context) ?? '');
     }
+    if (this._stream) this._streamToParent('warn', message, context);
   }
 
   /**
@@ -117,6 +131,7 @@ class Logger {
       const [pfx, style] = this.prefix('info');
       console.info(`${pfx} ${message}`, style, this.mergedCtx(context) ?? '');
     }
+    if (this._stream) this._streamToParent('info', message, context);
   }
 
   /**
@@ -127,6 +142,7 @@ class Logger {
       const [pfx, style] = this.prefix('debug');
       console.debug(`${pfx} ${message}`, style, this.mergedCtx(context) ?? '');
     }
+    if (this._stream) this._streamToParent('debug', message, context);
   }
 
   /**
@@ -206,3 +222,5 @@ export const logInfo = (message: string, context?: LogContext) => logger.info(me
 export const logDebug = (message: string, context?: LogContext) => logger.debug(message, context);
 export const logPerf = (name: string, durationMs: number, context?: LogContext) => logger.perf(name, durationMs, context);
 export const setLogLevel = (level: LogLevel | 'silent') => logger.setLevel(level);
+export const enableLogStream = () => logger.enableStream();
+export const disableLogStream = () => logger.disableStream();

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { validateConfig } from '../../../../lib/validateConfig'
 import { enableDebug, disableDebug, simulateOffline, restoreOnline } from '../../../../src/components/DevOverlay'
-import { setLogLevel } from '../../../../lib/logger'
+import { setLogLevel, enableLogStream, disableLogStream } from '../../../../lib/logger'
 import {
   getStoredSession as helpersGetStoredSession,
 } from '../helpers'
@@ -215,6 +215,10 @@ export function useDialogState({
         restoreOnline();
       } else if (type === 'WIDGET_SET_LOG_LEVEL' && typeof level === 'string') {
         setLogLevel(level as Parameters<typeof setLogLevel>[0]);
+      } else if (type === 'WIDGET_ENABLE_LOG_STREAM') {
+        enableLogStream();
+      } else if (type === 'WIDGET_DISABLE_LOG_STREAM') {
+        disableLogStream();
       }
     };
 

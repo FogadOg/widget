@@ -32,7 +32,7 @@ import { queueMessage } from '../../../src/lib/offline';
 import { onInitConfig } from './events';
 import { validateConfig } from '../../../lib/validateConfig';
 import { enableDebug, disableDebug, useDebugMode, reportDevState, DevOverlay, simulateOffline, restoreOnline } from '../../../src/components/DevOverlay';
-import { setLogLevel } from '../../../lib/logger';
+import { setLogLevel, enableLogStream, disableLogStream } from '../../../lib/logger';
 import {
   registerInstance,
   deregisterInstance,
@@ -486,6 +486,10 @@ export default function EmbedClient({
         restoreOnline();
       } else if (type === 'WIDGET_SET_LOG_LEVEL' && typeof level === 'string') {
         setLogLevel(level as Parameters<typeof setLogLevel>[0]);
+      } else if (type === 'WIDGET_ENABLE_LOG_STREAM') {
+        enableLogStream();
+      } else if (type === 'WIDGET_DISABLE_LOG_STREAM') {
+        disableLogStream();
       }
     };
     window.addEventListener('message', handler);

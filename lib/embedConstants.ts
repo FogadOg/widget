@@ -59,6 +59,12 @@ export const EMBED_EVENTS = {
   RESTORE_ONLINE: 'WIDGET_RESTORE_ONLINE',
   /** Host changes the logger's minimum log level inside the iframe. */
   SET_LOG_LEVEL: 'WIDGET_SET_LOG_LEVEL',
+  /** Host asks the iframe to start relaying log lines to the parent via postMessage. */
+  ENABLE_LOG_STREAM: 'WIDGET_ENABLE_LOG_STREAM',
+  /** Host asks the iframe to stop relaying log lines. */
+  DISABLE_LOG_STREAM: 'WIDGET_DISABLE_LOG_STREAM',
+  /** Iframe relays a single log line to the host (stream mode only). */
+  LOG_STREAM: 'WIDGET_LOG_STREAM',
 } as const;
 import { STORAGE_PREFIX } from "./constants";
 
