@@ -14,7 +14,7 @@ export function getWindowUrl(win?: { location?: { href?: string } } | Window): s
   return resolved && resolved.location ? resolved.location.href : undefined;
 }
 
-type LogLevel = 'error' | 'warn' | 'info' | 'debug';
+export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 
 interface LogContext {
   [key: string]: unknown;
@@ -44,6 +44,19 @@ class Logger {
     child.defaultContext = { ...this.defaultContext, ...extra };
     return child;
   }
+
+  /** Override the minimum log level at runtime (e.g. from chat.setLogLevel()). */
+  setLevel(level: LogLevel | 'silent'): void {
+    if (level === 'silent') {
+      this.isDevelopment = false;
+      this._minLevel = 'silent';
+    } else {
+      this.isDevelopment = true;
+      this._minLevel = level;
+    }
+  }
+
+  private _minLevel: LogLevel | 'silent' = process.env.NODE_ENV !== 'production' ? 'debug' : 'error';
   private errorBuffer: Array<{
     level: LogLevel;
     message: string;
@@ -192,3 +205,4 @@ export const logWarn = (message: string, context?: LogContext) => logger.warn(me
 export const logInfo = (message: string, context?: LogContext) => logger.info(message, context);
 export const logDebug = (message: string, context?: LogContext) => logger.debug(message, context);
 export const logPerf = (name: string, durationMs: number, context?: LogContext) => logger.perf(name, durationMs, context);
+export const setLogLevel = (level: LogLevel | 'silent') => logger.setLevel(level);

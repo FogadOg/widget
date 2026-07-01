@@ -31,7 +31,8 @@ import * as helpers from './helpers';
 import { queueMessage } from '../../../src/lib/offline';
 import { onInitConfig } from './events';
 import { validateConfig } from '../../../lib/validateConfig';
-import { enableDebug, disableDebug, useDebugMode, reportDevState, DevOverlay } from '../../../src/components/DevOverlay';
+import { enableDebug, disableDebug, useDebugMode, reportDevState, DevOverlay, simulateOffline, restoreOnline } from '../../../src/components/DevOverlay';
+import { setLogLevel } from '../../../lib/logger';
 import {
   registerInstance,
   deregisterInstance,
@@ -322,6 +323,12 @@ export default function EmbedClient({
   const [isOffline, setIsOffline] = useState(() =>
     typeof navigator !== 'undefined' ? !navigator.onLine : false
   );
+  const messagesRef = useRef<Message[]>([]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  const isOfflineRef = useRef(false);
+  useEffect(() => { isOfflineRef.current = isOffline; }, [isOffline]);
+  const errorRef = useRef<string | null>(null);
+  useEffect(() => { errorRef.current = error; }, [error]);
   const [isEmbedded, setIsEmbedded] = useState(false);
   const [agentName, setAgentName] = useState<string>('');
   const [widgetConfig, setWidgetConfig] = useState<WidgetConfig | null>(null);
@@ -443,6 +450,48 @@ export default function EmbedClient({
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
   }, [parentTargetOrigin]);
+
+  // Debug utility messages: diagnostics snapshot, session clear, offline sim,
+  // log level. Origin-validated same as the debug toggle above.
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (!isTrustedParentMessage(event, parentTargetOrigin)) return;
+      const { type, requestId, level } = (event.data || {}) as Record<string, unknown>;
+      if (type === 'WIDGET_GET_DIAGNOSTICS') {
+        const snap = {
+          version: process.env.NEXT_PUBLIC_WIDGET_VERSION ?? 'unknown',
+          sessionId: sessionIdRef.current,
+          clientId: initialClientId,
+          agentId: initialAgentId,
+          configId: initialConfigId,
+          debugActive: true,
+          messageCount: messagesRef.current?.length ?? 0,
+          offline: isOfflineRef.current,
+          handshake: sessionIdRef.current ? 'CONNECTED' : 'READY',
+          lastError: errorRef.current,
+          widgetType: 'session',
+        };
+        window.parent.postMessage({ type: 'WIDGET_DIAGNOSTICS_RESPONSE', requestId, data: snap }, parentTargetOrigin ?? '*');
+      } else if (type === 'WIDGET_CLEAR_SESSION') {
+        let removed = 0;
+        try {
+          Object.keys(localStorage)
+            .filter((k) => k.startsWith('companin-') || k.startsWith('companin_'))
+            .forEach((k) => { localStorage.removeItem(k); removed += 1; });
+        } catch { /* sandboxed */ }
+        window.parent.postMessage({ type: 'WIDGET_CLEAR_SESSION_RESPONSE', requestId, removed }, parentTargetOrigin ?? '*');
+      } else if (type === 'WIDGET_SIMULATE_OFFLINE') {
+        simulateOffline();
+      } else if (type === 'WIDGET_RESTORE_ONLINE') {
+        restoreOnline();
+      } else if (type === 'WIDGET_SET_LOG_LEVEL' && typeof level === 'string') {
+        setLogLevel(level as Parameters<typeof setLogLevel>[0]);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentTargetOrigin, initialClientId, initialAgentId, initialConfigId]);
 
   useEffect(() => {
     sessionIdRef.current = sessionId;

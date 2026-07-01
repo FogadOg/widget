@@ -660,6 +660,30 @@ export function DevOverlay(): React.ReactElement | null {
             >
               {simOffline ? 'Offline ✓' : 'Offline'}
             </button>
+            <button
+              style={btnStyle}
+              onClick={() => {
+                const payload = {
+                  capturedAt: new Date().toISOString(),
+                  state: devState,
+                  events: state.events,
+                };
+                try {
+                  navigator.clipboard.writeText(safeStringify(payload))
+                    .catch(() => {
+                      // fallback: open in a new tab if clipboard is blocked
+                      const w = window.open('', '_blank');
+                      if (w) { w.document.body.innerText = safeStringify(payload); }
+                    });
+                } catch {
+                  const w = window.open('', '_blank');
+                  if (w) { w.document.body.innerText = safeStringify(payload); }
+                }
+              }}
+              title="Copy all events + state as JSON for bug reports"
+            >
+              Copy
+            </button>
             <span style={{ marginLeft: 'auto', color: '#475569' }}>
               {errors.length} err · {timings.length} renders
             </span>

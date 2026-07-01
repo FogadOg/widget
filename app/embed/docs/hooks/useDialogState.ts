@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { validateConfig } from '../../../../lib/validateConfig'
-import { enableDebug, disableDebug } from '../../../../src/components/DevOverlay'
+import { enableDebug, disableDebug, simulateOffline, restoreOnline } from '../../../../src/components/DevOverlay'
+import { setLogLevel } from '../../../../lib/logger'
 import {
   getStoredSession as helpersGetStoredSession,
 } from '../helpers'
@@ -26,6 +27,8 @@ interface UseDialogStateParams {
   createSession: (token: string, variantInfo?: { variant_id?: string; variant_name?: string }) => Promise<void>;
   validateAndRestoreSession: (sessionId: string, token: string) => Promise<void>;
   resolveParentOrigin: () => string | undefined;
+  messages?: MessageType[];
+  error?: string | null;
 }
 
 export function useDialogState({
@@ -48,6 +51,8 @@ export function useDialogState({
   createSession,
   validateAndRestoreSession,
   resolveParentOrigin,
+  messages,
+  error,
 }: UseDialogStateParams) {
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
@@ -163,10 +168,11 @@ export function useDialogState({
     }
   }, [widgetConfig, parentOrigin]);
 
-  // Listen for messages from parent to open/close dialog or toggle debug mode
+  // Listen for messages from parent to open/close dialog, toggle debug mode,
+  // and handle debug utility commands (diagnostics, clear session, offline sim).
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      const { type } = event.data || {};
+      const { type, requestId, level } = (event.data || {}) as Record<string, unknown>;
 
       if (type === 'OPEN_DOCS_DIALOG') {
         handleOpenChange(true);
@@ -176,12 +182,45 @@ export function useDialogState({
         enableDebug();
       } else if (type === 'WIDGET_DEBUG_DISABLE') {
         disableDebug();
+      } else if (type === 'WIDGET_GET_DIAGNOSTICS') {
+        const snap = {
+          version: 'docs',
+          sessionId,
+          clientId,
+          agentId,
+          configId,
+          debugActive: true,
+          messageCount: messages?.length ?? 0,
+          offline: typeof navigator !== 'undefined' ? !navigator.onLine : false,
+          handshake: sessionId ? 'CONNECTED' : 'READY',
+          lastError: error ?? null,
+          widgetType: 'docs',
+        };
+        if (window.parent) {
+          window.parent.postMessage({ type: 'WIDGET_DIAGNOSTICS_RESPONSE', requestId, data: snap }, parentOrigin || '*');
+        }
+      } else if (type === 'WIDGET_CLEAR_SESSION') {
+        let removed = 0;
+        try {
+          Object.keys(localStorage)
+            .filter((k) => k.startsWith('companin-') || k.startsWith('companin_'))
+            .forEach((k) => { localStorage.removeItem(k); removed += 1; });
+        } catch { /* sandboxed */ }
+        if (window.parent) {
+          window.parent.postMessage({ type: 'WIDGET_CLEAR_SESSION_RESPONSE', requestId, removed }, parentOrigin || '*');
+        }
+      } else if (type === 'WIDGET_SIMULATE_OFFLINE') {
+        simulateOffline();
+      } else if (type === 'WIDGET_RESTORE_ONLINE') {
+        restoreOnline();
+      } else if (type === 'WIDGET_SET_LOG_LEVEL' && typeof level === 'string') {
+        setLogLevel(level as Parameters<typeof setLogLevel>[0]);
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [handleOpenChange]);
+  }, [handleOpenChange, sessionId, clientId, agentId, configId, messages, error, parentOrigin]);
 
   return { handleOpenChange };
 }

@@ -171,6 +171,9 @@
     const clientId = script.getAttribute("data-client-id");
     const agentId = script.getAttribute("data-agent-id");
     const configId = script.getAttribute("data-config-id");
+    // Kill-switch: site owners can set data-disable-debug="true" to prevent
+    // any visitor from activating the DevOverlay on their production embed.
+    const debugDisabled = script.getAttribute("data-disable-debug") === 'true';
     const detectLocale = () => {
       const explicitLocale = script.getAttribute("data-locale");
       if (explicitLocale) return explicitLocale;
@@ -597,6 +600,7 @@
         const lastEventEnvelope = {};
         const debounceState = {};
         let __lastHostMessage = null;
+        let _debugActive = false;
 
         // Backward-compat aliases: old flat names the caller might pass → canonical name.
         // New dotted names pass through unchanged.
@@ -870,13 +874,16 @@
           // only this host page can toggle it, and the overlay only ever shows
           // the current visitor their own session.
           enableDebug: () => {
+            if (debugDisabled) { console.warn('[Widget] Debug mode is disabled for this embed.'); return widgetApi; }
             try {
               if (iframe.contentWindow) {
                 iframe.contentWindow.postMessage(
                   { type: 'WIDGET_DEBUG_ENABLE' },
                   targetOrigin
                 );
+                _debugActive = true;
                 emitEvent('debug.enabled', { source: 'host-api' }, { rawType: 'HOST_ENABLE_DEBUG' });
+                emitEvent('debug.change', { active: true }, { rawType: 'HOST_ENABLE_DEBUG' });
               }
             } catch (err) {
               logError('Failed to enable debug mode', { error: err && err.message });
@@ -890,10 +897,79 @@
                   { type: 'WIDGET_DEBUG_DISABLE' },
                   targetOrigin
                 );
+                _debugActive = false;
                 emitEvent('debug.disabled', { source: 'host-api' }, { rawType: 'HOST_DISABLE_DEBUG' });
+                emitEvent('debug.change', { active: false }, { rawType: 'HOST_DISABLE_DEBUG' });
               }
             } catch (err) {
               logError('Failed to disable debug mode', { error: err && err.message });
+            }
+            return widgetApi;
+          },
+          isDebugActive: () => _debugActive,
+          getDiagnostics: () => new Promise((resolve, reject) => {
+            try {
+              if (!iframe.contentWindow) { reject(new Error('iframe not ready')); return; }
+              const requestId = 'diag-' + Math.random().toString(36).slice(2) + '-' + Date.now();
+              const timer = setTimeout(() => {
+                window.removeEventListener('message', handler);
+                reject(new Error('getDiagnostics timed out'));
+              }, 3000);
+              function handler(event) {
+                if (!event.data || event.data.type !== 'WIDGET_DIAGNOSTICS_RESPONSE') return;
+                if (event.data.requestId !== requestId) return;
+                clearTimeout(timer);
+                window.removeEventListener('message', handler);
+                resolve(event.data.data);
+              }
+              window.addEventListener('message', handler);
+              iframe.contentWindow.postMessage({ type: 'WIDGET_GET_DIAGNOSTICS', requestId }, targetOrigin);
+            } catch (err) {
+              reject(err);
+            }
+          }),
+          clearSession: () => new Promise((resolve) => {
+            try {
+              if (!iframe.contentWindow) { resolve(0); return; }
+              const requestId = 'cls-' + Math.random().toString(36).slice(2);
+              const timer = setTimeout(() => {
+                window.removeEventListener('message', handler);
+                resolve(0);
+              }, 3000);
+              function handler(event) {
+                if (!event.data || event.data.type !== 'WIDGET_CLEAR_SESSION_RESPONSE') return;
+                if (event.data.requestId !== requestId) return;
+                clearTimeout(timer);
+                window.removeEventListener('message', handler);
+                resolve(event.data.removed ?? 0);
+              }
+              window.addEventListener('message', handler);
+              iframe.contentWindow.postMessage({ type: 'WIDGET_CLEAR_SESSION', requestId }, targetOrigin);
+            } catch {
+              resolve(0);
+            }
+          }),
+          simulateOffline: () => {
+            try {
+              if (iframe.contentWindow) iframe.contentWindow.postMessage({ type: 'WIDGET_SIMULATE_OFFLINE' }, targetOrigin);
+            } catch (err) {
+              logError('Failed to simulate offline', { error: err && err.message });
+            }
+            return widgetApi;
+          },
+          restoreOnline: () => {
+            try {
+              if (iframe.contentWindow) iframe.contentWindow.postMessage({ type: 'WIDGET_RESTORE_ONLINE' }, targetOrigin);
+            } catch (err) {
+              logError('Failed to restore online', { error: err && err.message });
+            }
+            return widgetApi;
+          },
+          setLogLevel: (level) => {
+            try {
+              if (iframe.contentWindow) iframe.contentWindow.postMessage({ type: 'WIDGET_SET_LOG_LEVEL', level }, targetOrigin);
+            } catch (err) {
+              logError('Failed to set log level', { error: err && err.message });
             }
             return widgetApi;
           },

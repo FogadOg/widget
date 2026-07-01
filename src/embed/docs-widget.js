@@ -93,6 +93,7 @@
     const clientId = script.getAttribute("data-client-id");
     const agentId = script.getAttribute("data-agent-id");
     const configId = script.getAttribute("data-config-id");
+    const debugDisabled = script.getAttribute("data-disable-debug") === 'true';
     const detectLocale = () => {
       const explicitLocale = script.getAttribute("data-locale");
       if (explicitLocale) return explicitLocale;
@@ -619,6 +620,7 @@
         let _isOpen = false;
         let _isReady = false;
         let _hasEmittedReady = false;
+        let _debugActive = false;
 
         // Expose API for programmatic control
         const docsWidgetApi = {
@@ -787,9 +789,12 @@
           },
 
           enableDebug: () => {
+            if (debugDisabled) { console.warn('[Widget] Debug mode is disabled for this embed.'); return docsWidgetApi; }
             try {
               postToIframe({ type: 'WIDGET_DEBUG_ENABLE' });
+              _debugActive = true;
               emitEvent('debug.enabled', { source: 'host-api' }, { rawType: 'HOST_ENABLE_DEBUG' });
+              emitEvent('debug.change', { active: true }, { rawType: 'HOST_ENABLE_DEBUG' });
             } catch (err) {
               logError('Failed to enable debug mode', { error: err && err.message });
             }
@@ -798,9 +803,70 @@
           disableDebug: () => {
             try {
               postToIframe({ type: 'WIDGET_DEBUG_DISABLE' });
+              _debugActive = false;
               emitEvent('debug.disabled', { source: 'host-api' }, { rawType: 'HOST_DISABLE_DEBUG' });
+              emitEvent('debug.change', { active: false }, { rawType: 'HOST_DISABLE_DEBUG' });
             } catch (err) {
               logError('Failed to disable debug mode', { error: err && err.message });
+            }
+            return docsWidgetApi;
+          },
+          isDebugActive: () => _debugActive,
+          getDiagnostics: () => new Promise((resolve, reject) => {
+            try {
+              const requestId = 'diag-' + Math.random().toString(36).slice(2) + '-' + Date.now();
+              const timer = setTimeout(() => {
+                window.removeEventListener('message', handler);
+                reject(new Error('getDiagnostics timed out'));
+              }, 3000);
+              function handler(event) {
+                if (!event.data || event.data.type !== 'WIDGET_DIAGNOSTICS_RESPONSE') return;
+                if (event.data.requestId !== requestId) return;
+                clearTimeout(timer);
+                window.removeEventListener('message', handler);
+                resolve(event.data.data);
+              }
+              window.addEventListener('message', handler);
+              postToIframe({ type: 'WIDGET_GET_DIAGNOSTICS', requestId });
+            } catch (err) {
+              reject(err);
+            }
+          }),
+          clearSession: () => new Promise((resolve) => {
+            try {
+              const requestId = 'cls-' + Math.random().toString(36).slice(2);
+              const timer = setTimeout(() => {
+                window.removeEventListener('message', handler);
+                resolve(0);
+              }, 3000);
+              function handler(event) {
+                if (!event.data || event.data.type !== 'WIDGET_CLEAR_SESSION_RESPONSE') return;
+                if (event.data.requestId !== requestId) return;
+                clearTimeout(timer);
+                window.removeEventListener('message', handler);
+                resolve(event.data.removed ?? 0);
+              }
+              window.addEventListener('message', handler);
+              postToIframe({ type: 'WIDGET_CLEAR_SESSION', requestId });
+            } catch {
+              resolve(0);
+            }
+          }),
+          simulateOffline: () => {
+            try { postToIframe({ type: 'WIDGET_SIMULATE_OFFLINE' }); } catch (err) {
+              logError('Failed to simulate offline', { error: err && err.message });
+            }
+            return docsWidgetApi;
+          },
+          restoreOnline: () => {
+            try { postToIframe({ type: 'WIDGET_RESTORE_ONLINE' }); } catch (err) {
+              logError('Failed to restore online', { error: err && err.message });
+            }
+            return docsWidgetApi;
+          },
+          setLogLevel: (level) => {
+            try { postToIframe({ type: 'WIDGET_SET_LOG_LEVEL', level }); } catch (err) {
+              logError('Failed to set log level', { error: err && err.message });
             }
             return docsWidgetApi;
           },

@@ -231,6 +231,8 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     createSession,
     validateAndRestoreSession,
     resolveParentOrigin,
+    messages,
+    error,
   });
 
   // Developer overlay: active when debug mode is on (?widget_debug=1,

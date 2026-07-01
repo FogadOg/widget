@@ -40,6 +40,25 @@ export const EMBED_EVENTS = {
   INTERCEPT_RESPONSE: 'HOST_INTERCEPT_RESPONSE',
   /** Parent notifies iframe that at least one interceptor has been registered. */
   INTERCEPT_ACTIVE: 'HOST_INTERCEPT_ACTIVE',
+
+  // ── Debug API ──────────────────────────────────────────────────────────────
+  /** Host requests a diagnostics snapshot from the iframe. */
+  DEBUG_ENABLE: 'WIDGET_DEBUG_ENABLE',
+  DEBUG_DISABLE: 'WIDGET_DEBUG_DISABLE',
+  /** Host requests a full diagnostics snapshot; iframe replies with DIAGNOSTICS_RESPONSE. */
+  GET_DIAGNOSTICS: 'WIDGET_GET_DIAGNOSTICS',
+  /** Iframe sends diagnostics snapshot back to the host. */
+  DIAGNOSTICS_RESPONSE: 'WIDGET_DIAGNOSTICS_RESPONSE',
+  /** Host asks the iframe to clear all widget-prefixed localStorage keys. */
+  CLEAR_SESSION: 'WIDGET_CLEAR_SESSION',
+  /** Iframe confirms session was cleared with a count of removed keys. */
+  CLEAR_SESSION_RESPONSE: 'WIDGET_CLEAR_SESSION_RESPONSE',
+  /** Host asks the iframe to simulate an offline connection. */
+  SIMULATE_OFFLINE: 'WIDGET_SIMULATE_OFFLINE',
+  /** Host asks the iframe to restore the real network connection. */
+  RESTORE_ONLINE: 'WIDGET_RESTORE_ONLINE',
+  /** Host changes the logger's minimum log level inside the iframe. */
+  SET_LOG_LEVEL: 'WIDGET_SET_LOG_LEVEL',
 } as const;
 import { STORAGE_PREFIX } from "./constants";
 
