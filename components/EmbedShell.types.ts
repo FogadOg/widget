@@ -24,6 +24,8 @@ export type Props = {
   error?: string | null;
   title?: string;
   agentName?: string;
+  /** Display name of the identified user — personalizes the greeting (e.g. "Hi Alice!"). */
+  identifiedUserName?: string | null;
   widgetConfig?: WidgetConfig;
   onInteractionButtonClick?: (button: ButtonLike) => void | Promise<void>;
   onFollowUpButtonClick?: (button: ButtonLike) => void | Promise<void>;

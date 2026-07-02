@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
+import { API } from '../../../../lib/api'
 import { validateConfig } from '../../../../lib/validateConfig'
 import { enableDebug, disableDebug, simulateOffline, restoreOnline } from '../../../../src/components/DevOverlay'
 import { setLogLevel, enableLogStream, disableLogStream } from '../../../../lib/logger'
@@ -22,7 +23,8 @@ interface UseDialogStateParams {
   setWidgetConfig: (config: any) => void;
   widgetConfig: any;
   authError?: string | null;
-  getAuthToken: (clientId: string, parentOrigin?: string) => Promise<string | null>;
+  embedHeaders: Record<string, string>;
+  getAuthToken: (clientId: string, parentOrigin?: string, userToken?: string | null) => Promise<string | null>;
   fetchWidgetConfig: (configId: string, token: string) => Promise<{ variant_id?: string; variant_name?: string } | undefined>;
   createSession: (token: string, variantInfo?: { variant_id?: string; variant_name?: string }) => Promise<void>;
   validateAndRestoreSession: (sessionId: string, token: string) => Promise<void>;
@@ -46,6 +48,7 @@ export function useDialogState({
   setWidgetConfig,
   widgetConfig,
   authError,
+  embedHeaders,
   getAuthToken,
   fetchWidgetConfig,
   createSession,
@@ -54,6 +57,9 @@ export function useDialogState({
   messages,
   error,
 }: UseDialogStateParams) {
+  // Signed user JWT last seen via chat.identify({ token }) / data-user-token.
+  // Guards against re-triggering re-auth when the same token arrives twice.
+  const userTokenRef = useRef<string | null>(null);
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
 
@@ -172,7 +178,41 @@ export function useDialogState({
   // and handle debug utility commands (diagnostics, clear session, offline sim).
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      const { type, requestId, level } = (event.data || {}) as Record<string, unknown>;
+      const { type, requestId, level, data: hostData } = (event.data || {}) as Record<string, unknown>;
+
+      // Logged-in user handshake: the host page (or data-user-token) sends a
+      // signed user JWT via chat.identify({ token }). Re-auth with the token to
+      // get a user-claimed visitor JWT, then look up and restore the user's
+      // existing conversation across devices/browsers. Non-fatal throughout —
+      // any failure leaves the widget running anonymously.
+      if (type === 'HOST_MESSAGE') {
+        const action = (hostData as Record<string, unknown> | undefined)?.action;
+        if (action === 'identify') {
+          const userJwt = typeof (hostData as Record<string, unknown>)?.token === 'string'
+            ? (hostData as Record<string, string>).token
+            : null;
+          if (userJwt && userJwt !== userTokenRef.current) {
+            userTokenRef.current = userJwt;
+            (async () => {
+              try {
+                const newToken = await getAuthToken(clientId, resolveParentOrigin(), userJwt);
+                if (!newToken) return;
+                const resp = await fetch(API.sessionByUser(), {
+                  headers: { Authorization: `Bearer ${newToken}`, ...embedHeaders },
+                });
+                if (resp.ok) {
+                  const payload = await resp.json();
+                  const existingSessionId = payload?.data?.session_id;
+                  if (existingSessionId) {
+                    await validateAndRestoreSession(existingSessionId, newToken);
+                  }
+                }
+              } catch { /* non-fatal — user continues with current session */ }
+            })();
+          }
+        }
+        return;
+      }
 
       if (type === 'OPEN_DOCS_DIALOG') {
         handleOpenChange(true);
@@ -224,7 +264,7 @@ export function useDialogState({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [handleOpenChange, sessionId, clientId, agentId, configId, messages, error, parentOrigin]);
+  }, [handleOpenChange, sessionId, clientId, agentId, configId, messages, error, parentOrigin, getAuthToken, resolveParentOrigin, embedHeaders, validateAndRestoreSession]);
 
   return { handleOpenChange };
 }

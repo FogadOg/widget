@@ -76,6 +76,11 @@ describe('API utilities', () => {
       const { API } = await mockEnv({ NEXT_PUBLIC_API_BASE_URL: 'https://api.example.com' });
       expect(API.widgetConfig('config123')).toBe('https://api.example.com/widget-config/config123/public/');
     });
+
+    it('constructs sessionByUser endpoint correctly', async () => {
+      const { API } = await mockEnv({ NEXT_PUBLIC_API_BASE_URL: 'https://api.example.com' });
+      expect(API.sessionByUser()).toBe('https://api.example.com/api/v1/auth/sessions/by-user');
+    });
   });
 
   describe('embedOriginHeader', () => {

@@ -806,3 +806,47 @@ describe('EmbedShell - logo and avatar', () => {
     });
   });
 });
+
+describe('EmbedShell - personalized greeting (logged-in user)', () => {
+  beforeEach(() => {
+    // Reset styles mock to default (avatars on) in case a prior suite changed it.
+    widgetStylesMock.mockReturnValue(defaultStyles);
+  });
+
+  test('prepends "Hi {name}!" to the greeting when identifiedUserName is set', () => {
+    const widgetConfig = {
+      greeting_message: { text: { en: 'How can I help?' }, buttons: [] },
+    } as any;
+    render(
+      <EmbedShell {...minimalProps} widgetConfig={widgetConfig} identifiedUserName="Alice" />
+    );
+    expect(screen.getByText('Hi Alice! How can I help?')).toBeInTheDocument();
+    // The un-prefixed greeting should not also appear.
+    expect(screen.queryByText('How can I help?')).toBeNull();
+  });
+
+  test('shows the plain greeting when identifiedUserName is absent', () => {
+    const widgetConfig = {
+      greeting_message: { text: { en: 'How can I help?' }, buttons: [] },
+    } as any;
+    render(<EmbedShell {...minimalProps} widgetConfig={widgetConfig} />);
+    expect(screen.getByText('How can I help?')).toBeInTheDocument();
+    expect(screen.queryByText(/^Hi .*!/)).toBeNull();
+  });
+
+  test('shows the plain greeting when identifiedUserName is null', () => {
+    const widgetConfig = {
+      greeting_message: { text: { en: 'Welcome' }, buttons: [] },
+    } as any;
+    render(
+      <EmbedShell {...minimalProps} widgetConfig={widgetConfig} identifiedUserName={null} />
+    );
+    expect(screen.getByText('Welcome')).toBeInTheDocument();
+  });
+
+  test('does not render a name-only greeting when there is no greeting text', () => {
+    // No greeting_message → no greeting bubble at all, even with a known user.
+    render(<EmbedShell {...minimalProps} widgetConfig={{} as any} identifiedUserName="Alice" />);
+    expect(screen.queryByText(/Hi Alice/)).toBeNull();
+  });
+});

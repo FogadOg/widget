@@ -47,7 +47,7 @@ export function useWidgetAuth() {
       if (autoRefreshTimerRef.current) clearTimeout(autoRefreshTimerRef.current);
     };
   }, []);
-    const getAuthToken = useCallback(async (clientId: string, parentOrigin?: string): Promise<string | null> => {
+    const getAuthToken = useCallback(async (clientId: string, parentOrigin?: string, userToken?: string | null): Promise<string | null> => {
     const normalizedClientId = typeof clientId === 'string' ? clientId.trim() : '';
     // Validate input
     if (!normalizedClientId) {
@@ -91,7 +91,10 @@ export function useWidgetAuth() {
                 'Content-Type': 'application/json',
                 ...embedOriginHeader(parentOrigin),
               },
-              body: JSON.stringify({ client_id: normalizedClientId }),
+              body: JSON.stringify({
+                client_id: normalizedClientId,
+                ...(userToken ? { user_token: userToken } : {}),
+              }),
               signal: controller.signal,
             });
 

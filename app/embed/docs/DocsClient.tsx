@@ -226,6 +226,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     setWidgetConfig,
     widgetConfig,
     authError,
+    embedHeaders,
     getAuthToken,
     fetchWidgetConfig,
     createSession,

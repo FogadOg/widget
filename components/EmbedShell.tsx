@@ -41,6 +41,7 @@ export default function EmbedShell({
   error,
   title,
   agentName,
+  identifiedUserName,
   widgetConfig,
   onInteractionButtonClick,
   onFollowUpButtonClick,
@@ -280,6 +281,9 @@ export default function EmbedShell({
   const hasGreetingMessage = !isPreview && (messages.length > 0 || (flowResponses?.length ?? 0) > 0);
   const showGreeting = widgetConfig?.greeting_message && !hasGreetingMessage;
   const greetingText = showGreeting ? getText(widgetConfig.greeting_message.text) : '';
+  const displayGreetingText = identifiedUserName && greetingText
+    ? `Hi ${identifiedUserName}! ${greetingText}`
+    : greetingText;
   // Only show interaction buttons whose `languages` whitelist includes the
   // current locale (legacy buttons with no `languages` field are visible in
   // all locales). The admin manages this per editing-language.
@@ -510,7 +514,7 @@ export default function EmbedShell({
                             <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
                           )}
                           <div className="max-w-[80%] px-3.5 py-2.5 border" style={{ backgroundColor: agentBubbleBg, borderColor: subtleBorderColor, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
-                            {greetingText}
+                            {displayGreetingText}
                           </div>
                         </div>
                         {showButtons && (
@@ -841,7 +845,7 @@ export default function EmbedShell({
                           <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
                         )}
                         <div className="max-w-[80%] px-3.5 py-2.5 border" style={{ backgroundColor: agentBubbleBg, borderColor: subtleBorderColor, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
-                          {greetingText}
+                          {displayGreetingText}
                         </div>
                       </div>
                       {showButtons && (

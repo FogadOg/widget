@@ -109,6 +109,8 @@ export default function EmbedClient({
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [flowResponses, setFlowResponses] = useState<FlowResponse[]>([]);
+  // Display name of the identified user — drives the personalized greeting in EmbedShell.
+  const [identifiedUserName, setIdentifiedUserName] = useState<string | null>(null);
 
   // User identity set via chat.identify() — stored as a ref so the fetch
   // closure always sees the latest value without needing it in deps arrays.
@@ -118,6 +120,11 @@ export default function EmbedClient({
     name?: string | null;
     metadata?: Record<string, unknown> | null;
   } | null>(null);
+
+  // Signed user JWT from the host app (passed via chat.identify({ token }) or
+  // data-user-token). When present the widget re-auths and restores the user's
+  // existing session across devices/browsers.
+  const identifiedUserTokenRef = useRef<string | null>(null);
 
   // Page context pushed via chat.setContext() — merged into every API request.
   const pageContextRef = useRef<Record<string, unknown>>({});
@@ -1909,6 +1916,7 @@ export default function EmbedClient({
           if (command.action === 'identify') {
             const u = command.data as Record<string, unknown> | null | undefined;
             if (u && typeof u === 'object') {
+              const userJwt = typeof u.token === 'string' ? u.token : null;
               const safe = {
                 userId: ((u.userId || u.id) as string | null) ?? null,
                 email: typeof u.email === 'string' ? u.email : null,
@@ -1918,6 +1926,30 @@ export default function EmbedClient({
                   : null,
               };
               identifiedUserRef.current = safe;
+              if (safe.name) setIdentifiedUserName(safe.name);
+
+              if (userJwt && userJwt !== identifiedUserTokenRef.current) {
+                identifiedUserTokenRef.current = userJwt;
+                // Re-auth with signed user token to get a user-claimed visitor JWT,
+                // then look up and restore the user's existing session.
+                (async () => {
+                  try {
+                    const newToken = await (getAuthToken as any)(initialClientId, initialParentOrigin, userJwt);
+                    if (!newToken) return;
+                    const resp = await fetch(API.sessionByUser(), {
+                      headers: { Authorization: `Bearer ${newToken}`, ...embedHeaders },
+                    });
+                    if (resp.ok) {
+                      const data = await resp.json();
+                      const existingSessionId = data?.data?.session_id;
+                      if (existingSessionId) {
+                        await validateAndRestoreSession(existingSessionId, initialAgentId, newToken);
+                      }
+                    }
+                  } catch { /* non-fatal — user continues with current session */ }
+                })();
+              }
+
               if (parentSensitiveOrigin) {
                 try {
                   window.parent.postMessage(
@@ -2106,6 +2138,7 @@ export default function EmbedClient({
         error={error}
         locale={activeLocale}
         agentName={agentName}
+        identifiedUserName={identifiedUserName}
         widgetConfig={safeWidgetConfig}
         onInteractionButtonClick={handleInteractionButtonClick}
         onFollowUpButtonClick={handleFollowUpButtonClick}

@@ -108,6 +108,13 @@
       script.getAttribute("data-key");
     const startOpen = script.getAttribute("data-start-open") === "true";
 
+    // Optional signed user JWT from the host app. When present the widget
+    // re-authenticates with verified user claims and restores the user's
+    // existing conversation across devices/browsers. Forwarded to the iframe
+    // as an `identify` message once the app signals WIDGET_READY (never via the
+    // URL, to keep the token out of server logs). Mirrors the chat widget.
+    const userToken = script.getAttribute("data-user-token") || null;
+
     // Single install key (data-widget-key): one opaque key resolves the
     // client-id/agent-id/config-id triple server-side. Used only when the
     // explicit triple is absent, so the three-attribute form keeps working.
@@ -1056,6 +1063,13 @@
                 if (!_hasEmittedReady) {
                   _hasEmittedReady = true;
                   emitNow('widget.ready', data || {}, type);
+                }
+                // Auto-forward the initial-load user token (data-user-token) so
+                // the app re-auths and restores the logged-in user's session.
+                if (userToken) {
+                  try {
+                    postToIframe({ type: 'HOST_MESSAGE', data: { action: 'identify', token: userToken } });
+                  } catch (e) { /* non-fatal — widget still works anonymously */ }
                 }
                 break;
 

@@ -213,6 +213,9 @@
     // (Note: data-key remains the instance-id alias above — do NOT reuse it here.)
     const installKey = script.getAttribute("data-widget-key");
     const usingInstallKey = !!installKey && (!clientId || !agentId || !configId);
+    // Signed user JWT from the host app — proves the currently-logged-in user.
+    // Short-lived (≤15 min); forwarded to the iframe via postMessage after WIDGET_READY.
+    const userToken = script.getAttribute("data-user-token") || null;
     if (!usingInstallKey && (!clientId || !agentId || !configId)) {
       const missing = [];
       if (!clientId) missing.push("data-client-id");
@@ -1171,6 +1174,7 @@
                 email: typeof user.email === 'string' ? user.email : null,
                 name: typeof user.name === 'string' ? user.name : null,
                 metadata: (user.metadata && typeof user.metadata === 'object') ? user.metadata : null,
+                token: typeof user.token === 'string' ? user.token : null,
               };
               if (iframe.contentWindow) {
                 iframe.contentWindow.postMessage(
@@ -1522,6 +1526,18 @@
                   _isReady = true;
                   _hasEmittedReady = true;
                   emitEvent('widget.ready', data, { rawType: type });
+                }
+                // Forward a signed user token right after the widget is ready,
+                // so the iframe can re-auth and restore the user's session.
+                if (userToken) {
+                  try {
+                    if (iframe.contentWindow) {
+                      iframe.contentWindow.postMessage(
+                        { type: 'HOST_MESSAGE', data: { action: 'identify', token: userToken } },
+                        targetOrigin
+                      );
+                    }
+                  } catch (e) {}
                 }
                 break;
 

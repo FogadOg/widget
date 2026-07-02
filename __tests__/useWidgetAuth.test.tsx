@@ -1013,5 +1013,60 @@ describe('useWidgetAuth', () => {
       expect(result.current.isLoading).toBe(false);
       expect(createAuthError).toHaveBeenCalledWith('Bad request', 1002);
     });
+
+    // Logged-in user feature: getAuthToken forwards a signed user JWT to the
+    // backend as `user_token` so it can embed verified user claims in the
+    // visitor token. Omitted entirely when no token is supplied.
+    it('forwards user_token in the request body when a userToken is provided', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ token: 'user-claimed-token' }),
+      });
+
+      const { result } = renderHook(() => useWidgetAuth());
+
+      let token;
+      await act(async () => {
+        token = await result.current.getAuthToken('test-client', 'https://host.example', 'signed-user-jwt');
+      });
+
+      expect(token).toBe('user-claimed-token');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as any).body);
+      expect(body).toEqual({ client_id: 'test-client', user_token: 'signed-user-jwt' });
+    });
+
+    it('omits user_token from the body when no userToken is provided', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ token: 'anon-token' }),
+      });
+
+      const { result } = renderHook(() => useWidgetAuth());
+
+      await act(async () => {
+        await result.current.getAuthToken('test-client', 'https://host.example');
+      });
+
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as any).body);
+      expect(body).toEqual({ client_id: 'test-client' });
+      expect(body).not.toHaveProperty('user_token');
+    });
+
+    it('does not forward user_token when an empty string is passed', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ token: 'anon-token' }),
+      });
+
+      const { result } = renderHook(() => useWidgetAuth());
+
+      await act(async () => {
+        await result.current.getAuthToken('test-client', 'https://host.example', '');
+      });
+
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as any).body);
+      expect(body).not.toHaveProperty('user_token');
+    });
   });
 });
