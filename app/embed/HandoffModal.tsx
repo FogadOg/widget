@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getReadableTextColor } from '../../lib/colors';
 
 interface HandoffTranslations {
   handoffTitle: string;
@@ -80,7 +81,7 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <label htmlFor="handoff-name" style={{ display: 'block', fontSize: 13, marginBottom: 4, color: '#374151' }}>
+            <label htmlFor="handoff-name" style={{ display: 'block', fontSize: 13, marginBottom: 4, color: textColor, opacity: 0.75 }}>
               {tr.handoffNameLabel}
             </label>
             <input
@@ -92,7 +93,9 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
               style={{
                 width: '100%',
                 padding: '8px 10px',
-                border: '1px solid #d1d5db',
+                border: `1px solid ${textColor}33`,
+                backgroundColor: 'transparent',
+                color: textColor,
                 borderRadius: 6,
                 fontSize: 14,
                 boxSizing: 'border-box',
@@ -101,7 +104,7 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
           </div>
 
           <div>
-            <label htmlFor="handoff-email" style={{ display: 'block', fontSize: 13, marginBottom: 4, color: '#374151' }}>
+            <label htmlFor="handoff-email" style={{ display: 'block', fontSize: 13, marginBottom: 4, color: textColor, opacity: 0.75 }}>
               {tr.handoffEmailLabel}
             </label>
             <input
@@ -113,7 +116,9 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
               style={{
                 width: '100%',
                 padding: '8px 10px',
-                border: '1px solid #d1d5db',
+                border: `1px solid ${textColor}33`,
+                backgroundColor: 'transparent',
+                color: textColor,
                 borderRadius: 6,
                 fontSize: 14,
                 boxSizing: 'border-box',
@@ -122,7 +127,7 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
           </div>
 
           <div>
-            <label htmlFor="handoff-message" style={{ display: 'block', fontSize: 13, marginBottom: 4, color: '#374151' }}>
+            <label htmlFor="handoff-message" style={{ display: 'block', fontSize: 13, marginBottom: 4, color: textColor, opacity: 0.75 }}>
               {tr.handoffMessageLabel}
             </label>
             <textarea
@@ -134,7 +139,9 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
               style={{
                 width: '100%',
                 padding: '8px 10px',
-                border: '1px solid #d1d5db',
+                border: `1px solid ${textColor}33`,
+                backgroundColor: 'transparent',
+                color: textColor,
                 borderRadius: 6,
                 fontSize: 14,
                 resize: 'vertical',
@@ -144,7 +151,7 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
           </div>
 
           {error && (
-            <p style={{ color: '#dc2626', fontSize: 13, margin: 0 }}>{error}</p>
+            <p style={{ color: 'var(--destructive, #dc2626)', fontSize: 13, margin: 0 }}>{error}</p>
           )}
 
           <button
@@ -153,7 +160,7 @@ export function HandoffModal({ lastUserMessage, translations: tr, onSubmit, onDi
             style={{
             padding: '10px 0',
             backgroundColor: primaryColor,
-            color: '#ffffff',
+            color: getReadableTextColor(primaryColor),
             border: 'none',
             borderRadius,
             fontSize: 14,

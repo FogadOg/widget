@@ -10,6 +10,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 // localStorage keys for remembering the last-used IDs between reloads.
 const LS_PREFIX = 'companin-devharness-';
@@ -152,30 +153,20 @@ export default function DevHarness() {
 
   const fieldStyle: React.CSSProperties = {
     padding: '6px 8px',
-    border: '1px solid #cbd5e1',
+    border: '1px solid var(--input)',
     borderRadius: 6,
     fontSize: 13,
     width: '100%',
     boxSizing: 'border-box',
   };
-  const labelStyle: React.CSSProperties = { fontSize: 11, color: '#64748b', display: 'block', marginBottom: 4 };
-  const btnStyle: React.CSSProperties = {
-    padding: '7px 12px',
-    border: 'none',
-    borderRadius: 6,
-    background: '#2563eb',
-    color: 'white',
-    fontSize: 13,
-    cursor: 'pointer',
-  };
-  const btnSecondary: React.CSSProperties = { ...btnStyle, background: '#475569' };
+  const labelStyle: React.CSSProperties = { fontSize: 11, color: 'var(--muted-foreground)', display: 'block', marginBottom: 4 };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#0f172a' }}>
+    <div style={{ display: 'flex', height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif', color: 'var(--foreground)' }}>
       {/* Controls */}
-      <div style={{ width: 360, flexShrink: 0, borderRight: '1px solid #e2e8f0', padding: 16, overflowY: 'auto', background: '#f8fafc' }}>
+      <div style={{ width: 360, flexShrink: 0, borderRight: '1px solid var(--border)', padding: 16, overflowY: 'auto', background: 'var(--muted)' }}>
         <h1 style={{ fontSize: 16, margin: '0 0 4px' }}>Widget Dev Harness</h1>
-        <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 16px' }}>
+        <p style={{ fontSize: 12, color: 'var(--muted-foreground)', margin: '0 0 16px' }}>
           Embeds <code>/embed/session</code> like a real host page. Dev-only.
         </p>
 
@@ -211,22 +202,26 @@ export default function DevHarness() {
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
-          <button style={btnStyle} onClick={apply} disabled={!ready} title={ready ? '' : 'Fill in all three IDs first'}>
-            Apply &amp; reload
-          </button>
-          <button style={btnSecondary} onClick={reloadIframe}>Reload iframe</button>
+          <span title={ready ? '' : 'Fill in all three IDs first'}>
+            <Button size="sm" onClick={apply} disabled={!ready}>
+              Apply &amp; reload
+            </Button>
+          </span>
+          <Button size="sm" variant="secondary" onClick={reloadIframe}>Reload iframe</Button>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-          <button style={btnSecondary} onClick={clearSession}>Clear session</button>
-          <button
-            style={{ ...btnSecondary, background: offline ? '#b45309' : '#475569' }}
+          <Button size="sm" variant="secondary" onClick={clearSession}>Clear session</Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            className={offline ? 'bg-warning text-warning-foreground hover:bg-warning/90' : undefined}
             onClick={toggleOffline}
           >
             {offline ? 'Restore online' : 'Simulate offline'}
-          </button>
+          </Button>
         </div>
 
-        <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 16, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 16, lineHeight: 1.5 }}>
           Position, theme and most behaviour come from the dashboard config (<code>configId</code>),
           not from this harness. <code>startOpen</code> and <code>locale</code> are passed via the URL.
         </p>
@@ -234,7 +229,7 @@ export default function DevHarness() {
 
       {/* Stage + log */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <div style={{ flex: 1, position: 'relative', background: '#ffffff', backgroundImage: 'radial-gradient(#e2e8f0 1px, transparent 1px)', backgroundSize: '16px 16px' }}>
+        <div style={{ flex: 1, position: 'relative', background: 'var(--background)', backgroundImage: 'radial-gradient(var(--border) 1px, transparent 1px)', backgroundSize: '16px 16px' }}>
           {ready && iframeSrc ? (
             <iframe
               key={reloadKey}
@@ -245,7 +240,7 @@ export default function DevHarness() {
               sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
             />
           ) : (
-            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#94a3b8', fontSize: 14 }}>
+            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'var(--muted-foreground)', fontSize: 14 }}>
               Enter Client / Agent / Config IDs and press “Apply &amp; reload”.
             </div>
           )}

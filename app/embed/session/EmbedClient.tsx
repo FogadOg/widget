@@ -2080,8 +2080,8 @@ export default function EmbedClient({
         bottom: 0,
         right: 0,
         left: 0,
-        background: '#fef2f2',
-        border: '1px solid #fca5a5',
+        background: 'color-mix(in oklab, var(--destructive, #dc2626) 8%, var(--background, #ffffff))',
+        border: '1px solid var(--destructive, #fca5a5)',
         borderRadius: '12px',
         padding: '16px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
@@ -2090,16 +2090,16 @@ export default function EmbedClient({
         boxSizing: 'border-box',
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-          <div style={{ flexShrink: 0, color: '#dc2626', marginTop: '2px' }}>
+          <div style={{ flexShrink: 0, color: 'var(--destructive, #dc2626)', marginTop: '2px' }}>
             <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
             </svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: 600, color: '#991b1b' }}>
+            <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: 600, color: 'var(--destructive, #991b1b)' }}>
               Widget unavailable
             </p>
-            <p style={{ margin: 0, fontSize: '12px', color: '#6b7280', lineHeight: '1.5', wordBreak: 'break-word' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted-foreground, #6b7280)', lineHeight: '1.5', wordBreak: 'break-word' }}>
               {fatalError}
             </p>
           </div>

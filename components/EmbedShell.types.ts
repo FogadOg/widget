@@ -17,7 +17,7 @@ export type Props = {
   streamingMessage?: string | null;
   input: string;
   setInput: (v: string) => void;
-  handleSubmit: (e: React.FormEvent, messageText?: string, skipAddingUserMessage?: boolean) => void;
+  handleSubmit: (e: React.FormEvent, messageText?: string, skipAddingUserMessage?: boolean) => void | Promise<void>;
   onStopStreaming?: () => void;
   onCloseUnsureModal?: () => void;
   onDismissHandoff?: () => void;

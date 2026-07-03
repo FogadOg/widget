@@ -32,7 +32,7 @@ export default function LanguageSwitcher({ locale }: { locale: string }) {
   return (
     <div className="relative group">
       <button
-        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+        className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
         aria-label="Switch language"
       >
         <img
@@ -47,13 +47,13 @@ export default function LanguageSwitcher({ locale }: { locale: string }) {
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>
-      <div className="absolute right-0 top-full mt-1 w-44 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+      <div className="absolute right-0 top-full mt-1 w-44 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
         {LANGUAGES.map((lang) => (
           <button
             key={lang.code}
             onClick={() => switchLanguage(lang.code)}
-            className={`flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors first:rounded-t-lg last:rounded-b-lg ${
-              lang.code === locale ? 'font-semibold text-zinc-900 dark:text-zinc-50' : 'text-zinc-600 dark:text-zinc-400'
+            className={`flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors first:rounded-t-lg last:rounded-b-lg ${
+              lang.code === locale ? 'font-semibold text-foreground' : 'text-muted-foreground'
             }`}
           >
             <img

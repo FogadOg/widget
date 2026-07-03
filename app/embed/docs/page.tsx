@@ -106,27 +106,27 @@ export default async function DocsPage({ searchParams }: Props) {
       locale,
       t.docsConfigError as string,
       <>
-        <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
+        <p style={{ color: 'var(--muted-foreground, #6b7280)', fontSize: '14px', lineHeight: '1.6' }}>
           {t.widgetConfigMissingParams as string}
         </p>
-        <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
-          Provide a single <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>data-widget-key</code>, or all three of:
+        <p style={{ color: 'var(--muted-foreground, #6b7280)', fontSize: '14px', lineHeight: '1.6' }}>
+          Provide a single <code style={{ backgroundColor: 'var(--muted, #f3f4f6)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>data-widget-key</code>, or all three of:
         </p>
-        <ul style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.8' }}>
-          <li><code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>data-client-id</code></li>
-          <li><code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>data-agent-id</code></li>
-          <li><code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>data-config-id</code></li>
+        <ul style={{ color: 'var(--muted-foreground, #6b7280)', fontSize: '14px', lineHeight: '1.8' }}>
+          <li><code style={{ backgroundColor: 'var(--muted, #f3f4f6)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>data-client-id</code></li>
+          <li><code style={{ backgroundColor: 'var(--muted, #f3f4f6)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>data-agent-id</code></li>
+          <li><code style={{ backgroundColor: 'var(--muted, #f3f4f6)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>data-config-id</code></li>
         </ul>
         <p
           style={{
-            color: '#6b7280',
+            color: 'var(--muted-foreground, #6b7280)',
             fontSize: '12px',
             marginTop: '24px',
             paddingTop: '16px',
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid var(--border, #e5e7eb)',
           }}
         >
-          Need help? Visit <a href="https://companin.tech/docs" style={{ color: '#2563eb', textDecoration: 'none' }}>{t.widgetConfigOurDocumentation as string}</a>
+          Need help? Visit <a href="https://companin.tech/docs" style={{ color: 'var(--info, #2563eb)', textDecoration: 'none' }}>{t.widgetConfigOurDocumentation as string}</a>
         </p>
       </>,
       {
@@ -149,7 +149,7 @@ export default async function DocsPage({ searchParams }: Props) {
         return renderDocsEmbedErrorCard(
           locale,
           t.docsConfigError as string,
-          <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
+          <p style={{ color: 'var(--muted-foreground, #6b7280)', fontSize: '14px', lineHeight: '1.6' }}>
             Widget token verification is enabled but not configured correctly.
           </p>,
           {
@@ -170,7 +170,7 @@ export default async function DocsPage({ searchParams }: Props) {
         return renderDocsEmbedErrorCard(
           locale,
           'Unauthorized widget request',
-          <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
+          <p style={{ color: 'var(--muted-foreground, #6b7280)', fontSize: '14px', lineHeight: '1.6' }}>
             The embed token is invalid or expired. Please regenerate your widget snippet.
           </p>,
           {

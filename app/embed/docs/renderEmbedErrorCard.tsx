@@ -38,7 +38,7 @@ export function renderDocsEmbedErrorCard(
         margin: 0,
         padding: 16,
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        backgroundColor: '#fef2f2',
+        backgroundColor: 'var(--background, #fef2f2)',
         minHeight: '100vh',
         boxSizing: 'border-box',
       }}
@@ -47,12 +47,12 @@ export function renderDocsEmbedErrorCard(
         maxWidth: '500px',
         margin: '0 auto',
         padding: '24px',
-        backgroundColor: 'white',
+        backgroundColor: 'var(--card, #ffffff)',
         borderRadius: '8px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
       }}>
         <h3 style={{
-          color: '#dc2626',
+          color: 'var(--destructive, #dc2626)',
           marginTop: 0,
           fontSize: '18px',
           fontWeight: '600',

@@ -717,7 +717,7 @@ export const PromptInput = ({
         {...props}
       >
         {!online && (
-          <div className="mb-2 rounded-md bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
+          <div className="mb-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
             <strong className="block">{en.offlineBannerTitle}</strong>
             <span className="block text-xs">{en.offlineBannerDesc}</span>
           </div>

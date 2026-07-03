@@ -90,7 +90,7 @@ export function PreviewModeWidget({
         <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: theme.title, lineHeight: 1.3 }}>{title}</h2>
         {subtitle && <p style={{ margin: '4px 0 0', fontSize: '14px', color: theme.subtitle, lineHeight: 1.5 }}>{subtitle}</p>}
         {error && (
-          <div style={{ marginTop: '8px', background: '#fefce8', borderLeft: '4px solid #facc15', color: '#713f12', padding: '6px 12px', fontSize: '13px' }} role="alert">
+          <div style={{ marginTop: '8px', background: 'color-mix(in oklab, var(--warning) 10%, var(--background))', borderLeft: '4px solid var(--warning)', color: 'var(--warning)', padding: '6px 12px', fontSize: '13px' }} role="alert">
             {error}
           </div>
         )}
@@ -143,9 +143,9 @@ export function PreviewModeWidget({
               <div className="flex justify-start">
                 <div className="p-3" style={{ backgroundColor: 'var(--muted)', borderRadius: 'var(--radius)' }}>
                   <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" />
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" />
+                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
                   </div>
                 </div>
               </div>

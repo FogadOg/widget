@@ -320,7 +320,7 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
           )}
           {showSafetyFallback && (
             <span
-              className="mt-1 text-[11px]"
+              className="mt-1 text-xs"
               style={{
                 marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0',
                 color: STATUS_COLORS.safety.text,

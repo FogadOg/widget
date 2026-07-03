@@ -181,7 +181,7 @@ export default function EmbedShell({
       // intentional. handleSubmit catches all its own errors; this .catch is a
       // last-resort guard so any unexpected rejection never surfaces as an
       // unhandled rejection in the Next.js dev overlay.
-      void handleSubmit(e, messageText).catch(() => {});
+      void Promise.resolve(handleSubmit(e, messageText)).catch(() => {});
       // Keep focus in the composer after sending (textarea is not unmounted).
       window.setTimeout(() => inputRef.current?.focus(), 0);
     },
@@ -465,7 +465,7 @@ export default function EmbedShell({
                         <path d="m9 9 6 6"/>
                       </svg>
                       <span className="ml-1 text-xs">{unsureMessages.length}</span>
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                      <span className="absolute -top-1 -right-1 bg-destructive text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
                         !
                       </span>
                     </button>

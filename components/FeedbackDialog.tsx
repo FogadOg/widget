@@ -94,7 +94,7 @@ export default function FeedbackDialog({
   if (submitted) {
     return (
       <div
-        className="p-6 text-center animate-fade-in"
+        className="p-6 text-center shadow-lg animate-fade-in"
         style={{
           backgroundColor: backgroundColor,
           borderRadius: `${borderRadius}px`,
@@ -115,7 +115,7 @@ export default function FeedbackDialog({
 
   return (
     <div
-      className="p-6 relative"
+      className="p-6 relative shadow-lg"
       style={{
         backgroundColor: backgroundColor,
         borderRadius: `${borderRadius}px`,
@@ -151,6 +151,7 @@ export default function FeedbackDialog({
             backgroundColor: selectedRating === 'positive' ? `${primaryColor}20` : `${primaryColor}10`,
             borderColor: primaryColor,
             color: textColor,
+            ['--tw-ring-color' as string]: primaryColor,
           }}
           aria-pressed={selectedRating === 'positive'}
         >
@@ -168,6 +169,7 @@ export default function FeedbackDialog({
             backgroundColor: selectedRating === 'neutral' ? `${primaryColor}20` : `${primaryColor}10`,
             borderColor: primaryColor,
             color: textColor,
+            ['--tw-ring-color' as string]: primaryColor,
           }}
           aria-pressed={selectedRating === 'neutral'}
         >
@@ -185,6 +187,7 @@ export default function FeedbackDialog({
             backgroundColor: selectedRating === 'negative' ? `${primaryColor}20` : `${primaryColor}10`,
             borderColor: primaryColor,
             color: textColor,
+            ['--tw-ring-color' as string]: primaryColor,
           }}
           aria-pressed={selectedRating === 'negative'}
         >
@@ -206,6 +209,7 @@ export default function FeedbackDialog({
               backgroundColor: `${primaryColor}05`,
               borderColor: `${primaryColor}30`,
               color: textColor,
+              ['--tw-ring-color' as string]: primaryColor,
             }}
             rows={3}
           />

@@ -16,32 +16,32 @@ export function UnsureMessagesModal({ messages, onClose, primaryColor, backgroun
           <h3 className="text-lg font-semibold">{t.uncertaintyLogTitle as string}</h3>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-xl leading-none"
+            className="text-muted-foreground hover:text-foreground text-xl leading-none"
           >
             ×
           </button>
         </div>
-        <p className="text-sm text-gray-600 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           {t.uncertaintyLogSubtitle as string}
         </p>
       </div>
 
       <div className="p-4 max-h-96 overflow-y-auto">
         {messages.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">{t.uncertaintyLogEmpty as string}</p>
+          <p className="text-muted-foreground text-center py-4">{t.uncertaintyLogEmpty as string}</p>
         ) : (
           <div className="space-y-4">
             {messages.map((msg, index) => (
               <div key={index} className="border rounded p-3" style={{ borderColor: primaryColor + "20" }}>
                 <div className="mb-2">
-                  <span className="text-xs text-gray-500">{t.uncertaintyLogUser as string}</span>
+                  <span className="text-xs text-muted-foreground">{t.uncertaintyLogUser as string}</span>
                   <p className="text-sm mt-1">{msg.userMessage}</p>
                 </div>
                 <div>
-                  <span className="text-xs text-gray-500">{t.uncertaintyLogAgent as string}</span>
+                  <span className="text-xs text-muted-foreground">{t.uncertaintyLogAgent as string}</span>
                   <p className="text-sm mt-1 italic">{msg.agentMessage}</p>
                 </div>
-                <div className="text-xs text-gray-400 mt-2">
+                <div className="text-xs text-muted-foreground mt-2">
                   {new Date(msg.timestamp).toLocaleString(locale)}
                 </div>
               </div>

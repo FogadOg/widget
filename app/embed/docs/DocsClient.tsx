@@ -343,7 +343,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                 </div>
               )}
               {error && (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 px-6 py-2 text-sm" role="alert">
+                <div className="bg-warning/10 border-l-4 border-warning/60 text-warning px-6 py-2 text-sm" role="alert">
                   {error}
                 </div>
               )}
@@ -419,9 +419,9 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                             <div className="flex justify-start">
                               <div className="p-3" style={{ backgroundColor: 'var(--muted)', borderRadius: 'var(--radius)' }}>
                                 <div className="flex space-x-1">
-                                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
-                                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse"></div>
+                                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                                 </div>
                               </div>
                             </div>

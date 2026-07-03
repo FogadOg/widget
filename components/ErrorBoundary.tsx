@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Button } from '@/components/ui/button';
 import { logError } from '../lib/logger';
 import { reportError } from '../lib/monitoring';
 
@@ -61,69 +62,27 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
       // Development: show full error details
       return (
-        <div style={{
-          padding: '24px',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-          backgroundColor: '#fef2f2',
-          borderRadius: '8px',
-          margin: '16px',
-        }}>
-          <h3 style={{
-            color: '#dc2626',
-            marginTop: 0,
-            fontSize: '18px',
-            fontWeight: '600',
-            marginBottom: '12px'
-          }}>
+        <div className="m-4 rounded-lg bg-destructive/10 p-6 font-sans">
+          <h3 className="mt-0 mb-3 text-lg font-semibold text-destructive">
             Something went wrong
           </h3>
-          <p style={{
-            color: '#6b7280',
-            fontSize: '14px',
-            lineHeight: '1.6',
-            marginBottom: '16px'
-          }}>
+          <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
             The widget encountered an error. Please try refreshing the page.
           </p>
           {process.env.NODE_ENV === 'development' && this.state.error && (
-            <details style={{
-              backgroundColor: '#f3f4f6',
-              padding: '12px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontFamily: 'monospace',
-              marginBottom: '16px'
-            }}>
-              <summary style={{ cursor: 'pointer', fontWeight: '600', marginBottom: '8px' }}>
+            <details className="mb-4 rounded bg-muted p-3 font-mono text-xs">
+              <summary className="mb-2 cursor-pointer font-semibold">
                 Error details
               </summary>
-              <pre style={{
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                margin: 0
-              }}>
+              <pre className="m-0 whitespace-pre-wrap break-words">
                 {this.state.error.toString()}
                 {this.state.errorInfo?.componentStack}
               </pre>
             </details>
           )}
-          <button
-            onClick={this.handleReset}
-            style={{
-              backgroundColor: '#2563eb',
-              color: 'white',
-              padding: '8px 16px',
-              borderRadius: '6px',
-              border: 'none',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-          >
+          <Button size="sm" onClick={this.handleReset}>
             Try Again
-          </button>
+          </Button>
         </div>
       );
     }

@@ -26,6 +26,12 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -64,6 +70,14 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  /* Status tokens — same hues as assistant/app/globals.css. Meaning only,
+     never decoration (see UI_PRIMITIVES_STANDARD.md at the repo root). */
+  --success: hsl(142 72% 29%);
+  --success-foreground: hsl(0 0% 98%);
+  --warning: hsl(30 90% 36%);
+  --warning-foreground: hsl(0 0% 98%);
+  --info: hsl(217 85% 42%);
+  --info-foreground: hsl(0 0% 98%);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -98,6 +112,12 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  --success: hsl(142 64% 45%);
+  --success-foreground: hsl(0 0% 98%);
+  --warning: hsl(38 92% 55%);
+  --warning-foreground: hsl(0 0% 9%);
+  --info: hsl(217 91% 60%);
+  --info-foreground: hsl(0 0% 98%);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
