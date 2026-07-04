@@ -88,6 +88,12 @@ export const API = {
   // Logged-in user session lookup — returns the most recent active session
   // for the external_user_id embedded in the visitor JWT.
   sessionByUser: () => `${getApiV1BaseUrl()}/auth/sessions/by-user`,
+
+  // Docs widget instant knowledge search — callable with a widget_visitor JWT.
+  widgetKnowledgeSearch: (agentId: string, q: string, limit = 8) => {
+    const params = new URLSearchParams({ agent_id: agentId, q, limit: String(limit) });
+    return `${getApiV1BaseUrl()}/knowledge/search/widget?${params}`;
+  },
 } as const;
 
 /**

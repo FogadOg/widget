@@ -167,5 +167,9 @@
   "thoughtForFewSeconds": "Thought for a few seconds",
   "thoughtForSeconds": "Thought for {duration} seconds",
   "totalCost": "Total cost",
-  "whatWouldYouLikeToKnow": "What would you like to know?"
+  "whatWouldYouLikeToKnow": "What would you like to know?",
+  "docsSearchPlaceholder": "Artikel durchsuchen…",
+  "docsSearchNoResults": "Keine Ergebnisse für \"{query}\"",
+  "docsSearchResultsLabel": "Suchergebnisse",
+  "docsSearchClear": "Suche löschen"
 }

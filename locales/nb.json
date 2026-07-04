@@ -167,5 +167,9 @@
   "thoughtForFewSeconds": "Thought for a few seconds",
   "thoughtForSeconds": "Thought for {duration} seconds",
   "totalCost": "Total cost",
-  "whatWouldYouLikeToKnow": "What would you like to know?"
+  "whatWouldYouLikeToKnow": "What would you like to know?",
+  "docsSearchPlaceholder": "Søk artikler…",
+  "docsSearchNoResults": "Ingen resultater for \"{query}\"",
+  "docsSearchResultsLabel": "Søkeresultater",
+  "docsSearchClear": "Tøm søk"
 }

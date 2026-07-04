@@ -68,6 +68,9 @@ import { useDialogState } from './hooks/useDialogState'
 import { PreviewModeWidget } from './components/PreviewModeWidget'
 import { MessageFeedbackButtons } from './components/MessageFeedbackButtons'
 import { DevOverlay, useDebugMode, reportDevState } from '../../../src/components/DevOverlay'
+import { useInstantSearch } from './hooks/useInstantSearch'
+import { DocSearchResults } from './components/DocSearchResults'
+import type { SearchHit } from './hooks/useInstantSearch'
 
 export { getLocalizedText, resolveLocalizedSuggestions }
 
@@ -214,6 +217,17 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     };
   }, [initialPreviewConfig]);
 
+  const { query: searchQuery, setQuery: setSearchQuery, state: searchState, clearSearch } = useInstantSearch(
+    agentId,
+    authToken,
+    embedHeaders,
+  );
+
+  const handleSearchSelect = useCallback((hit: SearchHit) => {
+    clearSearch();
+    setText(hit.title);
+  }, [clearSearch, setText]);
+
   const { handleOpenChange } = useDialogState({
     open,
     setOpen,
@@ -309,6 +323,18 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
           text={text}
           setText={setText}
           placeholderText={placeholderText}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onSearchClear={clearSearch}
+          searchLoading={searchState.status === 'loading'}
+          searchHits={searchState.status === 'success' ? searchState.hits : []}
+          searchActive={searchState.status !== 'idle'}
+          onSearchSelect={handleSearchSelect}
+          searchPlaceholder={translate(activeLocale, 'docsSearchPlaceholder')}
+          searchNoResultsLabel={translate(activeLocale, 'docsSearchNoResults')}
+          searchResultsLabel={translate(activeLocale, 'docsSearchResultsLabel')}
+          searchClearLabel={translate(activeLocale, 'docsSearchClear')}
+          searchResultQuery={searchState.status === 'success' ? searchState.query : searchQuery}
         />
         {isDebug && <DevOverlay />}
       </>
@@ -336,6 +362,75 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
               <DialogDescription className='px-6 text-sm text-muted-foreground'>
                 {getLocalizedText(widgetConfig?.data?.subtitle, activeLocale) || translate(activeLocale, 'docsSubtitleFallback')}
               </DialogDescription>
+              {/* Instant search input */}
+              <div className='px-6 pt-3 pb-1'>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <svg
+                    aria-hidden
+                    style={{ position: 'absolute', left: '10px', width: '14px', height: '14px', color: 'var(--muted-foreground)', pointerEvents: 'none', flexShrink: 0 }}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                  </svg>
+                  <input
+                    type="search"
+                    aria-label={translate(activeLocale, 'docsSearchPlaceholder')}
+                    placeholder={translate(activeLocale, 'docsSearchPlaceholder')}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      paddingLeft: '32px',
+                      paddingRight: searchQuery ? '32px' : '10px',
+                      paddingTop: '7px',
+                      paddingBottom: '7px',
+                      fontSize: '13px',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                      outline: 'none',
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--primary)' }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)' }}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      aria-label={translate(activeLocale, 'docsSearchClear')}
+                      onClick={clearSearch}
+                      style={{ position: 'absolute', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', display: 'flex', padding: '2px' }}
+                    >
+                      <svg style={{ width: '14px', height: '14px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                {/* Search results dropdown */}
+                {searchState.status !== 'idle' && (
+                  <div
+                    style={{
+                      marginTop: '4px',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius)',
+                      background: 'var(--background)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      maxHeight: '260px',
+                      overflowY: 'auto',
+                    }}
+                  >
+                    <DocSearchResults
+                      hits={searchState.status === 'success' ? searchState.hits : []}
+                      query={searchState.status === 'success' ? searchState.query : searchQuery}
+                      loading={searchState.status === 'loading'}
+                      noResultsLabel={translate(activeLocale, 'docsSearchNoResults')}
+                      resultsLabel={translate(activeLocale, 'docsSearchResultsLabel')}
+                      onSelect={handleSearchSelect}
+                    />
+                  </div>
+                )}
+              </div>
               {isOffline && (
                 <div
                   className="border-l-4 px-6 py-2 text-sm"

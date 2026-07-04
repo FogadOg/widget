@@ -36,6 +36,8 @@ import {
 import { MessageResponse } from "@/components/ai-elements/message"
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion"
 import { MessageType, DocsTheme } from '../DocsClient.types'
+import type { SearchHit } from '../hooks/useInstantSearch'
+import { DocSearchResults } from './DocSearchResults'
 
 interface PreviewModeWidgetProps {
   theme: DocsTheme;
@@ -56,6 +58,19 @@ interface PreviewModeWidgetProps {
   text: string;
   setText: (text: string) => void;
   placeholderText: string;
+  // Instant search
+  searchQuery: string;
+  onSearchChange: (q: string) => void;
+  onSearchClear: () => void;
+  searchLoading: boolean;
+  searchHits: SearchHit[];
+  searchActive: boolean;
+  onSearchSelect: (hit: SearchHit) => void;
+  searchPlaceholder: string;
+  searchNoResultsLabel: string;
+  searchResultsLabel: string;
+  searchClearLabel: string;
+  searchResultQuery: string;
 }
 
 export function PreviewModeWidget({
@@ -77,6 +92,18 @@ export function PreviewModeWidget({
   text,
   setText,
   placeholderText,
+  searchQuery,
+  onSearchChange,
+  onSearchClear,
+  searchLoading,
+  searchHits,
+  searchActive,
+  onSearchSelect,
+  searchPlaceholder,
+  searchNoResultsLabel,
+  searchResultsLabel,
+  searchClearLabel,
+  searchResultQuery,
 }: PreviewModeWidgetProps) {
   return (
     <div style={{ ...theme.vars, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: theme.panelBackground, backdropFilter: theme.backdropFilter, WebkitBackdropFilter: theme.backdropFilter, overflow: 'hidden' }}>
@@ -94,6 +121,41 @@ export function PreviewModeWidget({
             {error}
           </div>
         )}
+        {/* Instant search */}
+        <div style={{ marginTop: '12px', position: 'relative' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <svg aria-hidden style={{ position: 'absolute', left: '10px', width: '14px', height: '14px', color: 'var(--muted-foreground)', pointerEvents: 'none' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+            </svg>
+            <input
+              type="search"
+              aria-label={searchPlaceholder}
+              placeholder={searchPlaceholder}
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              style={{ width: '100%', paddingLeft: '32px', paddingRight: searchQuery ? '32px' : '10px', paddingTop: '7px', paddingBottom: '7px', fontSize: '13px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--background)', color: 'var(--foreground)', outline: 'none' }}
+            />
+            {searchQuery && (
+              <button type="button" aria-label={searchClearLabel} onClick={onSearchClear} style={{ position: 'absolute', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', display: 'flex', padding: '2px' }}>
+                <svg style={{ width: '14px', height: '14px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {searchActive && (
+            <div style={{ marginTop: '4px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--background)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '240px', overflowY: 'auto' }}>
+              <DocSearchResults
+                hits={searchHits}
+                query={searchResultQuery}
+                loading={searchLoading}
+                noResultsLabel={searchNoResultsLabel}
+                resultsLabel={searchResultsLabel}
+                onSelect={onSearchSelect}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Conversation */}
