@@ -405,7 +405,6 @@ export default function EmbedClient({
     } catch {
       // ignore — host may be navigating
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBootstrapping]);
 
   // Emit WIDGET_CONVERSATION_CREATED whenever a new session ID appears.
@@ -421,7 +420,6 @@ export default function EmbedClient({
     } catch {
       // ignore
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   // Listen for consent grant/revoke from the host page via the widget loader's
@@ -501,7 +499,6 @@ export default function EmbedClient({
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parentTargetOrigin, initialClientId, initialAgentId, initialConfigId]);
 
   useEffect(() => {

@@ -22,9 +22,12 @@ interface UseHeartbeatParams {
  */
 export function useHeartbeat({ sessionId, token, embedHeaders }: UseHeartbeatParams): void {
   // Keep the latest headers in a ref so the effect doesn't re-subscribe when the
-  // (re-created each render) embedHeaders object identity changes.
+  // (re-created each render) embedHeaders object identity changes. Updated in an
+  // effect (not during render) so the beat callback reads the freshest headers.
   const headersRef = useRef(embedHeaders);
-  headersRef.current = embedHeaders;
+  useEffect(() => {
+    headersRef.current = embedHeaders;
+  });
 
   useEffect(() => {
     if (!sessionId || !token) {

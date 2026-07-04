@@ -191,12 +191,15 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   // a message didn't go through. Going offline shows a banner; coming back
   // online flushes any messages queued while disconnected (auto-reconnect).
   // Preview mode skips this — it never touches the network.
-  const [isOffline, setIsOffline] = useState<boolean>(false);
+  const [isOffline, setIsOffline] = useState<boolean>(() =>
+    typeof navigator !== 'undefined' ? !navigator.onLine : false
+  );
   const flushQueueRef = useRef(flushQueue);
-  flushQueueRef.current = flushQueue;
+  useEffect(() => {
+    flushQueueRef.current = flushQueue;
+  });
   useEffect(() => {
     if (initialPreviewConfig || typeof window === 'undefined') return;
-    setIsOffline(!navigator.onLine);
     const onOffline = () => setIsOffline(true);
     const onOnline = () => {
       setIsOffline(false);
