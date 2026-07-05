@@ -147,12 +147,15 @@ export function useBootstrap({
         // If validation fails, set error
         const errorMessage = (err as { userMessage?: string })?.userMessage || String(t.failedToLoadWidget);
         setError(errorMessage);
-        logError(err as Error, {
-          clientId: initialClientId,
-          agentId: initialAgentId,
-          configId: initialConfigId,
-          action: 'validateWidget'
-        });
+        const errCode = (err as { code?: number | string })?.code;
+        if (errCode !== 3005) {
+          logError(err as Error, {
+            clientId: initialClientId,
+            agentId: initialAgentId,
+            configId: initialConfigId,
+            action: 'validateWidget'
+          });
+        }
       } finally {
         if (!cancelled) {
           setIsBootstrapping(false);

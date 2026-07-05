@@ -16,6 +16,19 @@ import { validateConfig } from '../../../../lib/validateConfig';
 import * as helpers from '../helpers';
 import type { Message, WidgetConfig, SourceData } from '../../../../types/widget';
 
+const RATE_LIMIT_STORAGE_PREFIX = 'companin-rate-limit-until';
+const RATE_LIMIT_FALLBACK_SEC = 20;
+
+function parseRetryAfterSeconds(headerValue: string | null): number {
+  if (!headerValue) return 0;
+  const numeric = Number(headerValue);
+  if (Number.isFinite(numeric) && numeric > 0) return Math.floor(numeric);
+  const asDate = Date.parse(headerValue);
+  if (!Number.isFinite(asDate)) return 0;
+  const seconds = Math.ceil((asDate - Date.now()) / 1000);
+  return seconds > 0 ? seconds : 0;
+}
+
 export function useSessionManagement({
   initialAgentId,
   initialClientId,
@@ -80,6 +93,49 @@ export function useSessionManagement({
   postedEdgeOffset: React.MutableRefObject<number | undefined>;
 }) {
   const sessionIdRef = useRef<string | null>(null);
+  const agentDetailsInFlightRef = useRef<Map<string, Promise<void>>>(new Map());
+  const agentDetailsFetchedAtRef = useRef<Map<string, number>>(new Map());
+  const widgetConfigInFlightRef = useRef<Map<string, Promise<WidgetConfig>>>(new Map());
+  const widgetConfigFetchedAtRef = useRef<Map<string, number>>(new Map());
+  const BOOTSTRAP_DEDUPE_WINDOW_MS = 5000;
+
+  const buildRateLimitKey = (scope: string) =>
+    `${RATE_LIMIT_STORAGE_PREFIX}:${scope}:${initialClientId}:${initialAgentId}`;
+
+  const readRateLimitUntil = (scope: string): number => {
+    try {
+      const raw = sessionStorage.getItem(buildRateLimitKey(scope)) || localStorage.getItem(buildRateLimitKey(scope));
+      const until = raw ? Number(raw) : 0;
+      return Number.isFinite(until) ? until : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  const writeRateLimitUntil = (scope: string, retryAfterHeader: string | null) => {
+    const waitSec = Math.max(parseRetryAfterSeconds(retryAfterHeader), RATE_LIMIT_FALLBACK_SEC);
+    const until = Date.now() + waitSec * 1000;
+    try {
+      sessionStorage.setItem(buildRateLimitKey(scope), String(until));
+      localStorage.setItem(buildRateLimitKey(scope), String(until));
+    } catch {
+      // ignore storage failures
+    }
+    return waitSec;
+  };
+
+  const ensureNotCoolingDown = (scope: string, fallbackMessage?: string) => {
+    const until = readRateLimitUntil(scope);
+    if (!until || until <= Date.now()) return;
+    const waitSec = Math.max(1, Math.ceil((until - Date.now()) / 1000));
+    const msg = waitSec > 0
+      ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
+      : (fallbackMessage || String(t.rateLimitGeneric));
+    const err = createNetworkError(msg, WidgetErrorCode.NETWORK_RATE_LIMITED);
+    err.retryable = false;
+    err.userMessage = msg;
+    throw err;
+  };
 
   // Helper to make an authenticated API call with 401 retry logic
   async function fetchWithAuthRetry(fetchFn: (token: string | null, ...rest: unknown[]) => Promise<Response>, ...args: unknown[]) {
@@ -102,6 +158,8 @@ export function useSessionManagement({
   async function loadSessionMessages(sessionId: string, token?: string, isInitial = false, forceReload = false) {
     // setIsTyping(true) is called by caller
     try {
+      ensureNotCoolingDown('session-read', String(t.sessionRateLimitGeneric ?? t.rateLimitGeneric));
+
       // Always use fetchWithAuthRetry for authenticated calls
       const fetchFn = (tok: string | null) => fetch(API.sessionMessages(sessionId), {
         headers: tok ? {
@@ -117,6 +175,14 @@ export function useSessionManagement({
       }
 
       if (!response.ok) {
+        if (response.status === 429) {
+          const waitSec = writeRateLimitUntil('session-read', response.headers.get('Retry-After'));
+          const rateLimitMsg = waitSec > 0
+            ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
+            : String(t.sessionRateLimitGeneric ?? t.rateLimitGeneric);
+          setError(rateLimitMsg);
+          return;
+        }
         throw new Error(`Failed to load messages: ${response.status}`);
       }
 
@@ -225,6 +291,7 @@ export function useSessionManagement({
 
   async function createSession(agent: string, token: string, configSnapshot?: ReturnType<typeof validateConfig>['config'] | null, skipMessageLoad = false) {
     try {
+      ensureNotCoolingDown('session-create', String(t.sessionRateLimitGeneric ?? t.rateLimitGeneric));
       const visitorId = helpers.getVisitorId(initialClientId);
       // Mutable so a 401/403 (expired token on a long-open widget) can refresh
       // the token mid-retry and the next attempt uses the fresh one.
@@ -319,8 +386,7 @@ export function useSessionManagement({
             // inside the 60s window and just burns more quota — so mark it
             // non-retryable and surface a localized "please wait" message.
             if (response.status === 429) {
-              const retryAfterSec = response.headers.get('Retry-After');
-              const waitSec = retryAfterSec ? parseInt(retryAfterSec, 10) : 0;
+              const waitSec = writeRateLimitUntil('session-create', response.headers.get('Retry-After'));
               const rateLimitMsg = waitSec > 0
                 ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
                 : String(t.sessionRateLimitGeneric ?? t.rateLimitGeneric);
@@ -621,8 +687,20 @@ export function useSessionManagement({
   }
 
   async function fetchAgentDetails(agentId: string, token: string) {
+    const recentFetchAt = agentDetailsFetchedAtRef.current.get(agentId) || 0;
+    if (Date.now() - recentFetchAt < BOOTSTRAP_DEDUPE_WINDOW_MS) {
+      return;
+    }
+
+    const inFlight = agentDetailsInFlightRef.current.get(agentId);
+    if (inFlight) {
+      await inFlight;
+      return;
+    }
+
     const start = Date.now();
-    try {
+    const run = (async () => {
+      ensureNotCoolingDown('agent-details', String(t.rateLimitGeneric));
       const response = await fetch(API.agent(agentId), {
         method: 'GET',
         headers: {
@@ -632,41 +710,61 @@ export function useSessionManagement({
       });
 
       if (response.ok) {
-          const data = await response.json();
-          // Accept success responses even if `name` is missing so tests that
-          // return a minimal payload don't cause the whole widget to abort
-          // validation. Missing agent name is non-fatal at runtime.
-          if (data.status === 'success') {
-            setAgentName(data.data?.name || '');
-          } else {
-            throw createAuthError('Invalid agent response', WidgetErrorCode.AUTH_TOKEN_FAILED);
-          }
-        } else if (response.status === 429) {
-          const retryAfterSec = response.headers.get('Retry-After');
-          const waitSec = retryAfterSec ? parseInt(retryAfterSec, 10) : 0;
-          const rateLimitMsg = waitSec > 0
-            ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
-            : String(t.rateLimitGeneric);
-          const rateLimitErr = createNetworkError(rateLimitMsg, WidgetErrorCode.NETWORK_RATE_LIMITED);
-          rateLimitErr.retryable = false;
-          rateLimitErr.userMessage = rateLimitMsg;
-          throw rateLimitErr;
-        } else {
-          const errorMessage = String(t.agentUnavailable);
-          throw createAuthError(errorMessage, WidgetErrorCode.AUTH_TOKEN_FAILED);
+        const data = await response.json();
+        // Accept success responses even if `name` is missing so tests that
+        // return a minimal payload don't cause the whole widget to abort
+        // validation. Missing agent name is non-fatal at runtime.
+        if (data.status === 'success') {
+          setAgentName(data.data?.name || '');
+          return;
         }
+        throw createAuthError('Invalid agent response', WidgetErrorCode.AUTH_TOKEN_FAILED);
+      }
+
+      if (response.status === 429) {
+        const waitSec = writeRateLimitUntil('agent-details', response.headers.get('Retry-After'));
+        const rateLimitMsg = waitSec > 0
+          ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
+          : String(t.rateLimitGeneric);
+        const rateLimitErr = createNetworkError(rateLimitMsg, WidgetErrorCode.NETWORK_RATE_LIMITED);
+        rateLimitErr.retryable = false;
+        rateLimitErr.userMessage = rateLimitMsg;
+        throw rateLimitErr;
+      }
+
+      const errorMessage = String(t.agentUnavailable);
+      throw createAuthError(errorMessage, WidgetErrorCode.AUTH_TOKEN_FAILED);
+    })();
+
+    agentDetailsInFlightRef.current.set(agentId, run);
+
+    try {
+      await run;
+      agentDetailsFetchedAtRef.current.set(agentId, Date.now());
     } catch (err) {
       logError(err, { agentId, action: 'fetchAgentDetails' });
-      throw err; // Re-throw so it can be caught by the caller
+      throw err;
     } finally {
+      agentDetailsInFlightRef.current.delete(agentId);
       const duration = Date.now() - start;
       logPerf('fetchAgentDetails', duration, { agentId });
     }
   }
 
   async function fetchWidgetConfig(configId: string, token: string) {
+    const recentFetchAt = widgetConfigFetchedAtRef.current.get(configId) || 0;
+    if (Date.now() - recentFetchAt < BOOTSTRAP_DEDUPE_WINDOW_MS && widgetConfig) {
+      return widgetConfig;
+    }
+
+    const inFlight = widgetConfigInFlightRef.current.get(configId);
+    if (inFlight) {
+      return await inFlight;
+    }
+
     const start = Date.now();
-    try {
+    const run = (async () => {
+      ensureNotCoolingDown('widget-config', String(t.configUnavailable));
       // Pass visitor_id so the backend can deterministically assign an A/B variant.
       // forceVariantId (admin-only) bypasses hash assignment for preview/testing.
       const visitorId = helpers.getVisitorId(initialClientId);
@@ -679,6 +777,16 @@ export function useSessionManagement({
       });
 
       if (!response.ok) {
+        if (response.status === 429) {
+          const waitSec = writeRateLimitUntil('widget-config', response.headers.get('Retry-After'));
+          const rateLimitMsg = waitSec > 0
+            ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
+            : String(t.rateLimitGeneric);
+          const rateLimitErr = createNetworkError(rateLimitMsg, WidgetErrorCode.NETWORK_RATE_LIMITED);
+          rateLimitErr.retryable = false;
+          rateLimitErr.userMessage = rateLimitMsg;
+          throw rateLimitErr;
+        }
         const errorMessage = String(t.configUnavailable);
         throw createAuthError(errorMessage, WidgetErrorCode.INVALID_CONFIG);
       }
@@ -697,6 +805,7 @@ export function useSessionManagement({
         }
         const { config: validatedConfig, typeMismatch } = validateConfig(configData, 'chat');
         setWidgetConfig(validatedConfig);
+        widgetConfigFetchedAtRef.current.set(configId, Date.now());
         if (typeMismatch) {
           setError('Configuration warning: this config is set to "docs" type but is running in the chat widget. Check your widget_type setting in the admin.');
         }
@@ -704,10 +813,17 @@ export function useSessionManagement({
       } else {
         throw createAuthError('Invalid config response format', WidgetErrorCode.INVALID_CONFIG);
       }
+    })();
+
+    widgetConfigInFlightRef.current.set(configId, run);
+
+    try {
+      return await run;
     } catch (err) {
       logError(err, { configId, action: 'fetchWidgetConfig' });
       throw err; // Re-throw so it can be caught by the caller
     } finally {
+      widgetConfigInFlightRef.current.delete(configId);
       const duration = Date.now() - start;
       logPerf('fetchWidgetConfig', duration, { configId });
     }

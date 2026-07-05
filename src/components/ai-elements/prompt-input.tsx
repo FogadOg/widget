@@ -170,6 +170,8 @@ export {
 // Provider Context & Types
 // ============================================================================
 
+const PROMPT_INPUT_QUEUE_SOURCE = "prompt-input";
+
 export { PromptInputProvider } from "./components/PromptInputProvider";
 
 // ============================================================================
@@ -466,6 +468,11 @@ export const PromptInput = ({
 
   // Register service worker and track online state
   const [online, setOnline] = useState<boolean>(isOnline());
+  const onSubmitRef = useRef(onSubmit);
+  const isFlushingRef = useRef(false);
+  useEffect(() => {
+    onSubmitRef.current = onSubmit;
+  }, [onSubmit]);
   useEffect(() => {
     // register SW for offline caching and background sync
     try {
@@ -484,20 +491,29 @@ export const PromptInput = ({
 
   // When we detect we're back online, attempt to resend queued messages by calling onSubmit
   useEffect(() => {
-    if (!usingProvider && !onSubmit) return; // nothing to call
+    if (!onSubmit) return; // nothing to call
     const tryFlush = async () => {
+      if (isFlushingRef.current) return;
       if (!isOnline()) return;
+      isFlushingRef.current = true;
       const queued = await getQueuedMessages();
+      const mine = queued.filter((item: any) => !item?.source || item.source === PROMPT_INPUT_QUEUE_SOURCE);
       // flush in sequence order
-      for (const item of queued.sort((a: any, b: any) => (a.seq || 0) - (b.seq || 0))) {
-        try {
-          // call parent onSubmit with queued message
-          await onSubmit?.({ text: item.text, files: item.files } as PromptInputMessage, {} as FormEvent<HTMLFormElement>);
-          await removeQueuedMessage(item.id);
-        } catch (e) {
-          // stop on failure to preserve order
-          break;
+      try {
+        for (const item of mine.sort((a: any, b: any) => (a.seq || 0) - (b.seq || 0))) {
+          try {
+            const submit = onSubmitRef.current;
+            if (!submit) break;
+            // call parent onSubmit with queued message
+            await submit({ text: item.text, files: item.files } as PromptInputMessage, {} as FormEvent<HTMLFormElement>);
+            await removeQueuedMessage(item.id);
+          } catch (e) {
+            // stop on failure to preserve order
+            break;
+          }
         }
+      } finally {
+        isFlushingRef.current = false;
       }
     };
 
@@ -516,7 +532,7 @@ export const PromptInput = ({
       window.removeEventListener("online", onOnlineFlush);
       navigator.serviceWorker?.removeEventListener?.("message", onSWMessage as any);
     };
-  }, [onSubmit, usingProvider]);
+  }, [onSubmit]);
 
   // Attach drop handlers on nearest form and document (opt-in)
   useEffect(() => {
@@ -639,7 +655,7 @@ export const PromptInput = ({
             const id = nanoid();
             // seq uses timestamp to preserve order
             const seq = Date.now();
-            const queued = { id, seq, text, files: convertedFiles, timestamp: Date.now() };
+            const queued = { id, seq, text, files: convertedFiles, timestamp: Date.now(), source: PROMPT_INPUT_QUEUE_SOURCE };
             queueMessage(queued);
             // Inform the host page about the queued message so it can render a pending UI
             try {

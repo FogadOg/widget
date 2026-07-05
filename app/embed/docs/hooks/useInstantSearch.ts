@@ -68,7 +68,7 @@ export function useInstantSearch(
     if (debounceTimer.current) clearTimeout(debounceTimer.current)
 
     if (!query || query.trim().length < MIN_QUERY_LEN) {
-      setState({ status: 'idle' })
+      setState((prev) => (prev.status === 'idle' ? prev : { status: 'idle' }))
       return
     }
 
@@ -83,7 +83,7 @@ export function useInstantSearch(
 
   const clearSearch = useCallback(() => {
     setQuery('')
-    setState({ status: 'idle' })
+    setState((prev) => (prev.status === 'idle' ? prev : { status: 'idle' }))
   }, [])
 
   return { query, setQuery, state, clearSearch }

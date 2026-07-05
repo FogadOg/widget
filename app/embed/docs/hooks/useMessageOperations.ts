@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useRef } from 'react'
 import { API } from '../../../../lib/api'
 import { t as translate } from '../../../../lib/i18n'
 import { getPageContext as helpersGetPageContext } from '../helpers'
@@ -28,6 +28,20 @@ const MAX_QUEUE_ATTEMPTS = 5;
 // Only flush/retry items this widget enqueued. The offline IndexedDB store is
 // shared by origin, so tagging keeps a co-embedded chat widget's queue separate.
 const QUEUE_SOURCE = 'docs';
+const DEFAULT_RATE_LIMIT_COOLDOWN_MS = 30_000;
+
+function parseRetryAfterMs(headerValue: string | null): number {
+  if (!headerValue) return DEFAULT_RATE_LIMIT_COOLDOWN_MS;
+  const asNumber = Number(headerValue);
+  if (Number.isFinite(asNumber) && asNumber >= 0) {
+    return Math.max(1000, asNumber * 1000);
+  }
+  const asDate = Date.parse(headerValue);
+  if (!Number.isNaN(asDate)) {
+    return Math.max(1000, asDate - Date.now());
+  }
+  return DEFAULT_RATE_LIMIT_COOLDOWN_MS;
+}
 
 interface UseMessageOperationsParams {
   sessionId: string | null;
@@ -58,6 +72,8 @@ export function useMessageOperations({
   setText,
   loadSessionMessages,
 }: UseMessageOperationsParams) {
+  const rateLimitUntilRef = useRef<number>(0);
+
   // Mark the optimistic bubble for `queueId` as failed (clears the spinner and
   // lets the UI offer a Retry affordance) and surface a localized message.
   const markFailed = useCallback((queueId: string, errorKey: string) => {
@@ -76,6 +92,16 @@ export function useMessageOperations({
   // Returns the parsed success payload, or throws the final WidgetError.
   const postMessage = useCallback(async (sid: string, token: string, content: string, idemKey?: string) => {
     return retryWithBackoff(async () => {
+      if (Date.now() < rateLimitUntilRef.current) {
+        throw new WidgetError(
+          'Too many messages. Please slow down and try again in a moment.',
+          WidgetErrorCode.NETWORK_RATE_LIMITED,
+          WidgetErrorType.NETWORK_ERROR,
+          false,
+          'Too many messages. Please slow down and try again in a moment.',
+        );
+      }
+
       const response = await fetchWithTimeout(API.sessionMessages(sid), {
         method: 'POST',
         headers: {
@@ -101,10 +127,20 @@ export function useMessageOperations({
       }
 
       const body = await response.json().catch(() => ({} as any));
+      if (response.status === 429) {
+        const retryAfterMs = parseRetryAfterMs(response.headers.get('Retry-After'));
+        rateLimitUntilRef.current = Math.max(rateLimitUntilRef.current, Date.now() + retryAfterMs);
+        throw new WidgetError(
+          body?.detail || 'Too many messages. Please slow down and try again in a moment.',
+          WidgetErrorCode.NETWORK_RATE_LIMITED,
+          WidgetErrorType.NETWORK_ERROR,
+          false,
+          body?.detail || 'Too many messages. Please slow down and try again in a moment.',
+        );
+      }
       // 409 = an identical send is still in flight server-side; retrying after
       // backoff lets the original commit so we replay its result.
-      const retryable = response.status >= 500 || response.status === 408
-        || response.status === 429 || response.status === 409;
+      const retryable = response.status >= 500 || response.status === 408 || response.status === 409;
       if (retryable) {
         // Retryable: let retryWithBackoff re-attempt (auto-reconnect).
         throw createNetworkError(body?.detail || `Server error ${response.status}`, WidgetErrorCode.NETWORK_SERVER_ERROR);
@@ -150,6 +186,13 @@ export function useMessageOperations({
       await loadSessionMessages(sessionId, authToken);
       setStatus("ready");
     } catch (err) {
+      if (err instanceof WidgetError && err.code === WidgetErrorCode.NETWORK_RATE_LIMITED) {
+        setMessages(prev => prev.map(m => m.queueId === qid ? { ...m, pending: false, failed: true } : m));
+        setError(err.userMessage);
+        setStatus('ready');
+        return;
+      }
+
       const retryable = !(err instanceof WidgetError) || err.retryable;
       if (retryable) {
         // Transient: keep the text in the queue so the user (or the online
@@ -200,6 +243,12 @@ export function useMessageOperations({
         setMessages(prev => prev.map(m => m.queueId === item.id ? { ...m, pending: false, failed: false } : m));
         await loadSessionMessages(sessionId, authToken);
       } catch (err) {
+        const rateLimited = err instanceof WidgetError && err.code === WidgetErrorCode.NETWORK_RATE_LIMITED;
+        if (rateLimited) {
+          setMessages(prev => prev.map(m => m.queueId === item.id ? { ...m, pending: false, failed: true } : m));
+          break;
+        }
+
         const permanent = err instanceof WidgetError && !err.retryable;
         if (permanent) {
           try { await removeQueuedMessage(item.id); } catch { /* noop */ }

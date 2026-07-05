@@ -196,6 +196,12 @@ export const logError = (error: any, context?: Record<string, any>) => {
         ? error.type === WidgetErrorType.NETWORK_ERROR
         : (error?.name === 'TypeError' || error?.name === 'NetworkError') &&
           (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('network request'));
+    const isRateLimitHandled =
+      error instanceof WidgetError &&
+      error.code === WidgetErrorCode.NETWORK_RATE_LIMITED;
+    if (isRateLimitHandled) {
+      return;
+    }
     if (isExpectedNetworkFailure) {
       console.warn('Widget network error (handled):', errorInfo);
     } else {

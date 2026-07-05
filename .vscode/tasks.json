@@ -10,6 +10,16 @@
 				"dev"
 			],
 			"isBackground": true
+		},
+		{
+			"label": "build-embed-runtime",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build:embed"
+			],
+			"isBackground": false
 		}
 	]
 }

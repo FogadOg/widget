@@ -2,7 +2,7 @@
 
 
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -75,7 +75,10 @@ import type { SearchHit } from './hooks/useInstantSearch'
 export { getLocalizedText, resolveLocalizedSuggestions }
 
 export default function DocsClient({ clientId, agentId, configId, locale: initialLocale, startOpen, pagePath, parentOrigin: initialParentOrigin, loaderVersion, previewConfig: initialPreviewConfig }: Props) {
-  const embedHeaders = embedOriginHeader(initialParentOrigin, loaderVersion);
+  const embedHeaders = useMemo(
+    () => embedOriginHeader(initialParentOrigin, loaderVersion),
+    [initialParentOrigin, loaderVersion],
+  );
 
   // Preview mode (admin "Customize" panel): the iframe reloads on every config
   // edit and on dev Fast Refresh, which would otherwise snap the widget back to
@@ -373,7 +376,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
                   </svg>
                   <input
-                    type="search"
+                    type="text"
                     aria-label={translate(activeLocale, 'docsSearchPlaceholder')}
                     placeholder={translate(activeLocale, 'docsSearchPlaceholder')}
                     value={searchQuery}
@@ -581,7 +584,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                     </PromptInputActionMenu> */}
                   </PromptInputTools>
                   <PromptInputSubmit
-                    disabled={!(text.trim() || status) || status === "streaming"}
+                    disabled={!text.trim() || status === "streaming"}
                     status={status}
                   />
                 </PromptInputFooter>

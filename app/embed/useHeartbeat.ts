@@ -8,6 +8,21 @@ interface UseHeartbeatParams {
   embedHeaders: Record<string, string>;
 }
 
+const HEARTBEAT_RATE_LIMIT_FALLBACK_MS = 20_000;
+
+function parseRetryAfterMs(headerValue: string | null): number {
+  if (!headerValue) return HEARTBEAT_RATE_LIMIT_FALLBACK_MS;
+  const numeric = Number(headerValue);
+  if (Number.isFinite(numeric) && numeric >= 0) {
+    return Math.max(1000, numeric * 1000);
+  }
+  const asDate = Date.parse(headerValue);
+  if (!Number.isNaN(asDate)) {
+    return Math.max(1000, asDate - Date.now());
+  }
+  return HEARTBEAT_RATE_LIMIT_FALLBACK_MS;
+}
+
 /**
  * Presence heartbeat. While the widget's tab is visible and we have a live
  * session + token, POST a lightweight ping to the backend every
@@ -25,6 +40,8 @@ export function useHeartbeat({ sessionId, token, embedHeaders }: UseHeartbeatPar
   // (re-created each render) embedHeaders object identity changes. Updated in an
   // effect (not during render) so the beat callback reads the freshest headers.
   const headersRef = useRef(embedHeaders);
+  const rateLimitUntilRef = useRef<number>(0);
+  const inFlightRef = useRef(false);
   useEffect(() => {
     headersRef.current = embedHeaders;
   });
@@ -43,6 +60,14 @@ export function useHeartbeat({ sessionId, token, embedHeaders }: UseHeartbeatPar
       if (cancelled || document.visibilityState !== 'visible') {
         return;
       }
+      if (Date.now() < rateLimitUntilRef.current) {
+        return;
+      }
+      if (inFlightRef.current) {
+        return;
+      }
+
+      inFlightRef.current = true;
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 10_000);
       fetch(API.sessionHeartbeat(sessionId), {
@@ -54,10 +79,19 @@ export function useHeartbeat({ sessionId, token, embedHeaders }: UseHeartbeatPar
         signal: controller.signal,
         keepalive: true,
       })
+        .then((response) => {
+          if (response.status === 429) {
+            const waitMs = parseRetryAfterMs(response.headers.get('Retry-After'));
+            rateLimitUntilRef.current = Math.max(rateLimitUntilRef.current, Date.now() + waitMs);
+          }
+        })
         .catch(() => {
           // best-effort: ignore network/timeout/abort errors
         })
-        .finally(() => clearTimeout(timer));
+        .finally(() => {
+          inFlightRef.current = false;
+          clearTimeout(timer);
+        });
     };
 
     // Beat immediately so a freshly-opened widget shows up without waiting a

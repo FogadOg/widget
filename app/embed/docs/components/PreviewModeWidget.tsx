@@ -128,7 +128,7 @@ export function PreviewModeWidget({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
             </svg>
             <input
-              type="search"
+              type="text"
               aria-label={searchPlaceholder}
               placeholder={searchPlaceholder}
               value={searchQuery}
@@ -238,7 +238,7 @@ export function PreviewModeWidget({
           </PromptInputBody>
           <PromptInputFooter>
             <PromptInputTools />
-            <PromptInputSubmit disabled={!(text.trim() || status) || status === 'streaming'} status={status} />
+            <PromptInputSubmit disabled={!text.trim() || status === 'streaming'} status={status} />
           </PromptInputFooter>
         </PromptInput>
       </div>

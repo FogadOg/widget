@@ -249,13 +249,23 @@
     // so production pages do not try to prefetch or load loopback resources.
     const isDev = script.getAttribute("data-dev") === "true";
     const isLocalPage = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1|::1)$/i.test(window.location.hostname);
+    const scriptOrigin = (() => {
+      try {
+        return new URL(script.src, window.location.href).origin;
+      } catch {
+        return '';
+      }
+    })();
+    const isLocalScriptOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|::1)(:\d+)?$/i.test(scriptOrigin);
     const baseUrl = isDev && isLocalPage
-      ? "http://localhost:3001"
+      ? (isLocalScriptOrigin ? scriptOrigin : "http://localhost:3001")
       : BASE_WIDGET_HOST;
 
-    // Allow the host page to explicitly set the postMessage target origin.
-    // This is useful when the widget is hosted on a different / custom domain.
-    const explicitTargetOrigin = script.getAttribute("data-target-origin") || script.getAttribute("data-parent-origin");
+    // Allow the host page to explicitly set the iframe postMessage target origin.
+    // Only `data-target-origin` is honored here. `data-parent-origin` is a
+    // parent-page concept and using it as iframe target can cause mismatches
+    // like target=3001 while iframe actually runs on 3000.
+    const explicitTargetOrigin = script.getAttribute("data-target-origin");
     const targetOrigin = (explicitTargetOrigin && explicitTargetOrigin.trim()) || baseUrl;
 
     // Locale fetch disabled in the embed script to avoid cross-origin issues.
@@ -278,20 +288,24 @@
           dns.href = baseUrl;
           document.head.appendChild(dns);
 
-          // optional prefetch of the embed page itself; browser may fetch early
-          const pf = document.createElement('link');
-          pf.rel = 'prefetch';
-          const pfParams = new URLSearchParams({
-            locale,
-            startOpen: startOpen.toString(),
-            pagePath: window.location.pathname,
-            parentOrigin: window.location.origin,
-            loaderVersion: WIDGET_VERSION,
-          });
-          setIdentityParams(pfParams);
-          pf.href = `${baseUrl}/embed/session?${pfParams.toString()}`;
-          pf.crossOrigin = 'anonymous';
-          document.head.appendChild(pf);
+          // optional prefetch of the embed page itself; skip in local dev
+          // because Next dev CSS preloads can trigger noisy "preloaded but not
+          // used" warnings when the iframe opens later.
+          if (!isDev) {
+            const pf = document.createElement('link');
+            pf.rel = 'prefetch';
+            const pfParams = new URLSearchParams({
+              locale,
+              startOpen: startOpen.toString(),
+              pagePath: window.location.pathname,
+              parentOrigin: window.location.origin,
+              loaderVersion: WIDGET_VERSION,
+            });
+            setIdentityParams(pfParams);
+            pf.href = `${baseUrl}/embed/session?${pfParams.toString()}`;
+            pf.crossOrigin = 'anonymous';
+            document.head.appendChild(pf);
+          }
         }
       } catch (e) {
         // silently ignore failures – not critical
@@ -485,6 +499,18 @@
         if (consentRequired) params.set('consentRequired', 'true');
 
         iframe.src = `${baseUrl}/embed/session?${params.toString()}`;
+        const resolveIframeTargetOrigin = () => {
+          try {
+            return new URL(iframe.src, window.location.href).origin;
+          } catch (e) {
+            return targetOrigin;
+          }
+        };
+        const postToIframe = (payload) => {
+          if (!iframe.contentWindow) return false;
+          iframe.contentWindow.postMessage(payload, resolveIframeTargetOrigin());
+          return true;
+        };
         iframe.style.cssText = `
           width: 100%;
           height: 100%;
@@ -545,10 +571,7 @@
             logError('Failed to access iframe contentWindow', { error: err && err.message });
           }
           if (window.WidgetConfig && iframeWindow) {
-            iframeWindow.postMessage(
-              { type: 'WIDGET_INIT_CONFIG', data: window.WidgetConfig },
-              targetOrigin
-            );
+            postToIframe({ type: 'WIDGET_INIT_CONFIG', data: window.WidgetConfig });
           }
         } catch (err) {
           logError('Failed to post initial config to iframe', { error: err && err.message });
@@ -1176,12 +1199,7 @@
                 metadata: (user.metadata && typeof user.metadata === 'object') ? user.metadata : null,
                 token: typeof user.token === 'string' ? user.token : null,
               };
-              if (iframe.contentWindow) {
-                iframe.contentWindow.postMessage(
-                  { type: 'HOST_MESSAGE', data: Object.assign({ action: 'identify' }, safe) },
-                  targetOrigin
-                );
-              }
+              postToIframe({ type: 'HOST_MESSAGE', data: Object.assign({ action: 'identify' }, safe) });
               emitEvent('user.updated', safe, { rawType: 'HOST_IDENTIFY' });
             } catch (err) {
               logError('Failed to identify user', { error: err.message });
@@ -1369,7 +1387,7 @@
             // NOTE: previously this used event.origin.includes("companin.tech"), which
             // matched any host with that substring (e.g. evil-companin.tech.attacker.com).
             // We now parse the origin and compare hostnames against a suffix allowlist.
-            const validOrigins = new Set([baseUrl, targetOrigin]);
+            const validOrigins = new Set([baseUrl, targetOrigin, resolveIframeTargetOrigin()]);
             let isDevOrigin = false;
             try {
               const _u = new URL(event.origin);
@@ -1531,12 +1549,7 @@
                 // so the iframe can re-auth and restore the user's session.
                 if (userToken) {
                   try {
-                    if (iframe.contentWindow) {
-                      iframe.contentWindow.postMessage(
-                        { type: 'HOST_MESSAGE', data: { action: 'identify', token: userToken } },
-                        targetOrigin
-                      );
-                    }
+                    postToIframe({ type: 'HOST_MESSAGE', data: { action: 'identify', token: userToken } });
                   } catch (e) {}
                 }
                 break;

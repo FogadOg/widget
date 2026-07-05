@@ -150,17 +150,31 @@
       }
     };
 
-    // Determine the base URL with fallback. Treat `data-dev=true` as local-only
-    // so production pages do not try to load loopback resources.
+    // Determine the iframe base URL with fallback. `data-dev=true` should only
+    // force localhost when BOTH the host page and the embed script host are
+    // local. This avoids false timeouts when local pages accidentally keep
+    // data-dev enabled while loading the production docs-widget.js.
     const isDev = script.getAttribute("data-dev") === "true";
     const isLocalPage = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1|::1)$/i.test(window.location.hostname);
-    const baseUrl = isDev && isLocalPage
-      ? "http://localhost:3001"
+    const scriptUrl = (() => {
+      try {
+        return new URL(script.src, window.location.href);
+      } catch {
+        return null;
+      }
+    })();
+    const scriptHost = scriptUrl?.hostname || "";
+    const scriptOrigin = scriptUrl?.origin || "";
+    const isLocalScriptHost = /^(localhost|127\.0\.0\.1|::1)$/i.test(scriptHost);
+    const shouldUseLocalDevHost = isDev && isLocalPage && isLocalScriptHost;
+    const baseUrl = shouldUseLocalDevHost
+      ? (scriptOrigin || "http://localhost:3001")
       : BASE_WIDGET_HOST;
 
-    // Allow the host page to explicitly set the postMessage target origin.
-    // Useful when the widget is hosted on a different / custom domain.
-    const explicitTargetOrigin = script.getAttribute("data-target-origin") || script.getAttribute("data-parent-origin");
+    // Allow the host page to explicitly set the iframe postMessage target origin.
+    // Only `data-target-origin` is honored here. `data-parent-origin` refers
+    // to the host page and can produce invalid iframe target-origin mismatches.
+    const explicitTargetOrigin = script.getAttribute("data-target-origin");
     const targetOrigin = (explicitTargetOrigin && explicitTargetOrigin.trim()) || baseUrl;
 
     // Locale fetch disabled in the embed script to avoid cross-origin issues.
@@ -385,19 +399,35 @@
           }
         }
         let visibilityFallbackTimeout = null;
-        const loadTimeout = setTimeout(() => {
+        const parsedLoadTimeout = Number(script.getAttribute('data-load-timeout-ms'));
+        const hardTimeoutMs = Number.isFinite(parsedLoadTimeout) && parsedLoadTimeout > 0
+          ? Math.max(parsedLoadTimeout, 20000)
+          : 45000;
+        const softTimeoutMs = Math.min(15000, Math.max(5000, Math.floor(hardTimeoutMs / 2)));
+        const softTimeout = setTimeout(() => {
           if (!iframeLoaded) {
-            logError("Docs widget iframe failed to load (timeout)", { src: iframe.src });
+            try {
+              console.warn(`${COMPANY_NAME} Docs Widget: iframe is still loading`, {
+                src: iframe.src,
+                elapsedMs: softTimeoutMs,
+              });
+            } catch (e) {}
+          }
+        }, softTimeoutMs);
+        const hardTimeout = setTimeout(() => {
+          if (!iframeLoaded) {
+            logError("Docs widget iframe failed to load (timeout)", { src: iframe.src, timeoutMs: hardTimeoutMs });
             showErrorInContainer(
               container,
               "Failed to load docs widget. Please refresh the page."
             );
           }
-        }, 15000); // 15 second timeout
+        }, hardTimeoutMs);
 
         iframe.onload = () => {
           iframeLoaded = true;
-          clearTimeout(loadTimeout);
+          clearTimeout(softTimeout);
+          clearTimeout(hardTimeout);
           visibilityFallbackTimeout = setTimeout(() => {
             if (container.style.display === 'none') {
               applyErrorContainerLayout({
@@ -418,7 +448,8 @@
         };
 
         iframe.onerror = (error) => {
-          clearTimeout(loadTimeout);
+          clearTimeout(softTimeout);
+          clearTimeout(hardTimeout);
           if (visibilityFallbackTimeout) {
             clearTimeout(visibilityFallbackTimeout);
           }

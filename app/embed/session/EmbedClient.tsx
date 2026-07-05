@@ -788,12 +788,26 @@ export default function EmbedClient({
       // persisted, so a null stored session does NOT mean "expired". Treat the
       // in-memory session as authoritative instead of churning it every 60s. (#12)
       if (!helpers.isStorageAvailable()) return;
-      const stored = helpers.getStoredSession(sessionStorageKey);
-      if (stored || !sessionId || sessionRefreshInFlightRef.current) return;
+      if (!sessionId || sessionRefreshInFlightRef.current) return;
+
+      // Only refresh when we can positively prove the persisted session is near
+      // expiry. A missing key can happen for many benign reasons (consent gates,
+      // storage clears, locale key migration) and should not trigger createSession
+      // loops while an in-memory session is still functioning.
+      let expiresAtMs = 0;
+      try {
+        const raw = localStorage.getItem(sessionStorageKey);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as { expiresAt?: string };
+        expiresAtMs = parsed?.expiresAt ? new Date(parsed.expiresAt).getTime() : 0;
+      } catch {
+        return;
+      }
+
+      if (!Number.isFinite(expiresAtMs) || expiresAtMs <= 0) return;
+      if (expiresAtMs - Date.now() > 30_000) return;
 
       sessionRefreshInFlightRef.current = true;
-      setSessionId(null);
-      sessionIdRef.current = null;
       try {
         const token = authTokenRef.current;
         if (token) {

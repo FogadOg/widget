@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useRef } from 'react'
 import { API } from '../../../../lib/api'
 import { TIMEOUTS } from '../../../../lib/constants'
 import { t as translate } from '../../../../lib/i18n'
@@ -10,6 +10,27 @@ import {
 import { fetchWithTimeout } from '../resilientFetch'
 import { MessageType } from '../DocsClient.types'
 import { initialMessages } from '../DocsClient.constants'
+
+function getRetryAfterSeconds(headerValue: string | null): number {
+  if (!headerValue) return 0;
+  const numeric = Number(headerValue);
+  if (Number.isFinite(numeric) && numeric > 0) return Math.floor(numeric);
+  const asDate = Date.parse(headerValue);
+  if (!Number.isFinite(asDate)) return 0;
+  const seconds = Math.ceil((asDate - Date.now()) / 1000);
+  return seconds > 0 ? seconds : 0;
+}
+
+const DEFAULT_RATE_LIMIT_COOLDOWN_MS = 30_000;
+
+function parseRetryAfterMs(headerValue: string | null): number {
+  if (!headerValue) return DEFAULT_RATE_LIMIT_COOLDOWN_MS;
+  const numeric = Number(headerValue);
+  if (Number.isFinite(numeric) && numeric >= 0) return Math.max(1000, numeric * 1000);
+  const asDate = Date.parse(headerValue);
+  if (!Number.isNaN(asDate)) return Math.max(1000, asDate - Date.now());
+  return DEFAULT_RATE_LIMIT_COOLDOWN_MS;
+}
 
 interface UseSessionManagementParams {
   agentId: string;
@@ -34,10 +55,23 @@ export function useSessionManagement({
   setMessages,
   setIsInitialLoad,
 }: UseSessionManagementParams) {
+  const rateLimitUntilRef = useRef<number>(0);
+
+  const ensureNotCoolingDown = useCallback((): string | null => {
+    if (Date.now() >= rateLimitUntilRef.current) return null;
+    const waitSec = Math.max(1, Math.ceil((rateLimitUntilRef.current - Date.now()) / 1000));
+    return translate(activeLocale, 'rateLimitWait', { vars: { count: waitSec } });
+  }, [activeLocale]);
+
   // Load session messages
   async function loadSessionMessages(sessionId: string, token: string, isNewSession = false) {
     if (!sessionId) {
       console.error('Skipping loadSessionMessages: missing sessionId');
+      return;
+    }
+    const cooldownMessage = ensureNotCoolingDown();
+    if (cooldownMessage) {
+      setError(cooldownMessage);
       return;
     }
     try {
@@ -72,6 +106,16 @@ export function useSessionManagement({
           setMessages(loadedMessages.length > 0 ? loadedMessages : initialMessages);
           setIsInitialLoad(false);
         }
+      } else if (response.status === 429) {
+        rateLimitUntilRef.current = Math.max(
+          rateLimitUntilRef.current,
+          Date.now() + parseRetryAfterMs(response.headers.get('Retry-After')),
+        );
+        const waitSec = getRetryAfterSeconds(response.headers.get('Retry-After'));
+        const msg = waitSec > 0
+          ? translate(activeLocale, 'rateLimitWait', { vars: { count: waitSec } })
+          : translate(activeLocale, 'sessionRateLimitGeneric');
+        setError(msg);
       }
     } catch (err) {
       console.error('Error loading messages:', err);
@@ -80,6 +124,11 @@ export function useSessionManagement({
 
   // Create session
   const createSession = useCallback(async (token: string, variantInfo?: { variant_id?: string; variant_name?: string }) => {
+    const cooldownMessage = ensureNotCoolingDown();
+    if (cooldownMessage) {
+      setError(cooldownMessage);
+      return;
+    }
     try {
       const visitorId = helpersGetVisitorId(clientId);
 
@@ -111,6 +160,17 @@ export function useSessionManagement({
         }
         // Load messages after session creation
         await loadSessionMessages(data.data.session_id, token, true);
+      } else if (response.status === 429) {
+        rateLimitUntilRef.current = Math.max(
+          rateLimitUntilRef.current,
+          Date.now() + parseRetryAfterMs(response.headers.get('Retry-After')),
+        );
+        const waitSec = getRetryAfterSeconds(response.headers.get('Retry-After'));
+        const msg = waitSec > 0
+          ? translate(activeLocale, 'rateLimitWait', { vars: { count: waitSec } })
+          : translate(activeLocale, 'sessionRateLimitGeneric');
+        console.warn('Session creation rate-limited', { waitSec });
+        setError(msg);
       } else {
         // Server-provided `detail` (rate limits, config issues) is already meant
         // to be user-facing; fall back to a localized generic when it's absent.
@@ -125,12 +185,17 @@ export function useSessionManagement({
       console.error('Session creation error:', err);
       setError(translate(activeLocale, 'networkErrorConnect'));
     }
-  }, [agentId, activeLocale, clientId, initialParentOrigin]);
+  }, [agentId, activeLocale, clientId, initialParentOrigin, ensureNotCoolingDown]);
 
   // Validate and restore existing session
   const validateAndRestoreSession = useCallback(async (sessionId: string, token: string) => {
     if (!sessionId) {
       console.error('validateAndRestoreSession called with empty sessionId');
+      return;
+    }
+    const cooldownMessage = ensureNotCoolingDown();
+    if (cooldownMessage) {
+      setError(cooldownMessage);
       return;
     }
     try {
@@ -171,6 +236,16 @@ export function useSessionManagement({
           localStorage.removeItem(getSessionStorageKey(clientId, agentId));
           createSession(token);
         }
+      } else if (response.status === 429) {
+        rateLimitUntilRef.current = Math.max(
+          rateLimitUntilRef.current,
+          Date.now() + parseRetryAfterMs(response.headers.get('Retry-After')),
+        );
+        const waitSec = getRetryAfterSeconds(response.headers.get('Retry-After'));
+        const msg = waitSec > 0
+          ? translate(activeLocale, 'rateLimitWait', { vars: { count: waitSec } })
+          : translate(activeLocale, 'sessionRateLimitGeneric');
+        setError(msg);
       } else {
         localStorage.removeItem(getSessionStorageKey(clientId, agentId));
         createSession(token);
@@ -180,7 +255,7 @@ export function useSessionManagement({
       localStorage.removeItem(getSessionStorageKey(clientId, agentId));
       createSession(token);
     }
-  }, [createSession]);
+  }, [createSession, ensureNotCoolingDown]);
 
   return { createSession, validateAndRestoreSession, loadSessionMessages };
 }

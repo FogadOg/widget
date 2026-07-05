@@ -98,12 +98,14 @@ export function useDialogState({
           } else {
             createSession(token, variantInfo);
           }
-        } else if (authError) {
-          console.error('Auth error:', authError);
-          setError(authError);
         } else {
-          console.error('No token and no authError - check getAuthToken implementation');
-          setError('Failed to authenticate');
+          const message = authError || 'Failed to authenticate';
+          if (authError) {
+            console.error('Auth error:', authError);
+          } else {
+            console.error('Auth token request returned null');
+          }
+          setError(message);
         }
       }).catch(err => {
         console.error('Error getting auth token:', err);
@@ -112,7 +114,7 @@ export function useDialogState({
     } else {
       console.warn('Missing clientId or agentId');
     }
-  }, [clientId, agentId, configId, createSession, validateAndRestoreSession, fetchWidgetConfig, getAuthToken, initialPreviewConfig, resolveParentOrigin]);
+  }, [clientId, agentId, configId, createSession, validateAndRestoreSession, fetchWidgetConfig, getAuthToken, initialPreviewConfig, resolveParentOrigin, authError]);
 
   // Preview mode only: apply live config updates pushed from the admin customize
   // panel via postMessage, so appearance edits update without reloading the
@@ -145,15 +147,18 @@ export function useDialogState({
   useEffect(() => {
     const checkSessionExpiry = () => {
       const stored = helpersGetStoredSession(clientId, agentId);
-      if (!stored && sessionId) {
-        setSessionId(null);
-        setMessages([]);
+      if (!stored) return;
+
+      // Keep in-memory state aligned when another tab refreshed the session,
+      // but do not clear a working session just because storage is absent.
+      if (sessionId && stored.sessionId && stored.sessionId !== sessionId) {
+        setSessionId(stored.sessionId);
       }
     };
 
     const interval = setInterval(checkSessionExpiry, 60000);
     return () => clearInterval(interval);
-  }, [sessionId]);
+  }, [sessionId, clientId, agentId]);
 
   // Apply hide_on_mobile from widget config for docs widget
   useEffect(() => {

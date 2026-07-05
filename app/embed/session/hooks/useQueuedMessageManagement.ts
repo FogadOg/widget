@@ -5,6 +5,20 @@ import * as helpers from '../helpers';
 import type { Message } from '../../../../types/widget';
 
 const MAX_QUEUE_ATTEMPTS = 5;
+const DEFAULT_RATE_LIMIT_COOLDOWN_MS = 30_000;
+
+function parseRetryAfterMs(headerValue: string | null): number {
+  if (!headerValue) return DEFAULT_RATE_LIMIT_COOLDOWN_MS;
+  const asNumber = Number(headerValue);
+  if (Number.isFinite(asNumber) && asNumber >= 0) {
+    return Math.max(1000, asNumber * 1000);
+  }
+  const asDate = Date.parse(headerValue);
+  if (!Number.isNaN(asDate)) {
+    return Math.max(1000, asDate - Date.now());
+  }
+  return DEFAULT_RATE_LIMIT_COOLDOWN_MS;
+}
 
 export function useQueuedMessageManagement({
   sessionId,
@@ -29,6 +43,8 @@ export function useQueuedMessageManagement({
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   loadSessionMessages: (sessionId: string, token?: string) => Promise<void>;
 }) {
+  const rateLimitUntilRef = useRef<number>(0);
+
   // Listen for queued-message events dispatched by PromptInput when offline
   useEffect(() => {
     const onQueued = (ev: Event) => {
@@ -109,6 +125,10 @@ export function useQueuedMessageManagement({
       if (!queued || queued.length === 0) return;
 
       for (const item of queued.sort((a, b) => (a.seq || 0) - (b.seq || 0))) {
+        if (Date.now() < rateLimitUntilRef.current) {
+          break;
+        }
+
         const currentAttempts = item.attempts || 0;
         if (currentAttempts >= MAX_QUEUE_ATTEMPTS) {
           // Permanently failed — remove from queue, mark as failed in UI
@@ -138,6 +158,12 @@ export function useQueuedMessageManagement({
           clearTimeout(timeout);
 
           if (!resp.ok) {
+            if (resp.status === 429) {
+              const retryAfterMs = parseRetryAfterMs(resp.headers.get('Retry-After'));
+              rateLimitUntilRef.current = Math.max(rateLimitUntilRef.current, Date.now() + retryAfterMs);
+              break;
+            }
+
             // A permanent client error (4xx other than 408/429) will never succeed
             // on retry. Drop it immediately and continue to the next queued message,
             // instead of burning all attempts and head-of-line-blocking the queue. (#14)
@@ -226,6 +252,7 @@ export function useQueuedMessageManagement({
         const sid = sessionIdRef.current || sessionId || storedSession?.sessionId || null;
         const token = authTokenRef.current || authToken || null;
         if (!sid || !token) return;
+        if (Date.now() < rateLimitUntilRef.current) return;
 
         const queued = await getQueuedMessages();
         const item = queued.find((q: any) => q.id === id);
@@ -251,6 +278,9 @@ export function useQueuedMessageManagement({
           if (resp.ok) {
             await removeQueuedMessage(id);
             await loadSessionMessages(sid, token);
+          } else if (resp.status === 429) {
+            const retryAfterMs = parseRetryAfterMs(resp.headers.get('Retry-After'));
+            rateLimitUntilRef.current = Math.max(rateLimitUntilRef.current, Date.now() + retryAfterMs);
           } else {
             try { await incrementAttempt(id); } catch {}
           }
