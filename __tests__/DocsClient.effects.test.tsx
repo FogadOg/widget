@@ -824,7 +824,7 @@ describe('DocsClient missing effect/flow coverage', () => {
 
     await waitFor(() => {
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('No token and no authError - check getAuthToken implementation')
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Auth token request returned null')
 
     })
 
@@ -858,7 +858,7 @@ describe('DocsClient missing effect/flow coverage', () => {
 
   })
 
-  it('covers periodic session expiry clearing path', async () => {
+  it('keeps in-memory messages when periodic storage check finds no session', async () => {
 
     ;(helpers.getStoredSession as jest.Mock)
 
@@ -878,7 +878,7 @@ describe('DocsClient missing effect/flow coverage', () => {
 
     await waitFor(() => {
 
-      expect(screen.queryByText('agent message')).toBeNull()
+      expect(screen.getByText('agent message')).toBeTruthy()
 
     })
 

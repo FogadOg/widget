@@ -24,7 +24,7 @@ describe('useHeartbeat', () => {
 
   const params = { sessionId: 'sess-1', token: 'tok-1', embedHeaders: { 'X-Embed-Origin': 'https://host.example' } };
 
-  it('beats immediately and then on the interval while visible', () => {
+  it('beats immediately and then on the interval while visible', async () => {
     renderHook(() => useHeartbeat(params));
 
     // Immediate beat on mount.
@@ -35,7 +35,7 @@ describe('useHeartbeat', () => {
     expect(init.headers.Authorization).toBe('Bearer tok-1');
     expect(init.headers['X-Embed-Origin']).toBe('https://host.example');
 
-    jest.advanceTimersByTime(HEARTBEAT_INTERVAL_MS);
+    await jest.advanceTimersByTimeAsync(HEARTBEAT_INTERVAL_MS);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

@@ -20,6 +20,17 @@
 				"build:embed"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "widget-test-runinband",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"test",
+				"--",
+				"--runInBand"
+			],
+			"isBackground": false
 		}
 	]
 }

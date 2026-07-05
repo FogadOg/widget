@@ -115,7 +115,9 @@ describe('bootstrap — valid attributes', () => {
 
     const { iframe } = loadWidget({ ...VALID, 'data-dev': 'true' });
 
-    expect(iframe!.src).toContain('localhost:3001');
+    expect(iframe!.src).toContain('http://localhost/');
+    expect(iframe!.src).toContain('/embed/session');
+    expect(iframe!.src).not.toContain('widget.companin.tech');
 
   });
 
