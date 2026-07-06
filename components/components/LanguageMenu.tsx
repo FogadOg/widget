@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LOCALE_LABELS, type SupportedLocale } from '../../lib/i18n';
 import { FOCUS_RING } from '../EmbedShell.constants';
 import { withAlpha } from '../../lib/colors';
@@ -55,8 +56,10 @@ export function LanguageMenu({
   borderRadius,
 }: LanguageMenuProps) {
   const [open, setOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const activeIndex = Math.max(
@@ -66,14 +69,32 @@ export function LanguageMenu({
 
   const close = useCallback((returnFocus = true) => {
     setOpen(false);
+    setDropdownPos(null);
     if (returnFocus) triggerRef.current?.focus();
   }, []);
 
-  // Close on outside click.
+  const handleToggle = () => {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 6,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setOpen((v) => !v);
+  };
+
+  // Close on outside click — check both the trigger container and the portalled dropdown.
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (
+        !containerRef.current?.contains(target) &&
+        !dropdownRef.current?.contains(target)
+      ) {
+        setOpen(false);
+      }
     };
     document.addEventListener('pointerdown', onPointerDown, true);
     return () => document.removeEventListener('pointerdown', onPointerDown, true);
@@ -134,12 +155,75 @@ export function LanguageMenu({
     }
   };
 
+  const dropdown =
+    open && dropdownPos ? (
+      <div
+        ref={dropdownRef}
+        role="menu"
+        aria-label={label}
+        style={{
+          position: 'fixed',
+          top: `${dropdownPos.top}px`,
+          right: `${dropdownPos.right}px`,
+          minWidth: '160px',
+          backgroundColor,
+          color: textColor,
+          border: `1px solid ${borderColor}`,
+          borderRadius: `${Math.min(borderRadius, 12)}px`,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+          zIndex: 9999,
+          padding: '4px',
+          ...fontStyles,
+        }}
+      >
+        {locales.map((code, index) => {
+          const isSelected = index === activeIndex;
+          return (
+            <button
+              key={code}
+              ref={(el) => { optionRefs.current[index] = el; }}
+              type="button"
+              role="menuitemradio"
+              aria-checked={isSelected}
+              onClick={() => select(code)}
+              onKeyDown={(e) => onMenuKeyDown(e, index)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '8px',
+                padding: '8px 10px',
+                borderRadius: `${Math.min(borderRadius, 8)}px`,
+                backgroundColor: isSelected ? withAlpha(primaryColor, 0.12) : 'transparent',
+                color: textColor,
+                fontWeight: isSelected ? 600 : 400,
+                textAlign: 'start',
+                cursor: 'pointer',
+                ['--tw-ring-color' as string]: primaryColor,
+                ['--tw-ring-offset-color' as string]: backgroundColor,
+                ...fontStyles,
+              }}
+              className={`text-sm hover:opacity-80 ${FOCUS_RING}`}
+            >
+              <span>{nativeName(code)}</span>
+              {isSelected && (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    ) : null;
+
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleToggle}
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -169,68 +253,7 @@ export function LanguageMenu({
         </svg>
       </button>
 
-      {open && (
-        <div
-          role="menu"
-          aria-label={label}
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 6px)',
-            insetInlineEnd: 0,
-            minWidth: '160px',
-            maxHeight: '240px',
-            overflowY: 'auto',
-            backgroundColor,
-            color: textColor,
-            border: `1px solid ${borderColor}`,
-            borderRadius: `${Math.min(borderRadius, 12)}px`,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-            zIndex: 50,
-            padding: '4px',
-            ...fontStyles,
-          }}
-        >
-          {locales.map((code, index) => {
-            const isSelected = index === activeIndex;
-            return (
-              <button
-                key={code}
-                ref={(el) => { optionRefs.current[index] = el; }}
-                type="button"
-                role="menuitemradio"
-                aria-checked={isSelected}
-                onClick={() => select(code)}
-                onKeyDown={(e) => onMenuKeyDown(e, index)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '8px',
-                  padding: '8px 10px',
-                  borderRadius: `${Math.min(borderRadius, 8)}px`,
-                  backgroundColor: isSelected ? withAlpha(primaryColor, 0.12) : 'transparent',
-                  color: textColor,
-                  fontWeight: isSelected ? 600 : 400,
-                  textAlign: 'start',
-                  cursor: 'pointer',
-                  ['--tw-ring-color' as string]: primaryColor,
-                  ['--tw-ring-offset-color' as string]: backgroundColor,
-                  ...fontStyles,
-                }}
-                className={`text-sm hover:opacity-80 ${FOCUS_RING}`}
-              >
-                <span>{nativeName(code)}</span>
-                {isSelected && (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {typeof document !== 'undefined' && dropdown && createPortal(dropdown, document.body)}
     </div>
   );
 }

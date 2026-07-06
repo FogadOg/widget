@@ -874,6 +874,7 @@ export default function EmbedClient({
     t: t as Record<string, unknown>,
     postedShowUnreadBadge,
     postedEdgeOffset,
+    isCollapsed,
   });
 
   // Preview mode only: apply live config updates pushed from the admin customize

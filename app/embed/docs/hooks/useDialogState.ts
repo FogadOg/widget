@@ -60,6 +60,8 @@ export function useDialogState({
   // Signed user JWT last seen via chat.identify({ token }) / data-user-token.
   // Guards against re-triggering re-auth when the same token arrives twice.
   const userTokenRef = useRef<string | null>(null);
+  // Ensures session is created only once (on first open), not on every open/close.
+  const sessionInitializedRef = useRef(false);
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
 
@@ -81,10 +83,14 @@ export function useDialogState({
     }
   };
 
-  // Initialize session on mount
+  // Initialize session when the dialog is first opened. Deferred (not on mount)
+  // so page-load visitors who never interact don't generate DB records.
   useEffect(() => {
+    if (!open) return;
+    if (sessionInitializedRef.current) return;
     if (initialPreviewConfig) return;
     if (clientId && agentId) {
+      sessionInitializedRef.current = true;
       const detectedParentOrigin = resolveParentOrigin();
 
       getAuthToken(clientId, detectedParentOrigin).then(async (token) => {
@@ -114,7 +120,7 @@ export function useDialogState({
     } else {
       console.warn('Missing clientId or agentId');
     }
-  }, [clientId, agentId, configId, createSession, validateAndRestoreSession, fetchWidgetConfig, getAuthToken, initialPreviewConfig, resolveParentOrigin, authError]);
+  }, [open, clientId, agentId, configId, createSession, validateAndRestoreSession, fetchWidgetConfig, getAuthToken, initialPreviewConfig, resolveParentOrigin, authError]);
 
   // Preview mode only: apply live config updates pushed from the admin customize
   // panel via postMessage, so appearance edits update without reloading the
