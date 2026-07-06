@@ -62,6 +62,20 @@ export function useDialogState({
   const userTokenRef = useRef<string | null>(null);
   // Ensures session is created only once (on first open), not on every open/close.
   const sessionInitializedRef = useRef(false);
+
+  // When the dialog starts already-open (startOpen=true), handleOpenChange never
+  // fires so WIDGET_RESIZE is never sent. Send it once on mount to ensure the
+  // parent container is full-screen from the start.
+  useEffect(() => {
+    if (!open || initialPreviewConfig) return;
+    if (typeof window === 'undefined' || !window.parent) return;
+    window.parent.postMessage(
+      { type: 'WIDGET_RESIZE', data: { width: '100vw', height: '100vh' } },
+      parentOrigin,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
 

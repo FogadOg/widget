@@ -1037,6 +1037,10 @@
                     container.style.width = "100vw";
                     container.style.top = "0";
                     container.style.left = "0";
+                    container.style.bottom = "";
+                    container.style.right = "";
+                    container.style.maxHeight = "";
+                    container.style.maxWidth = "";
                   } else {
                     const effectiveHeight = parsedHeight !== null ? parsedHeight + (containerPadding * 2) : data.height;
                     container.style.height = `${effectiveHeight}px`;
