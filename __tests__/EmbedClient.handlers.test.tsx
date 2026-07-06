@@ -508,6 +508,57 @@ describe('EmbedClient handlers', () => {
 
   });
 
+  test('flush drops a stale queued item (aged out / other session) without re-posting', async () => {
+
+    (offline.getQueuedMessages as jest.Mock).mockResolvedValue([{ id: 'q-stale', text: 'old', seq: 1 }]);
+
+    // Once-scoped: clearAllMocks() does not reset return values, so a sticky
+    // mockReturnValue(true) would leak staleness into the tests that follow.
+    (offline.isQueueItemStale as jest.Mock).mockReturnValueOnce(true);
+
+    (offline.removeQueuedMessage as jest.Mock).mockResolvedValue(undefined);
+
+    mockHelpers.getStoredSession.mockReturnValue({ sessionId: 'sess-1', expires_at: Date.now() + 10000 });
+
+    await act(async () => { render(<EmbedClient {...defaultProps} />); });
+
+    await act(async () => { window.dispatchEvent(new Event('online')); });
+
+    await waitFor(() => expect(offline.removeQueuedMessage).toHaveBeenCalledWith('q-stale'));
+
+    // A stale item must be purged, never replayed to the agent.
+
+    const postedContent = mockFetch.mock.calls.some((c: any) => c[1]?.method === 'POST');
+
+    expect(postedContent).toBe(false);
+
+  });
+
+  test('flush skips items enqueued by other widget surfaces (docs / prompt-input)', async () => {
+
+    (offline.getQueuedMessages as jest.Mock).mockResolvedValue([
+      { id: 'q-docs', text: 'docs item', seq: 1, source: 'docs' },
+      { id: 'q-pi', text: 'prompt-input item', seq: 2, source: 'prompt-input' },
+    ]);
+
+    mockHelpers.getStoredSession.mockReturnValue({ sessionId: 'sess-1', expires_at: Date.now() + 10000 });
+
+    await act(async () => { render(<EmbedClient {...defaultProps} />); });
+
+    await act(async () => { window.dispatchEvent(new Event('online')); });
+
+    await act(async () => new Promise((r) => setTimeout(r, 25)));
+
+    // Foreign-source items are left in place for their own flusher — not sent, not removed.
+
+    const postedContent = mockFetch.mock.calls.some((c: any) => c[1]?.method === 'POST');
+
+    expect(postedContent).toBe(false);
+
+    expect(offline.removeQueuedMessage).not.toHaveBeenCalled();
+
+  });
+
   test('flush increments attempts when the server rejects the message', async () => {
 
     (offline.getQueuedMessages as jest.Mock).mockResolvedValue([{ id: 'q1', text: 'one', seq: 1 }]);

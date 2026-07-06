@@ -9,6 +9,7 @@ import {
   removeQueuedMessage,
   incrementAttempt,
   isOnline,
+  isQueueItemStale,
 } from '../../../../src/lib/offline'
 import {
   retryWithBackoff,
@@ -170,7 +171,7 @@ export function useMessageOperations({
     // an offline banner — it auto-sends when connectivity returns.
     if (!isOnline()) {
       try {
-        await queueMessage({ id: qid, text: content, seq: Date.now(), timestamp: Date.now(), attempts: 0, source: QUEUE_SOURCE });
+        await queueMessage({ id: qid, text: content, seq: Date.now(), timestamp: Date.now(), attempts: 0, source: QUEUE_SOURCE, sessionId });
       } catch { /* IndexedDB unavailable — fall through to a friendly error */ }
       setMessages(prev => prev.map(m => m.queueId === qid ? { ...m, pending: true, failed: false } : m));
       setStatus("ready");
@@ -199,7 +200,7 @@ export function useMessageOperations({
         // listener) can retry it later.
         console.error('Error sending message:', err);
         try {
-          await queueMessage({ id: qid, text: content, seq: Date.now(), timestamp: Date.now(), attempts: 0, source: QUEUE_SOURCE });
+          await queueMessage({ id: qid, text: content, seq: Date.now(), timestamp: Date.now(), attempts: 0, source: QUEUE_SOURCE, sessionId });
         } catch { /* noop */ }
         const isTimeout = err instanceof WidgetError && err.code === WidgetErrorCode.NETWORK_TIMEOUT;
         markFailed(qid, isTimeout ? 'messageSendTimeout' : 'networkError');
@@ -218,6 +219,12 @@ export function useMessageOperations({
     const queued = await getQueuedMessages().catch(() => [] as any[]);
     const item = queued.find((q: any) => q.id === queueId && q.source === QUEUE_SOURCE);
     if (!item) return;
+    // Same staleness rule as flushQueue — retrying a stale item would duplicate it.
+    if (isQueueItemStale(item, sessionId)) {
+      try { await removeQueuedMessage(item.id); } catch { /* noop */ }
+      setMessages(prev => prev.map(m => m.queueId === queueId ? { ...m, pending: false, failed: true } : m));
+      return;
+    }
     setMessages(prev => prev.map(m => m.queueId === queueId ? { ...m, pending: true, failed: false } : m));
     setError(null);
     await sendMessageToAPI(item.text, queueId);
@@ -231,6 +238,14 @@ export function useMessageOperations({
     const queued = await getQueuedMessages().catch(() => [] as any[]);
     const mine = queued.filter((q: any) => q.source === QUEUE_SOURCE).sort((a: any, b: any) => (a.seq || 0) - (b.seq || 0));
     for (const item of mine) {
+      // Aged-out or queued under a different session: the server's idempotency
+      // replay is per-conversation, so sending it now would duplicate it as a
+      // brand-new message. Drop it and surface the failure instead.
+      if (isQueueItemStale(item, sessionId)) {
+        try { await removeQueuedMessage(item.id); } catch { /* noop */ }
+        setMessages(prev => prev.map(m => m.queueId === item.id ? { ...m, pending: false, failed: true } : m));
+        continue;
+      }
       if ((item.attempts || 0) >= MAX_QUEUE_ATTEMPTS) {
         try { await removeQueuedMessage(item.id); } catch { /* noop */ }
         setMessages(prev => prev.map(m => m.queueId === item.id ? { ...m, pending: false, failed: true } : m));

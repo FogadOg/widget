@@ -48,7 +48,7 @@ import {
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import en from "../../../locales/en.json";
-import { queueMessage, registerServiceWorker, isOnline, getQueuedMessages, removeQueuedMessage } from "@/lib/offline";
+import { queueMessage, registerServiceWorker, isOnline, getQueuedMessages, removeQueuedMessage, isQueueItemStale } from "@/lib/offline";
 import {
   type ChangeEvent,
   type ChangeEventHandler,
@@ -497,10 +497,19 @@ export const PromptInput = ({
       if (!isOnline()) return;
       isFlushingRef.current = true;
       const queued = await getQueuedMessages();
-      const mine = queued.filter((item: any) => !item?.source || item.source === PROMPT_INPUT_QUEUE_SOURCE);
+      // Strictly own only items THIS component enqueued. Untagged items belong
+      // to the chat send path's flusher, which replays them with their original
+      // Idempotency-Key — re-submitting them here via onSubmit would mint a new
+      // message id per attempt and duplicate the send server-side.
+      const mine = queued.filter((item: any) => item?.source === PROMPT_INPUT_QUEUE_SOURCE);
       // flush in sequence order
       try {
         for (const item of mine.sort((a: any, b: any) => (a.seq || 0) - (b.seq || 0))) {
+          // Aged-out entries (queue survives reloads) are dropped, not replayed.
+          if (isQueueItemStale(item)) {
+            try { await removeQueuedMessage(item.id); } catch { /* ignore */ }
+            continue;
+          }
           try {
             const submit = onSubmitRef.current;
             if (!submit) break;

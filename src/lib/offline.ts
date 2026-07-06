@@ -2,6 +2,24 @@
 const DB_NAME = "companin-offline";
 const STORE_NAME = "message-queue";
 
+// Queued messages older than this are dropped instead of replayed. The queue
+// survives reloads (and days of dev restarts), and the server's idempotency
+// replay is scoped to the original conversation — so replaying an hours-old
+// message into a fresh session posts it as brand-new spam.
+export const MAX_QUEUE_AGE_MS = 60 * 60 * 1000;
+
+// True when a queued item should no longer be sent: it has aged out, or it was
+// queued under a different session than the one we'd send it to now.
+export function isQueueItemStale(
+  item: { timestamp?: number; seq?: number; sessionId?: string },
+  currentSessionId?: string | null
+): boolean {
+  const queuedAt = item.timestamp || item.seq || 0;
+  if (!queuedAt || Date.now() - queuedAt > MAX_QUEUE_AGE_MS) return true;
+  if (item.sessionId && currentSessionId && item.sessionId !== currentSessionId) return true;
+  return false;
+}
+
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);

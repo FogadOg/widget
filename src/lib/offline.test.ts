@@ -182,6 +182,31 @@ describe('offline IndexedDB behaviors', () => {
     expect(remaining.some((r: any) => r.id === 'b')).toBe(true);
   });
 
+  test('isQueueItemStale: fresh item bound to the current session is not stale', () => {
+    expect(offline.isQueueItemStale({ timestamp: Date.now(), sessionId: 's-1' }, 's-1')).toBe(false);
+  });
+
+  test('isQueueItemStale: item older than MAX_QUEUE_AGE_MS is stale', () => {
+    expect(offline.isQueueItemStale({ timestamp: Date.now() - offline.MAX_QUEUE_AGE_MS - 1000 }, 's-1')).toBe(true);
+  });
+
+  test('isQueueItemStale: item without any queue time is stale', () => {
+    expect(offline.isQueueItemStale({}, 's-1')).toBe(true);
+  });
+
+  test('isQueueItemStale: falls back to seq when timestamp is missing', () => {
+    expect(offline.isQueueItemStale({ seq: Date.now() }, 's-1')).toBe(false);
+  });
+
+  test('isQueueItemStale: item bound to a different session is stale', () => {
+    expect(offline.isQueueItemStale({ timestamp: Date.now(), sessionId: 's-old' }, 's-new')).toBe(true);
+  });
+
+  test('isQueueItemStale: unbound fresh item is not stale (legacy entries rely on TTL only)', () => {
+    expect(offline.isQueueItemStale({ timestamp: Date.now() }, 's-1')).toBe(false);
+    expect(offline.isQueueItemStale({ timestamp: Date.now(), sessionId: 's-1' }, null)).toBe(false);
+  });
+
   test('registerServiceWorker registers and posts API when NEXT_PUBLIC_OFFLINE_API set', async () => {
     // set environment var used by function
     (process.env as any).NEXT_PUBLIC_OFFLINE_API = 'https://example.com/api';

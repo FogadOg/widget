@@ -21,6 +21,7 @@ jest.mock('../src/lib/offline', () => ({
   removeQueuedMessage: jest.fn().mockResolvedValue(undefined),
   incrementAttempt: jest.fn().mockResolvedValue(undefined),
   isOnline: jest.fn().mockReturnValue(true),
+  isQueueItemStale: jest.fn().mockReturnValue(false),
 }));
 
 // Keep the real WidgetError/codes but drop the backoff delays so retries run
@@ -39,6 +40,7 @@ import {
   removeQueuedMessage,
   incrementAttempt,
   isOnline,
+  isQueueItemStale,
 } from '../src/lib/offline';
 import { toast } from 'sonner';
 
@@ -48,6 +50,7 @@ const mockGetQueuedMessages = getQueuedMessages as jest.Mock;
 const mockRemoveQueuedMessage = removeQueuedMessage as jest.Mock;
 const mockIncrementAttempt = incrementAttempt as jest.Mock;
 const mockIsOnline = isOnline as jest.Mock;
+const mockIsQueueItemStale = isQueueItemStale as jest.Mock;
 
 // Response builder for fetchWithTimeout / global.fetch.
 function res({ ok = true, status = 200, json = {}, text = '' }: {
@@ -101,6 +104,7 @@ beforeEach(() => {
   mockQueueMessage.mockResolvedValue(undefined);
   mockRemoveQueuedMessage.mockResolvedValue(undefined);
   mockIncrementAttempt.mockResolvedValue(undefined);
+  mockIsQueueItemStale.mockReturnValue(false);
 });
 
 describe('useMessageOperations — sendMessageToAPI', () => {
@@ -206,6 +210,16 @@ describe('useMessageOperations — retryQueuedMessage', () => {
     expect(mockFetchWithTimeout).not.toHaveBeenCalled();
   });
 
+  it('drops a stale queued item instead of resending it', async () => {
+    mockGetQueuedMessages.mockResolvedValue([{ id: 'q1', source: 'docs', text: 'old' }]);
+    mockIsQueueItemStale.mockReturnValue(true);
+    const { params } = makeParams();
+    const { result } = renderHook(() => useMessageOperations(params));
+    await act(async () => { await result.current.retryQueuedMessage('q1'); });
+    expect(mockRemoveQueuedMessage).toHaveBeenCalledWith('q1');
+    expect(mockFetchWithTimeout).not.toHaveBeenCalled();
+  });
+
   it('resends a found queued item', async () => {
     mockGetQueuedMessages.mockResolvedValue([{ id: 'q1', source: 'docs', text: 'retry me' }]);
     mockFetchWithTimeout.mockResolvedValue(res({ ok: true, json: { status: 'success' } }));
@@ -224,6 +238,22 @@ describe('useMessageOperations — flushQueue', () => {
     const { result } = renderHook(() => useMessageOperations(params));
     await act(async () => { await result.current.flushQueue(); });
     expect(mockGetQueuedMessages).not.toHaveBeenCalled();
+  });
+
+  it('drops stale items (aged out / other session) without posting them', async () => {
+    mockGetQueuedMessages.mockResolvedValue([
+      { id: 'q-stale', source: 'docs', text: 'old', seq: 1 },
+      { id: 'q-fresh', source: 'docs', text: 'new', seq: 2 },
+    ]);
+    mockIsQueueItemStale.mockImplementation((item: { id: string }) => item.id === 'q-stale');
+    mockFetchWithTimeout.mockResolvedValue(res({ ok: true, json: { status: 'success' } }));
+    const { params } = makeParams();
+    const { result } = renderHook(() => useMessageOperations(params));
+    await act(async () => { await result.current.flushQueue(); });
+    expect(mockRemoveQueuedMessage).toHaveBeenCalledWith('q-stale');
+    // only the fresh item is posted
+    expect(mockFetchWithTimeout).toHaveBeenCalledTimes(1);
+    expect(mockFetchWithTimeout.mock.calls[0][1].body).toContain('new');
   });
 
   it('drops items that exhausted their attempts', async () => {

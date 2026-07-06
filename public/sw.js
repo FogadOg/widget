@@ -114,7 +114,17 @@ async function sendQueuedToApi() {
   const queued = await getQueued();
   const results = [];
 
+  // Mirrors MAX_QUEUE_AGE_MS in src/lib/offline.ts — the queue survives
+  // reloads, and replaying hours-old messages duplicates them server-side.
+  const MAX_QUEUE_AGE_MS = 60 * 60 * 1000;
+
   for (const item of queued.sort((a, b) => (a.seq || 0) - (b.seq || 0))) {
+    const queuedAt = item.timestamp || item.seq || 0;
+    if (!queuedAt || Date.now() - queuedAt > MAX_QUEUE_AGE_MS) {
+      await removeQueued(item.id);
+      results.push({ id: item.id, success: false });
+      continue;
+    }
     try {
       const resp = await fetch(API_URL, {
         method: 'POST',
