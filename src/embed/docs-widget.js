@@ -328,6 +328,7 @@
       padding: 0;
       box-sizing: border-box;
       z-index: 999999;
+      transition: none;
       display: none;
     `;
 
@@ -361,6 +362,8 @@
         iframe.style.cssText = `
           width: 100%;
           height: 100%;
+          max-width: none;
+          max-height: none;
           border: 0;
           background-color: transparent;
         `;
@@ -1032,14 +1035,19 @@
                     if (allowDisplay) {
                       container.style.display = "block";
                     }
-                    container.style.height = "100vh";
-                    container.style.width = "100vw";
-                    container.style.top = "0";
-                    container.style.left = "0";
-                    container.style.bottom = "";
-                    container.style.right = "";
-                    container.style.maxHeight = "";
-                    container.style.maxWidth = "";
+                    // Use setProperty with !important to defeat any parent-page
+                    // CSS rules (e.g. `iframe { max-height: 80vh }`) that would
+                    // otherwise constrain the container and make the overlay
+                    // appear as only a partial-height backdrop.
+                    container.style.setProperty('height', '100vh', 'important');
+                    container.style.setProperty('width', '100vw', 'important');
+                    container.style.setProperty('top', '0', 'important');
+                    container.style.setProperty('left', '0', 'important');
+                    container.style.setProperty('max-height', 'none', 'important');
+                    container.style.setProperty('max-width', 'none', 'important');
+                    container.style.setProperty('transform', 'none', 'important');
+                    container.style.removeProperty('bottom');
+                    container.style.removeProperty('right');
                   } else {
                     const effectiveHeight = parsedHeight !== null ? parsedHeight + (containerPadding * 2) : data.height;
                     container.style.height = `${effectiveHeight}px`;
