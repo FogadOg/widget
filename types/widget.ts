@@ -108,6 +108,13 @@ export type WidgetConfig = {
   auto_open_delay?: number;
   /** Scroll depth percentage (0–100) that triggers auto-open (0 = disabled) */
   auto_open_scroll_depth?: number;
+  // Proactive teaser bubble
+  /** Nudge message shown beside the launcher before the user opens the widget (locale → text) */
+  teaser_message?: Record<string, string>;
+  /** Delay in ms before the teaser bubble appears (default: 3000; 0 = show immediately) */
+  teaser_delay?: number;
+  /** Auto-hide the teaser after this many ms (default: 0 = stays until dismissed or widget opens) */
+  teaser_dismiss_after?: number;
   // Security
   /** When true, postMessage is only sent to the exact parentOrigin — never '*' */
   strict_origin?: boolean;

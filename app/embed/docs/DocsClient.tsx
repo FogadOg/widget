@@ -377,7 +377,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
           style={{ ...theme.vars, background: theme.panelBackground, backdropFilter: theme.backdropFilter, WebkitBackdropFilter: theme.backdropFilter }}
           onOpenAutoFocus={(e) => {
             e.preventDefault();
-            const textarea = e.currentTarget.querySelector<HTMLElement>('textarea[name="message"]');
+            const textarea = (e.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>('textarea[name="message"]');
             textarea?.focus();
           }}
         >

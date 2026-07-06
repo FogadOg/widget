@@ -69,6 +69,9 @@ export default function EmbedShell({
   isOffline = false,
   previewPositioning = false,
   isPreview = false,
+  showTeaser = false,
+  teaserMessage = null,
+  onDismissTeaser,
 }: Props) {
   const { locale: hookLocale } = useWidgetTranslation();
   const locale = localeProp || hookLocale;
@@ -382,63 +385,192 @@ export default function EmbedShell({
       {isEmbedded ? (
         <>
           {isCollapsed ? (
-            <button
-              ref={launcherRef}
-              type="button"
-              onClick={toggleCollapsed}
-              aria-label={openChatLabel}
-              aria-expanded={!isCollapsed}
-              aria-haspopup="dialog"
-              style={{
-                position: 'fixed',
-                ...(previewPositioning
-                  ? { bottom: '20px', right: '20px' }
-                  : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }),
-                zIndex: 999999,
-                backgroundColor: primaryColor,
-                color: readableOnPrimary,
-                borderRadius: '9999px',
-                ['--tw-ring-color' as string]: primaryColor,
-                ['--tw-ring-offset-color' as string]: 'transparent',
-                ...fontStyles
-              }}
-              className={`${btnWidth} ${btnHeight} shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200 hover:scale-105 hover:opacity-90 relative ${FOCUS_RING}${bubbleAnimation === 'pulse' ? ' bubble-pulse' : bubbleAnimation === 'bounce' ? ' bubble-bounce' : ''}`}
-              title={translate(locale, 'chatControl', { context: 'open' })}
-            >
-                {widgetConfig?.bot_avatar ? (
-                  <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className={`${btnIcon} rounded-full object-cover`} />
-                ) : widgetConfig?.logo ? (
-                  <img src={widgetConfig.logo} alt={(getText(widgetConfig?.title) || title || 'logo') + ' logo'} className={`${btnIcon} object-contain`} />
-                ) : (
-                  <svg className={btnIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z" />
-                  </svg>
-                )}
-                {showUnreadBadge && unreadCount > 0 && (
-                  <span
+            showTeaser ? (
+              /* Teaser bubble + launcher wrapped together so the bubble sits above the button */
+              <div
+                style={{
+                  position: 'fixed',
+                  ...(previewPositioning
+                    ? { bottom: '20px', right: '20px' }
+                    : { bottom: '24px', right: '24px' }),
+                  zIndex: 999999,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: '8px',
+                }}
+              >
+                {/* Speech bubble */}
+                <div
+                  role="status"
+                  aria-live="polite"
+                  style={{
+                    position: 'relative',
+                    maxWidth: '240px',
+                    backgroundColor: '#ffffff',
+                    color: textColor,
+                    borderRadius: '12px',
+                    padding: '10px 32px 10px 14px',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                    cursor: 'pointer',
+                    lineHeight: '1.5',
+                    ...fontStyles,
+                  }}
+                  className="teaser-bubble-enter"
+                  onClick={toggleCollapsed}
+                >
+                  <p style={{ margin: 0 }}>{teaserMessage}</p>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onDismissTeaser?.(); }}
+                    aria-label={translate(locale, 'dismiss')}
                     style={{
                       position: 'absolute',
-                      top: '-4px',
-                      right: '-4px',
-                      backgroundColor: STATUS_COLORS.danger,
-                      color: 'white',
-                      borderRadius: '50%',
-                      width: unreadCount > 9 ? '24px' : '20px',
-                      height: unreadCount > 9 ? '24px' : '20px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: unreadCount > 9 ? '11px' : '12px',
-                      fontWeight: 'bold',
-                      border: '2px solid white',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      top: '6px',
+                      right: '8px',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#9ca3af',
+                      fontSize: '16px',
+                      lineHeight: 1,
+                      padding: '2px 4px',
                     }}
-                    className="animate-pulse"
+                    className={FOCUS_RING}
                   >
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-            </button>
+                    ×
+                  </button>
+                  {/* Tail pointing toward the launcher button */}
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      bottom: '-6px',
+                      right: '22px',
+                      width: '12px',
+                      height: '12px',
+                      backgroundColor: '#ffffff',
+                      transform: 'rotate(45deg)',
+                      boxShadow: '2px 2px 4px rgba(0,0,0,0.1)',
+                    }}
+                  />
+                </div>
+
+                {/* Launcher button (position:relative — wrapper is the fixed anchor) */}
+                <button
+                  ref={launcherRef}
+                  type="button"
+                  onClick={toggleCollapsed}
+                  aria-label={openChatLabel}
+                  aria-expanded={!isCollapsed}
+                  aria-haspopup="dialog"
+                  style={{
+                    position: 'relative',
+                    backgroundColor: primaryColor,
+                    color: readableOnPrimary,
+                    borderRadius: '9999px',
+                    ['--tw-ring-color' as string]: primaryColor,
+                    ['--tw-ring-offset-color' as string]: 'transparent',
+                    ...fontStyles
+                  }}
+                  className={`${btnWidth} ${btnHeight} shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200 hover:scale-105 hover:opacity-90 relative ${FOCUS_RING}${bubbleAnimation === 'pulse' ? ' bubble-pulse' : bubbleAnimation === 'bounce' ? ' bubble-bounce' : ''}`}
+                  title={translate(locale, 'chatControl', { context: 'open' })}
+                >
+                  {widgetConfig?.bot_avatar ? (
+                    <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className={`${btnIcon} rounded-full object-cover`} />
+                  ) : widgetConfig?.logo ? (
+                    <img src={widgetConfig.logo} alt={(getText(widgetConfig?.title) || title || 'logo') + ' logo'} className={`${btnIcon} object-contain`} />
+                  ) : (
+                    <svg className={btnIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z" />
+                    </svg>
+                  )}
+                  {showUnreadBadge && unreadCount > 0 && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '-4px',
+                        right: '-4px',
+                        backgroundColor: STATUS_COLORS.danger,
+                        color: 'white',
+                        borderRadius: '50%',
+                        width: unreadCount > 9 ? '24px' : '20px',
+                        height: unreadCount > 9 ? '24px' : '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: unreadCount > 9 ? '11px' : '12px',
+                        fontWeight: 'bold',
+                        border: '2px solid white',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }}
+                      className="animate-pulse"
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            ) : (
+              /* Original launcher button — no teaser */
+              <button
+                ref={launcherRef}
+                type="button"
+                onClick={toggleCollapsed}
+                aria-label={openChatLabel}
+                aria-expanded={!isCollapsed}
+                aria-haspopup="dialog"
+                style={{
+                  position: 'fixed',
+                  ...(previewPositioning
+                    ? { bottom: '20px', right: '20px' }
+                    : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }),
+                  zIndex: 999999,
+                  backgroundColor: primaryColor,
+                  color: readableOnPrimary,
+                  borderRadius: '9999px',
+                  ['--tw-ring-color' as string]: primaryColor,
+                  ['--tw-ring-offset-color' as string]: 'transparent',
+                  ...fontStyles
+                }}
+                className={`${btnWidth} ${btnHeight} shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200 hover:scale-105 hover:opacity-90 relative ${FOCUS_RING}${bubbleAnimation === 'pulse' ? ' bubble-pulse' : bubbleAnimation === 'bounce' ? ' bubble-bounce' : ''}`}
+                title={translate(locale, 'chatControl', { context: 'open' })}
+              >
+                  {widgetConfig?.bot_avatar ? (
+                    <img src={widgetConfig.bot_avatar} alt={(agentName || getText(widgetConfig?.title) || 'agent') + ' avatar'} className={`${btnIcon} rounded-full object-cover`} />
+                  ) : widgetConfig?.logo ? (
+                    <img src={widgetConfig.logo} alt={(getText(widgetConfig?.title) || title || 'logo') + ' logo'} className={`${btnIcon} object-contain`} />
+                  ) : (
+                    <svg className={btnIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z" />
+                    </svg>
+                  )}
+                  {showUnreadBadge && unreadCount > 0 && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '-4px',
+                        right: '-4px',
+                        backgroundColor: STATUS_COLORS.danger,
+                        color: 'white',
+                        borderRadius: '50%',
+                        width: unreadCount > 9 ? '24px' : '20px',
+                        height: unreadCount > 9 ? '24px' : '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: unreadCount > 9 ? '11px' : '12px',
+                        fontWeight: 'bold',
+                        border: '2px solid white',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }}
+                      className="animate-pulse"
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+              </button>
+            )
           ) : (
             <div
               data-ignore-reduced-motion={!respectReducedMotion ? 'true' : undefined}

@@ -77,6 +77,7 @@ import { useStreamingMessage } from './hooks/useStreamingMessage';
 import { useUnreadTracking } from './hooks/useUnreadTracking';
 import { useWidgetResize } from './hooks/useWidgetResize';
 import { useAutoOpen } from './hooks/useAutoOpen';
+import { useTeaserBubble } from './hooks/useTeaserBubble';
 import { useSessionManagement } from './hooks/useSessionManagement';
 import { useHeartbeat } from '../useHeartbeat';
 import { useQueuedMessageManagement } from './hooks/useQueuedMessageManagement';
@@ -616,6 +617,18 @@ export default function EmbedClient({
           return { ...prev, edge_offset: postedEdgeOffset.current } as WidgetConfig;
         });
       }
+
+      // Merge teaser-bubble fields so window.CompaninWidget.update() works
+      const teaserPatch: Partial<WidgetConfig> = {};
+      if (data.teaser_message && typeof data.teaser_message === 'object') teaserPatch.teaser_message = data.teaser_message as Record<string, string>;
+      if (typeof data.teaser_delay === 'number') teaserPatch.teaser_delay = data.teaser_delay;
+      if (typeof data.teaser_dismiss_after === 'number') teaserPatch.teaser_dismiss_after = data.teaser_dismiss_after;
+      if (Object.keys(teaserPatch).length > 0) {
+        setWidgetConfig((prev) => {
+          if (!prev) return prev;
+          return { ...prev, ...teaserPatch } as WidgetConfig;
+        });
+      }
     });
     return remove;
   }, []);
@@ -1000,11 +1013,19 @@ export default function EmbedClient({
     }
   }, [isCollapsed, initialPreviewConfig]);
 
+  // Proactive teaser bubble shown beside the launcher before first open
+  const { showTeaser, teaserMessage, dismissTeaser } = useTeaserBubble({
+    widgetConfig,
+    isCollapsed,
+    locale: activeLocale,
+  });
+
   // Unread tracking is handled by useUnreadTracking hook above
   // Widget resize is handled by useWidgetResize hook
   useWidgetResize({
     widgetConfig,
     isCollapsed,
+    showTeaser,
     initialParentOrigin,
     parentTargetOrigin,
     safePostToParent,
@@ -2247,6 +2268,9 @@ export default function EmbedClient({
         onShowUnsureModal={() => setShowUnsureModal(true)}
         onCloseUnsureModal={() => setShowUnsureModal(false)}
         onDismissHandoff={() => setShowHandoffModal(false)}
+        showTeaser={showTeaser}
+        teaserMessage={teaserMessage}
+        onDismissTeaser={dismissTeaser}
         hideCloseButton={isPersistent}
         isPersistent={isPersistent}
         handoffModal={showHandoffModal && supportTicketsEnabled ? (

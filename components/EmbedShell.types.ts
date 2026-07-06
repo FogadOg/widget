@@ -48,6 +48,12 @@ export type Props = {
   onLocaleChange?: (locale: string) => void;
   hideCloseButton?: boolean;
   isPersistent?: boolean;
+  /** Whether the proactive teaser bubble is currently visible */
+  showTeaser?: boolean;
+  /** Locale-resolved teaser message string */
+  teaserMessage?: string | null;
+  /** Permanently dismiss the teaser */
+  onDismissTeaser?: () => void;
   sessionExpiredBanner?: boolean;
   onDismissSessionExpiredBanner?: () => void;
   isOffline?: boolean;

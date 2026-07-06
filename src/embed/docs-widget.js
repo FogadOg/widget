@@ -328,7 +328,6 @@
       padding: 0;
       box-sizing: border-box;
       z-index: 999999;
-      transition: all 0.3s ease;
       display: none;
     `;
 
@@ -402,7 +401,7 @@
         const parsedLoadTimeout = Number(script.getAttribute('data-load-timeout-ms'));
         const hardTimeoutMs = Number.isFinite(parsedLoadTimeout) && parsedLoadTimeout > 0
           ? Math.max(parsedLoadTimeout, 20000)
-          : 45000;
+          : isDev ? 60000 : 45000; // match chat widget: 60s in dev for webpack cold compile
         const softTimeoutMs = Math.min(15000, Math.max(5000, Math.floor(hardTimeoutMs / 2)));
         const softTimeout = setTimeout(() => {
           if (!iframeLoaded) {
