@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { logError } from '../../../../lib/errorHandling';
 import { validateConfig } from '../../../../lib/validateConfig';
 import * as helpers from '../helpers';
@@ -26,6 +26,7 @@ export function useBootstrap({
   t,
   postedShowUnreadBadge,
   postedEdgeOffset,
+  isCollapsed,
 }: {
   initialPreviewConfig: string | undefined;
   initialClientId: string;
@@ -47,7 +48,16 @@ export function useBootstrap({
   t: Record<string, unknown>;
   postedShowUnreadBadge?: React.MutableRefObject<boolean | undefined>;
   postedEdgeOffset?: React.MutableRefObject<number | undefined>;
+  isCollapsed: boolean;
 }) {
+  // Holds auth token + fetched config after Phase 1 so Phase 2 (session creation)
+  // can use them without re-fetching when the widget first opens.
+  const readyRef = useRef<{
+    agentId: string;
+    token: string;
+    config: ReturnType<typeof validateConfig>['config'] | null;
+  } | null>(null);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -79,68 +89,77 @@ export function useBootstrap({
       const configIdParam = initialConfigId;
 
       try {
-        // Detect iframe embedding and render a stripped layout when embedded
-        try {
-          setIsEmbedded(window.top !== window);
-        } catch {
-          setIsEmbedded(true);
-        }
-
-        if (!(clientIdParam && agentIdParam)) {
-          return;
-        }
-
-        const token = await getAuthToken(clientIdParam, initialParentOrigin);
-        if (!token) {
-          // getAuthToken returned null — authError will be set by the hook.
-          // The useEffect below watches authError and sets fatalError.
-          return;
-        }
-
-        // Schedule silent token refresh. The hook records the server-reported
-        // expires_in on tokenExpiresAtRef; we read it back via getTokenExpiresAt
-        // and fall back to a 55-minute window if (and only if) the server omitted
-        // the field (LAUNCH-READINESS.md gap #15).
-        const reportedExpiry = typeof getTokenExpiresAt === 'function' ? getTokenExpiresAt() : null;
-        const tokenExpiryMs = (reportedExpiry && Number.isFinite(reportedExpiry))
-          ? reportedExpiry
-          : Date.now() + 55 * 60 * 1000;
-        scheduleAutoRefresh(tokenExpiryMs, clientIdParam, initialParentOrigin);
-
-        if (cancelled) return;
-
-        // Validate agent exists
-        await fetchAgentDetails(agentIdParam, token);
-
-        // Validate config exists if provided
-        let fetchedConfig: ReturnType<typeof validateConfig>['config'] | null = null;
-        if (configIdParam) {
-          fetchedConfig = await fetchWidgetConfig(configIdParam, token) ?? null;
-          // Inject server-side custom CSS (LAUNCH-READINESS #20). The sanitizer
-          // strips url() / position:fixed / @font-face etc., so even a compromised
-          // config field can't exfiltrate or clickjack the host page.
-          injectCustomAssetsFromConfig(fetchedConfig as unknown as { custom_css?: string | null } | null);
-          if ((fetchedConfig as any)?.font_source === 'google' && (fetchedConfig as any)?.font_family) {
-            injectGoogleFont((fetchedConfig as any).font_family);
+        // Phase 1: fetch auth token, agent details, and widget config.
+        // Runs once on mount. Result cached in readyRef for Phase 2.
+        if (!readyRef.current) {
+          // Detect iframe embedding and render a stripped layout when embedded
+          try {
+            setIsEmbedded(window.top !== window);
+          } catch {
+            setIsEmbedded(true);
           }
-          if (fetchedConfig?.ga_measurement_id && initialParentOrigin) {
-            // GA measurement ID is non-sensitive but still gated on a known
-            // parent origin so we don't leak it via '*' (LAUNCH-READINESS #6).
-            window.parent.postMessage(
-              { type: 'WIDGET_GA_INIT', data: { gaMeasurementId: fetchedConfig.ga_measurement_id } },
-              initialParentOrigin
-            );
+
+          if (!(clientIdParam && agentIdParam)) {
+            return;
           }
+
+          const token = await getAuthToken(clientIdParam, initialParentOrigin);
+          if (!token) {
+            // getAuthToken returned null — authError will be set by the hook.
+            // The useEffect below watches authError and sets fatalError.
+            return;
+          }
+
+          // Schedule silent token refresh. The hook records the server-reported
+          // expires_in on tokenExpiresAtRef; we read it back via getTokenExpiresAt
+          // and fall back to a 55-minute window if (and only if) the server omitted
+          // the field (LAUNCH-READINESS.md gap #15).
+          const reportedExpiry = typeof getTokenExpiresAt === 'function' ? getTokenExpiresAt() : null;
+          const tokenExpiryMs = (reportedExpiry && Number.isFinite(reportedExpiry))
+            ? reportedExpiry
+            : Date.now() + 55 * 60 * 1000;
+          scheduleAutoRefresh(tokenExpiryMs, clientIdParam, initialParentOrigin);
+
+          if (cancelled) return;
+
+          // Validate agent exists
+          await fetchAgentDetails(agentIdParam, token);
+
+          // Validate config exists if provided
+          let fetchedConfig: ReturnType<typeof validateConfig>['config'] | null = null;
+          if (configIdParam) {
+            fetchedConfig = await fetchWidgetConfig(configIdParam, token) ?? null;
+            // Inject server-side custom CSS (LAUNCH-READINESS #20). The sanitizer
+            // strips url() / position:fixed / @font-face etc., so even a compromised
+            // config field can't exfiltrate or clickjack the host page.
+            injectCustomAssetsFromConfig(fetchedConfig as unknown as { custom_css?: string | null } | null);
+            if ((fetchedConfig as any)?.font_source === 'google' && (fetchedConfig as any)?.font_family) {
+              injectGoogleFont((fetchedConfig as any).font_family);
+            }
+            if (fetchedConfig?.ga_measurement_id && initialParentOrigin) {
+              // GA measurement ID is non-sensitive but still gated on a known
+              // parent origin so we don't leak it via '*' (LAUNCH-READINESS #6).
+              window.parent.postMessage(
+                { type: 'WIDGET_GA_INIT', data: { gaMeasurementId: fetchedConfig.ga_measurement_id } },
+                initialParentOrigin
+              );
+            }
+          }
+
+          if (cancelled) return;
+          readyRef.current = { agentId: agentIdParam, token, config: fetchedConfig };
         }
 
-        if (cancelled) return;
-
-        // Try to restore existing session first
-        const storedSession = helpers.getStoredSession(sessionStorageKey);
-        if (storedSession) {
-          await validateAndRestoreSession(storedSession.sessionId, agentIdParam, token, fetchedConfig);
-        } else {
-          await createSession(agentIdParam, token, fetchedConfig);
+        // Phase 2: create or restore the session. Deferred until the widget is
+        // actually opened so page-load visitors don't generate DB records.
+        if (!isCollapsed && readyRef.current) {
+          const { agentId: aid, token, config } = readyRef.current;
+          const storedSession = helpers.getStoredSession(sessionStorageKey);
+          if (storedSession) {
+            await validateAndRestoreSession(storedSession.sessionId, aid, token, config);
+          } else {
+            await createSession(aid, token, config);
+          }
         }
       } catch (err: unknown) {
         if (cancelled) return;
@@ -168,5 +187,5 @@ export function useBootstrap({
     return () => {
       cancelled = true;
     };
-  }, [getAuthToken, initialAgentId, initialClientId, initialConfigId, initialParentOrigin, initialPreviewConfig, sessionStorageKey]);
+  }, [isCollapsed, getAuthToken, initialAgentId, initialClientId, initialConfigId, initialParentOrigin, initialPreviewConfig, sessionStorageKey]);
 }

@@ -375,6 +375,11 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
         <DialogContent
           className='mb-8 flex h-[calc(100vh-20vh)] min-w-[calc(100vw-20vw)] flex-col justify-between gap-0 p-0'
           style={{ ...theme.vars, background: theme.panelBackground, backdropFilter: theme.backdropFilter, WebkitBackdropFilter: theme.backdropFilter }}
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            const textarea = e.currentTarget.querySelector<HTMLElement>('textarea[name="message"]');
+            textarea?.focus();
+          }}
         >
           <ScrollArea ref={scrollAreaRef} className='flex flex-col justify-between overflow-hidden'>
             <DialogHeader className='contents space-y-0 text-left'>
