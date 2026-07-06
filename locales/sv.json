@@ -1,4 +1,6 @@
 {
+  "language": "Språk",
+  "selectLanguage": "Välj språk",
   "typeYourMessage": "Skriv ditt meddelande...",
   "typeYourMessageLabel": "Skriv ditt meddelande",
   "send": "Skicka",

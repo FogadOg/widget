@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { getQueuedMessages, removeQueuedMessage, incrementAttempt } from '../../../../src/lib/offline';
+import { getQueuedMessages, removeQueuedMessage, incrementAttempt, isQueueItemStale } from '../../../../src/lib/offline';
 import { API } from '../../../../lib/api';
 import * as helpers from '../helpers';
 import type { Message } from '../../../../types/widget';
 
 const MAX_QUEUE_ATTEMPTS = 5;
 const DEFAULT_RATE_LIMIT_COOLDOWN_MS = 30_000;
+// The IndexedDB queue is shared by origin. This flusher only owns items the
+// chat send path enqueued ('chat', plus legacy untagged entries) — docs and
+// prompt-input items have their own flushers with different replay semantics.
+const OWNED_SOURCES = new Set(['chat', undefined, null, '']);
 
 function parseRetryAfterMs(headerValue: string | null): number {
   if (!headerValue) return DEFAULT_RATE_LIMIT_COOLDOWN_MS;
@@ -44,6 +48,8 @@ export function useQueuedMessageManagement({
   loadSessionMessages: (sessionId: string, token?: string) => Promise<void>;
 }) {
   const rateLimitUntilRef = useRef<number>(0);
+  const flushInFlightRef = useRef(false);
+  const retryInFlightIdsRef = useRef<Set<string>>(new Set());
 
   // Listen for queued-message events dispatched by PromptInput when offline
   useEffect(() => {
@@ -116,17 +122,33 @@ export function useQueuedMessageManagement({
   }, []);
 
   const flushQueuedMessages = useCallback(async () => {
+    if (flushInFlightRef.current) return;
+    flushInFlightRef.current = true;
     const storedSession = helpers.getStoredSession(sessionStorageKey);
     const sid = sessionIdRef.current || sessionId || storedSession?.sessionId || null;
     const token = authTokenRef.current || authToken || null;
-    if (!sid || !token) return;
+    if (!sid || !token) {
+      flushInFlightRef.current = false;
+      return;
+    }
     try {
-      const queued = await getQueuedMessages();
+      const queued = (await getQueuedMessages()).filter((q) => OWNED_SOURCES.has(q?.source));
       if (!queued || queued.length === 0) return;
 
       for (const item of queued.sort((a, b) => (a.seq || 0) - (b.seq || 0))) {
         if (Date.now() < rateLimitUntilRef.current) {
           break;
+        }
+
+        // Aged-out or bound to a different session: replaying it now would post
+        // it as a brand-new message (the server's idempotency replay is scoped
+        // to the original conversation). Drop it instead of spamming the agent.
+        if (isQueueItemStale(item, sid)) {
+          try { await removeQueuedMessage(item.id); } catch {}
+          setMessages(prev => prev.map(m =>
+            m.id === item.id ? { ...m, pending: false, failed: true } : m
+          ));
+          continue;
         }
 
         const currentAttempts = item.attempts || 0;
@@ -201,6 +223,8 @@ export function useQueuedMessageManagement({
       }
     } catch (err) {
       // ignore
+    } finally {
+      flushInFlightRef.current = false;
     }
   }, [activeLocale, embedHeaders, sessionStorageKey, sessionId, authToken]);
 
@@ -248,15 +272,27 @@ export function useQueuedMessageManagement({
         const detail = (ev as CustomEvent).detail as { id?: string } | undefined;
         if (!detail?.id) return;
         const id = detail.id;
+        if (retryInFlightIdsRef.current.has(id)) return;
         const storedSession = helpers.getStoredSession(sessionStorageKey);
         const sid = sessionIdRef.current || sessionId || storedSession?.sessionId || null;
         const token = authTokenRef.current || authToken || null;
         if (!sid || !token) return;
         if (Date.now() < rateLimitUntilRef.current) return;
+        retryInFlightIdsRef.current.add(id);
 
         const queued = await getQueuedMessages();
-        const item = queued.find((q: any) => q.id === id);
+        const item = queued.find((q: any) => q.id === id && OWNED_SOURCES.has(q?.source));
         if (!item) return;
+
+        // Same staleness rule as the flush loop — a manual retry of an item
+        // from another session/hour would also post as a duplicate.
+        if (isQueueItemStale(item, sid)) {
+          try { await removeQueuedMessage(item.id); } catch {}
+          setMessages(prev => prev.map(m =>
+            m.id === item.id ? { ...m, pending: false, failed: true } : m
+          ));
+          return;
+        }
 
         try {
           const controller = new AbortController();
@@ -288,6 +324,12 @@ export function useQueuedMessageManagement({
           try { await incrementAttempt(id); } catch {}
         }
       } catch {}
+      finally {
+        const id = (ev as CustomEvent).detail?.id;
+        if (typeof id === 'string') {
+          retryInFlightIdsRef.current.delete(id);
+        }
+      }
     };
 
     window.addEventListener('companin:retry-queued', onRetry as EventListener);

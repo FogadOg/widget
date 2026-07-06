@@ -42,6 +42,10 @@ export type Props = {
   unreadCount?: number;
   /** Locale passed directly from the parent (server-provided). Takes priority over hook detection. */
   locale?: string;
+  /** Locale codes to offer in the in-widget language switcher. Switcher is hidden when fewer than 2. */
+  availableLocales?: string[];
+  /** Called when the visitor picks a language from the switcher. Omit to hide the switcher. */
+  onLocaleChange?: (locale: string) => void;
   hideCloseButton?: boolean;
   isPersistent?: boolean;
   sessionExpiredBanner?: boolean;

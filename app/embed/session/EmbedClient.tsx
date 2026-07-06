@@ -1,7 +1,6 @@
 'use client';
 import { useWidgetAuth } from '../../../hooks/useWidgetAuth';
-import { useWidgetTranslation } from '../../../hooks/useWidgetTranslation';
-import { getLocaleDirection, t as tFn } from '../../../lib/i18n';
+import { getLocaleDirection, t as tFn, getTranslations, resolveInitialWidgetLocale, SUPPORTED_LOCALES, WIDGET_LOCALE_STORAGE_KEY } from '../../../lib/i18n';
 import type {
   Message,
   WidgetConfig,
@@ -189,6 +188,7 @@ export default function EmbedClient({
     handleStopStreaming,
   } = useStreamingMessage();
   const isSubmittingRef = useRef(false);
+  const lastHostTextCommandRef = useRef<{ text: string; at: number } | null>(null);
   // Interceptor support: pending callbacks keyed by requestId, and a flags ref
   // tracking which interceptor types are active in the parent page.
   const interceptCallbacksRef = useRef<Map<string, (content: string | null) => void>>(new Map());
@@ -341,8 +341,33 @@ export default function EmbedClient({
   const [widgetConfig, setWidgetConfig] = useState<WidgetConfig | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [shouldRender, setShouldRender] = useState(true);
-  const { translations: t, locale: hookLocale } = useWidgetTranslation();
-  const activeLocale = initialLocale || hookLocale || 'en';
+  // The active UI/response locale. Resolved once on the first client render
+  // (priority: saved manual choice → loader-resolved locale (initialLocale) →
+  // browser fallback) so it is already correct before useBootstrap creates the
+  // session. The loader already greets in the visitor's browser language unless
+  // the owner pinned `data-locale`, so trusting initialLocale keeps the
+  // automatic in-language greeting (K2) while respecting an explicit pin.
+  // The visitor can then switch languages mid-conversation via the header
+  // control; we keep the same session so the transcript is preserved.
+  const [selectedLocale, setSelectedLocale] = useState<string>(() =>
+    resolveInitialWidgetLocale(initialLocale)
+  );
+  const activeLocale = selectedLocale;
+  // Translations follow the active locale so a mid-conversation language switch
+  // updates every EmbedClient-owned string (errors, handoff modal, etc.).
+  const t = useMemo(() => getTranslations(activeLocale), [activeLocale]);
+  // Every locale the widget UI is translated into is offered in the switcher.
+  const availableLocales = SUPPORTED_LOCALES as unknown as string[];
+  const handleLocaleChange = useCallback((next: string) => {
+    setSelectedLocale(next);
+    // Persist the manual choice so it survives reloads and wins over browser
+    // auto-detection on the next visit (see resolveInitialWidgetLocale).
+    try {
+      localStorage.setItem(WIDGET_LOCALE_STORAGE_KEY, next);
+    } catch {
+      // storage unavailable (private mode / no consent) — non-fatal.
+    }
+  }, []);
   const [unsureMessages, setUnsureMessages] = useState<Array<{userMessage: string, agentMessage: string, timestamp: number}>>([]);
   const [showUnsureModal, setShowUnsureModal] = useState(false);
   const [showHandoffModal, setShowHandoffModal] = useState(false);
@@ -1554,9 +1579,14 @@ export default function EmbedClient({
       }
       const e = err as unknown as { userMessage?: string; message?: string; code?: string | WidgetErrorCode; name?: string };
       const errMsg = (e.message || '').toLowerCase();
+      // Queue-for-later only when the request plausibly never reached the
+      // server (offline / connection refused). Timeouts and aborts are NOT
+      // queueable: by the time a 30s stream times out the message usually DID
+      // reach the server, and a queued replay into a later (new) session
+      // bypasses the per-conversation idempotency replay — duplicating it.
       const isNetworkError = !navigator.onLine ||
-        e.name === 'TypeError' || e.name === 'NetworkError' || e.name === 'AbortError' ||
-        errMsg.includes('failed to fetch') || errMsg.includes('network') || errMsg.includes('networkerror');
+        e.name === 'TypeError' || e.name === 'NetworkError' ||
+        errMsg.includes('failed to fetch') || errMsg.includes('networkerror');
 
       // If network error or offline, queue the message for later delivery and
       // keep the temp message as pending in the UI.
@@ -1566,7 +1596,19 @@ export default function EmbedClient({
         // Record the error for telemetry/debugging before attempting to queue
         logError(e, { message, sessionId, action: 'handleSubmit' });
         try {
-          await queueMessage({ id: userMessage.id, seq: Date.now(), text: message, timestamp: userMessage.timestamp, attempts: 0 });
+          // Tag with source + sessionId so (a) only the chat flusher replays it
+          // (PromptInput's flusher re-submits with a fresh id, defeating the
+          // idempotency key) and (b) it is dropped rather than replayed into a
+          // different session, where the server can't de-dupe it.
+          await queueMessage({
+            id: userMessage.id,
+            seq: Date.now(),
+            text: message,
+            timestamp: userMessage.timestamp,
+            attempts: 0,
+            source: 'chat',
+            sessionId: sessionIdRef.current || sessionId || undefined,
+          });
           // mark the message as pending in the UI
           setMessages(prev => prev.map(m => m.id === userMessage.id ? { ...m, pending: true, attempts: 0 } : m));
 
@@ -1993,6 +2035,16 @@ export default function EmbedClient({
           return;
         }
 
+        const now = Date.now();
+        const lastHostText = lastHostTextCommandRef.current;
+        if (
+          lastHostText
+          && lastHostText.text === command.text
+          && (now - lastHostText.at) < 1200
+        ) {
+          return;
+        }
+        lastHostTextCommandRef.current = { text: command.text, at: now };
         handleSubmit({ preventDefault: () => {} } as React.FormEvent, command.text);
       } catch (err) {
         logError(err as Error, { action: 'handleHostMessage' });
@@ -2148,6 +2200,8 @@ export default function EmbedClient({
         handleSubmit={handleSubmit}
         error={error}
         locale={activeLocale}
+        availableLocales={availableLocales}
+        onLocaleChange={handleLocaleChange}
         agentName={agentName}
         identifiedUserName={identifiedUserName}
         widgetConfig={safeWidgetConfig}

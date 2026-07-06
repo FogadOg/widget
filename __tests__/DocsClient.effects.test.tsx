@@ -86,6 +86,14 @@ jest.mock('../lib/i18n', () => ({
 
   t: (...args: any[]) => tMock(...args),
 
+  getTranslations: () => ({}),
+
+  resolveInitialWidgetLocale: (l?: string) => l || 'en',
+
+  SUPPORTED_LOCALES: ['en', 'de', 'es', 'fr', 'pt', 'sv', 'nl', 'nb', 'it', 'pl'],
+
+  WIDGET_LOCALE_STORAGE_KEY: 'companin-widget-locale',
+
 }))
 
 jest.mock('@/components/ui/button', () => ({

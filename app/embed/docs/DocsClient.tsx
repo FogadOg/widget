@@ -13,8 +13,8 @@ import {
 } from "@/components/ui/dialog"
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useWidgetAuth } from '../../../hooks/useWidgetAuth'
-import { useWidgetTranslation } from '../../../hooks/useWidgetTranslation'
-import { t as translate } from '../../../lib/i18n'
+import { t as translate, getTranslations, resolveInitialWidgetLocale, SUPPORTED_LOCALES, WIDGET_LOCALE_STORAGE_KEY } from '../../../lib/i18n'
+import { LanguageMenu } from '../../../components/components/LanguageMenu'
 import { embedOriginHeader } from '../../../lib/api'
 import { validateConfig } from '../../../lib/validateConfig'
 import { STATUS_COLORS } from '../../../lib/constants'
@@ -94,8 +94,25 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { getAuthToken, authToken, authError } = useWidgetAuth();
-  const { translations: t, locale } = useWidgetTranslation();
-  const activeLocale = initialLocale || locale || 'en';
+  // Active UI/response locale, resolved once on the first client render
+  // (priority: saved manual choice → loader-resolved locale → browser fallback)
+  // so it is correct before the session is created. The visitor can switch
+  // languages via the header control; parity with the chat widget (K2).
+  const [selectedLocale, setSelectedLocale] = useState<string>(() =>
+    resolveInitialWidgetLocale(initialLocale)
+  );
+  const activeLocale = selectedLocale;
+  // Translations follow the active locale so a switch re-localizes every string.
+  const t = useMemo(() => getTranslations(activeLocale), [activeLocale]);
+  const availableLocales = SUPPORTED_LOCALES as unknown as string[];
+  const handleLocaleChange = useCallback((next: string) => {
+    setSelectedLocale(next);
+    try {
+      localStorage.setItem(WIDGET_LOCALE_STORAGE_KEY, next);
+    } catch {
+      // storage unavailable — non-fatal.
+    }
+  }, []);
   const [liveMessage, setLiveMessage] = useState<string>('');
   const lastAnnouncedKey = useRef<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -361,7 +378,26 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
         >
           <ScrollArea ref={scrollAreaRef} className='flex flex-col justify-between overflow-hidden'>
             <DialogHeader className='contents space-y-0 text-left'>
-              <DialogTitle className='px-6 pt-6'>{getLocalizedText(widgetConfig?.data?.title, activeLocale) || translate(activeLocale, 'docsTitleFallback')}</DialogTitle>
+              <div className='flex items-start justify-between gap-3 pl-6 pr-14 pt-6'>
+                <DialogTitle className='p-0'>{getLocalizedText(widgetConfig?.data?.title, activeLocale) || translate(activeLocale, 'docsTitleFallback')}</DialogTitle>
+                {availableLocales.length >= 2 && (
+                  <LanguageMenu
+                    variant='subtle'
+                    locale={activeLocale}
+                    locales={availableLocales}
+                    onChange={handleLocaleChange}
+                    label={translate(activeLocale, 'selectLanguage')}
+                    headerTextColor={widgetStyles.textColor}
+                    secondaryColor={widgetStyles.secondaryColor}
+                    primaryColor={widgetStyles.primaryColor}
+                    backgroundColor={widgetStyles.backgroundColor}
+                    textColor={widgetStyles.textColor}
+                    borderColor={widgetStyles.subtleBorderColor}
+                    fontStyles={widgetStyles.fontStyles}
+                    borderRadius={widgetStyles.borderRadius}
+                  />
+                )}
+              </div>
               <DialogDescription className='px-6 text-sm text-muted-foreground'>
                 {getLocalizedText(widgetConfig?.data?.subtitle, activeLocale) || translate(activeLocale, 'docsSubtitleFallback')}
               </DialogDescription>

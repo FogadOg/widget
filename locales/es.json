@@ -1,4 +1,6 @@
 {
+  "language": "Idioma",
+  "selectLanguage": "Seleccionar idioma",
   "typeYourMessage": "Escribe tu mensaje...",
   "typeYourMessageLabel": "Escribe tu mensaje",
   "send": "Enviar",

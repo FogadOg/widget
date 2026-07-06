@@ -6,7 +6,7 @@ import InteractionButtons from './InteractionButtons';
 import MessageBubble from './MessageBubble';
 import DynamicIcon from './DynamicIcon';
 import { useWidgetTranslation } from '../hooks/useWidgetTranslation';
-import { t as translate } from '../lib/i18n';
+import { t as translate, getTranslations } from '../lib/i18n';
 import type {
   Message,
   WidgetConfig,
@@ -26,6 +26,7 @@ import { TypingIndicator } from './components/TypingIndicator';
 import { StatusBanners } from './components/StatusBanners';
 import { JumpToLatest } from './components/JumpToLatest';
 import { Composer } from './components/Composer';
+import { LanguageMenu } from './components/LanguageMenu';
 
 export default function EmbedShell({
   isEmbedded,
@@ -61,14 +62,20 @@ export default function EmbedShell({
   hideCloseButton = false,
   isPersistent = false,
   locale: localeProp,
+  availableLocales = [],
+  onLocaleChange,
   sessionExpiredBanner = false,
   onDismissSessionExpiredBanner,
   isOffline = false,
   previewPositioning = false,
   isPreview = false,
 }: Props) {
-  const { translations: t, locale: hookLocale } = useWidgetTranslation();
+  const { locale: hookLocale } = useWidgetTranslation();
   const locale = localeProp || hookLocale;
+  // Derive translations from the resolved locale (not the hook's own detected
+  // locale) so a mid-conversation language switch re-localizes every string,
+  // including the ones read off the `t` map below.
+  const t = useMemo(() => getTranslations(locale), [locale]);
   const [liveMessage, setLiveMessage] = useState('');
   const lastAnnouncedId = useRef<string | null>(null);
   const messageFeedbackSet = useMemo(
@@ -332,6 +339,26 @@ export default function EmbedShell({
   const composerAriaLabel = (t.typeYourMessageLabel || translate(locale, 'typeYourMessageLabel')) as unknown as string;
   const sendLabel = translate(locale, 'send');
   const stopLabel = translate(locale, 'stopStreaming');
+  const selectLanguageLabel = translate(locale, 'selectLanguage');
+  // Only surface the switcher when there's a real choice to make and the host
+  // wired up a change handler. Shared by both header layouts below.
+  const showLanguageMenu = !!onLocaleChange && availableLocales.length >= 2;
+  const languageMenu = showLanguageMenu ? (
+    <LanguageMenu
+      locale={locale}
+      locales={availableLocales}
+      onChange={onLocaleChange!}
+      label={selectLanguageLabel}
+      headerTextColor={headerTextColor}
+      secondaryColor={secondaryColor}
+      primaryColor={primaryColor}
+      backgroundColor={backgroundColor}
+      textColor={textColor}
+      borderColor={subtleBorderColor}
+      fontStyles={fontStyles}
+      borderRadius={borderRadius}
+    />
+  ) : null;
   const agentTypingLabel = translate(locale, 'agentTyping');
   const botAvatarSrc = widgetConfig?.bot_avatar;
   const botAvatarAlt = (agentName || getText(widgetConfig?.title) || 'agent') + ' avatar';
@@ -450,6 +477,7 @@ export default function EmbedShell({
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
+                  {languageMenu}
                   {unsureMessages.length > 0 && onShowUnsureModal && (
                     <button
                       type="button"
@@ -805,6 +833,8 @@ export default function EmbedShell({
                       <p className="text-sm opacity-80">{getText(widgetConfig?.subtitle)}</p>
                     </div>
                   </div>
+                  <div className="flex items-center space-x-2">
+                  {languageMenu}
                   <button
                     type="button"
                     onClick={toggleCollapsed}
@@ -817,6 +847,7 @@ export default function EmbedShell({
                       <polyline points="6,9 12,15 18,9" />
                     </svg>
                   </button>
+                  </div>
                 </div>
 
                 <StatusBanners

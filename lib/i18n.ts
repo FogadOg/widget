@@ -8,6 +8,7 @@ import nl from "../locales/nl.json";
 import nb from "../locales/nb.json";
 import it from "../locales/it.json";
 import pl from "../locales/pl.json";
+import { STORAGE_PREFIX } from "./constants";
 
 const LOCALES = {
   en,
@@ -26,6 +27,26 @@ export type SupportedLocale = keyof typeof LOCALES;
 export type Locale = string;
 
 export const SUPPORTED_LOCALES = Object.keys(LOCALES) as SupportedLocale[];
+
+// Native language names (endonyms) shown in the in-widget language switcher, so
+// a visitor recognizes their own language regardless of the current UI locale.
+export const LOCALE_LABELS: Record<SupportedLocale, string> = {
+  en: "English",
+  de: "Deutsch",
+  es: "Español",
+  fr: "Français",
+  pt: "Português",
+  sv: "Svenska",
+  nl: "Nederlands",
+  nb: "Norsk",
+  it: "Italiano",
+  pl: "Polski",
+};
+
+// Where a visitor's manual language choice is persisted. Shared by the
+// translation hook and the in-widget switcher so a manual pick survives reloads
+// and takes priority over browser auto-detection.
+export const WIDGET_LOCALE_STORAGE_KEY = `${STORAGE_PREFIX}widget-locale`;
 
 type PluralForms = {
   zero?: string;
@@ -162,4 +183,36 @@ export function resolveLocaleCandidates(candidates: Array<string | null | undefi
     if (getLocaleDirection(normalized) === "rtl") return normalized.split("-")[0];
   }
   return "en";
+}
+
+// Resolves the locale the chat widget should open in, in priority order:
+//   1. the visitor's previously saved manual choice (sticky across reloads)
+//   2. the loader-resolved locale (`configLocale`) — the embed loader already
+//      honors an explicit `data-locale` pin and otherwise falls back to the
+//      visitor's browser language, so trusting it preserves both the owner's
+//      intentional pin and the automatic in-language greeting
+//   3. the browser's language(s) — a last-ditch fallback for direct-iframe
+//      embeds that bypass the loader and pass no locale
+//   4. English
+// Falls back to just the configured locale during SSR (no window/navigator).
+export function resolveInitialWidgetLocale(configLocale?: string | null): string {
+  if (typeof window === "undefined") {
+    return resolveLocaleCandidates([configLocale]);
+  }
+
+  let stored: string | null = null;
+  try {
+    stored = window.localStorage.getItem(WIDGET_LOCALE_STORAGE_KEY);
+  } catch {
+    stored = null;
+  }
+
+  const browserLocales =
+    typeof navigator !== "undefined"
+      ? navigator.languages && navigator.languages.length > 0
+        ? [...navigator.languages]
+        : [navigator.language]
+      : [];
+
+  return resolveLocaleCandidates([stored, configLocale, ...browserLocales]);
 }
