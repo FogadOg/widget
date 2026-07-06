@@ -14,14 +14,14 @@ const TEASER_H_PAD = 24; // right safe-padding
 export function useWidgetResize({
   widgetConfig,
   isCollapsed,
-  showTeaser,
+  teaserConfigured,
   initialParentOrigin,
   parentTargetOrigin,
   safePostToParent,
 }: {
   widgetConfig: WidgetConfig | null;
   isCollapsed: boolean;
-  showTeaser: boolean;
+  teaserConfigured: boolean;
   initialParentOrigin: string | undefined;
   parentTargetOrigin: string | null;
   safePostToParent: (payload: unknown) => void;
@@ -39,8 +39,11 @@ export function useWidgetResize({
         const hoverSafePadding = 24; // shadow-lg extends ~22px, badge overhangs 4px
         const collapsedViewportSize = buttonSize + (hoverSafePadding * 2);
 
-        if (showTeaser) {
-          // Expand iframe upward to fit the teaser bubble above the launcher
+        if (teaserConfigured) {
+          // Pre-size the iframe to fit the teaser bubble as soon as one is
+          // configured — before the delay fires — so the iframe viewport is
+          // already the right height when the bubble appears. A mid-session
+          // resize would clip the bubble while the parent's CSS transition runs.
           const teaserWidth = Math.max(collapsedViewportSize, TEASER_MAX_WIDTH + TEASER_H_PAD);
           const teaserTotalHeight = collapsedViewportSize + TEASER_GAP + TEASER_HEIGHT;
           safePostToParent({
@@ -77,5 +80,5 @@ export function useWidgetResize({
         });
       }
     }
-  }, [widgetConfig, isCollapsed, showTeaser, initialParentOrigin, parentTargetOrigin]);
+  }, [widgetConfig, isCollapsed, teaserConfigured, initialParentOrigin, parentTargetOrigin]);
 }

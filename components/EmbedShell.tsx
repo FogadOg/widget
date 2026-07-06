@@ -70,6 +70,7 @@ export default function EmbedShell({
   previewPositioning = false,
   isPreview = false,
   showTeaser = false,
+  teaserConfigured = false,
   teaserMessage = null,
   onDismissTeaser,
 }: Props) {
@@ -400,8 +401,10 @@ export default function EmbedShell({
       {isEmbedded ? (
         <>
           {isCollapsed ? (
-            showTeaser ? (
-              /* Teaser bubble + launcher wrapped together so the bubble sits above the button */
+            teaserConfigured ? (
+              /* Wrapper anchors the launcher at bottom-right whenever a teaser is
+                 configured. The iframe is pre-sized for the bubble so no mid-session
+                 resize is needed when the bubble appears. */
               <div
                 style={{
                   position: 'fixed',
@@ -415,61 +418,63 @@ export default function EmbedShell({
                   gap: '8px',
                 }}
               >
-                {/* Speech bubble */}
-                <div
-                  role="status"
-                  aria-live="polite"
-                  style={{
-                    position: 'relative',
-                    maxWidth: '240px',
-                    backgroundColor: '#ffffff',
-                    color: textColor,
-                    borderRadius: '12px',
-                    padding: '10px 32px 10px 14px',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-                    cursor: 'pointer',
-                    lineHeight: '1.5',
-                    ...fontStyles,
-                  }}
-                  className="teaser-bubble-enter"
-                  onClick={toggleCollapsed}
-                >
-                  <p style={{ margin: 0 }}>{teaserMessage}</p>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); onDismissTeaser?.(); }}
-                    aria-label={translate(locale, 'dismiss')}
-                    style={{
-                      position: 'absolute',
-                      top: '6px',
-                      right: '8px',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: '#9ca3af',
-                      fontSize: '16px',
-                      lineHeight: 1,
-                      padding: '2px 4px',
-                    }}
-                    className={FOCUS_RING}
-                  >
-                    ×
-                  </button>
-                  {/* Tail pointing toward the launcher button */}
+                {/* Speech bubble — only shown when delay has fired and not dismissed */}
+                {showTeaser && (
                   <div
-                    aria-hidden="true"
+                    role="status"
+                    aria-live="polite"
                     style={{
-                      position: 'absolute',
-                      bottom: '-6px',
-                      right: '22px',
-                      width: '12px',
-                      height: '12px',
+                      position: 'relative',
+                      maxWidth: '240px',
                       backgroundColor: '#ffffff',
-                      transform: 'rotate(45deg)',
-                      boxShadow: '2px 2px 4px rgba(0,0,0,0.1)',
+                      color: textColor,
+                      borderRadius: '12px',
+                      padding: '10px 32px 10px 14px',
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                      cursor: 'pointer',
+                      lineHeight: '1.5',
+                      ...fontStyles,
                     }}
-                  />
-                </div>
+                    className="teaser-bubble-enter"
+                    onClick={toggleCollapsed}
+                  >
+                    <p style={{ margin: 0 }}>{teaserMessage}</p>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onDismissTeaser?.(); }}
+                      aria-label={translate(locale, 'dismiss')}
+                      style={{
+                        position: 'absolute',
+                        top: '6px',
+                        right: '8px',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#9ca3af',
+                        fontSize: '16px',
+                        lineHeight: 1,
+                        padding: '2px 4px',
+                      }}
+                      className={FOCUS_RING}
+                    >
+                      ×
+                    </button>
+                    {/* Tail pointing toward the launcher button */}
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        position: 'absolute',
+                        bottom: '-6px',
+                        right: '22px',
+                        width: '12px',
+                        height: '12px',
+                        backgroundColor: '#ffffff',
+                        transform: 'rotate(45deg)',
+                        boxShadow: '2px 2px 4px rgba(0,0,0,0.1)',
+                      }}
+                    />
+                  </div>
+                )}
 
                 {/* Launcher button (position:relative — wrapper is the fixed anchor) */}
                 <button
@@ -527,7 +532,7 @@ export default function EmbedShell({
                 </button>
               </div>
             ) : (
-              /* Original launcher button — no teaser */
+              /* Original launcher button — no teaser configured */
               <button
                 ref={launcherRef}
                 type="button"

@@ -50,6 +50,8 @@ export type Props = {
   isPersistent?: boolean;
   /** Whether the proactive teaser bubble is currently visible */
   showTeaser?: boolean;
+  /** Whether a teaser is configured (pre-sizes the iframe even before the delay fires) */
+  teaserConfigured?: boolean;
   /** Locale-resolved teaser message string */
   teaserMessage?: string | null;
   /** Permanently dismiss the teaser */

@@ -1014,7 +1014,7 @@ export default function EmbedClient({
   }, [isCollapsed, initialPreviewConfig]);
 
   // Proactive teaser bubble shown beside the launcher before first open
-  const { showTeaser, teaserMessage, dismissTeaser } = useTeaserBubble({
+  const { showTeaser, teaserConfigured, teaserMessage, dismissTeaser } = useTeaserBubble({
     widgetConfig,
     isCollapsed,
     locale: activeLocale,
@@ -1025,7 +1025,7 @@ export default function EmbedClient({
   useWidgetResize({
     widgetConfig,
     isCollapsed,
-    showTeaser,
+    teaserConfigured,
     initialParentOrigin,
     parentTargetOrigin,
     safePostToParent,
@@ -2269,6 +2269,7 @@ export default function EmbedClient({
         onCloseUnsureModal={() => setShowUnsureModal(false)}
         onDismissHandoff={() => setShowHandoffModal(false)}
         showTeaser={showTeaser}
+        teaserConfigured={teaserConfigured}
         teaserMessage={teaserMessage}
         onDismissTeaser={dismissTeaser}
         hideCloseButton={isPersistent}

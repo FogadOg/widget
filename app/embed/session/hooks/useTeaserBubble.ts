@@ -76,6 +76,7 @@ export function useTeaserBubble({
 
   return {
     showTeaser: visible && isCollapsed && !!teaserMessage,
+    teaserConfigured: !!teaserMessage,
     teaserMessage,
     dismissTeaser,
   };
