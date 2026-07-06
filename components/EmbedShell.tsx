@@ -262,6 +262,21 @@ export default function EmbedShell({
 
   const { width: btnWidth, height: btnHeight, icon: btnIcon } = getButtonSizeClasses;
 
+  // Compute launcher fixed-position style from config (only used in preview mode).
+  // edge_offset controls the gap from each edge; position controls which corner.
+  const edgeOffsetVal = (() => {
+    const raw = widgetConfig?.edge_offset;
+    return typeof raw === 'number' && Number.isFinite(raw) ? raw : 20;
+  })();
+  const widgetPos = widgetConfig?.position ?? 'bottom-right';
+  const previewLauncherPos: React.CSSProperties = (() => {
+    const px = `${edgeOffsetVal}px`;
+    if (widgetPos === 'bottom-left') return { bottom: px, left: px };
+    if (widgetPos === 'top-right')   return { top: px, right: px };
+    if (widgetPos === 'top-left')    return { top: px, left: px };
+    return { bottom: px, right: px };
+  })();
+
   // Readable text color for the header which uses primaryColor as background.
   // Prevents white-on-light unreadable headers when a customer picks a light brand color.
   const headerTextColor = getReadableTextColor(primaryColor);
@@ -391,7 +406,7 @@ export default function EmbedShell({
                 style={{
                   position: 'fixed',
                   ...(previewPositioning
-                    ? { bottom: '20px', right: '20px' }
+                    ? previewLauncherPos
                     : { bottom: '24px', right: '24px' }),
                   zIndex: 999999,
                   display: 'flex',
@@ -523,7 +538,7 @@ export default function EmbedShell({
                 style={{
                   position: 'fixed',
                   ...(previewPositioning
-                    ? { bottom: '20px', right: '20px' }
+                    ? previewLauncherPos
                     : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }),
                   zIndex: 999999,
                   backgroundColor: primaryColor,
