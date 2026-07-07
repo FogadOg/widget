@@ -535,19 +535,52 @@
         // inside a hidden container never fetches → never runs → never posts
         // → the parent's load timeout fires.
 
-        // Handle iframe load errors
-        // Use a longer timeout in dev mode since Next.js cold compilation can exceed 15s
+        // Handle iframe load errors with automatic retry.
+        // A single transient hiccup (cold server, slow network, CDN blip) must
+        // not become a terminal error for a production visitor. iframe onerror
+        // almost never fires for cross-origin network stalls, so a per-attempt
+        // timeout is the real recovery mechanism: when it fires we abandon the
+        // in-flight navigation and re-point the iframe at a cache-busted URL.
+        // Only after every attempt is exhausted do we surface the error UI.
         let iframeLoaded = false;
         let visibilityFallbackTimeout = null;
-        const loadTimeout = setTimeout(() => {
-          if (!iframeLoaded) {
-            logError("Widget iframe failed to load (timeout)", { src: iframe.src });
-            showErrorInContainer(
-              container,
-              "Failed to load widget. Please refresh the page."
-            );
-          }
-        }, isDev ? 60000 : 15000); // 60s in dev (Next.js cold start), 15s in prod
+        const baseIframeSrc = iframe.src;
+        const MAX_LOAD_ATTEMPTS = 3;
+        // 60s in dev (Next.js cold compile). In prod ~12s per attempt, so three
+        // attempts tolerate a slow first load without one long single wait.
+        const perAttemptTimeoutMs = isDev ? 60000 : 12000;
+        let loadAttempt = 1;
+        let loadTimeout = null;
+        function armLoadTimeout() {
+          clearTimeout(loadTimeout);
+          loadTimeout = setTimeout(() => {
+            if (iframeLoaded) return;
+            if (loadAttempt < MAX_LOAD_ATTEMPTS) {
+              loadAttempt += 1;
+              logError("Widget iframe load timed out; retrying", {
+                attempt: loadAttempt,
+                maxAttempts: MAX_LOAD_ATTEMPTS,
+                src: iframe.src,
+              });
+              // A differing URL is required to force a fresh navigation; some
+              // browsers no-op an identical src re-assignment.
+              iframe.src = baseIframeSrc +
+                (baseIframeSrc.indexOf('?') === -1 ? '?' : '&') +
+                '_retry=' + loadAttempt;
+              armLoadTimeout();
+            } else {
+              logError("Widget iframe failed to load (timeout)", {
+                src: iframe.src,
+                attempts: loadAttempt,
+              });
+              showErrorInContainer(
+                container,
+                "Failed to load widget. Please refresh the page."
+              );
+            }
+          }, perAttemptTimeoutMs);
+        }
+        armLoadTimeout();
 
       iframe.onload = () => {
         iframeLoaded = true;

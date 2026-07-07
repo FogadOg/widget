@@ -407,34 +407,73 @@
         // layout would create an invisible click-blocking overlay.
         let resizeSignalReceived = false;
         const parsedLoadTimeout = Number(script.getAttribute('data-load-timeout-ms'));
-        const hardTimeoutMs = Number.isFinite(parsedLoadTimeout) && parsedLoadTimeout > 0
+        // Per-attempt timeout. A configured value (min 20s) applies per attempt;
+        // otherwise 60s in dev (webpack cold compile) / 15s in prod. Three
+        // attempts tolerate a slow first load without one long single wait.
+        const perAttemptTimeoutMs = Number.isFinite(parsedLoadTimeout) && parsedLoadTimeout > 0
           ? Math.max(parsedLoadTimeout, 20000)
-          : isDev ? 60000 : 45000; // match chat widget: 60s in dev for webpack cold compile
-        const softTimeoutMs = Math.min(15000, Math.max(5000, Math.floor(hardTimeoutMs / 2)));
-        const softTimeout = setTimeout(() => {
-          if (!iframeLoaded) {
-            try {
-              console.warn(`${COMPANY_NAME} Docs Widget: iframe is still loading`, {
+          : isDev ? 60000 : 15000;
+        const softTimeoutMs = Math.min(15000, Math.max(5000, Math.floor(perAttemptTimeoutMs / 2)));
+        const baseIframeSrc = iframe.src;
+        const MAX_LOAD_ATTEMPTS = 3;
+        let loadAttempt = 1;
+        let softTimeout = null;
+        let hardTimeout = null;
+        function clearLoadTimers() {
+          clearTimeout(softTimeout);
+          clearTimeout(hardTimeout);
+        }
+        // A single transient hiccup (cold server, slow network, CDN blip) must
+        // not become a terminal error for a production visitor. iframe onerror
+        // almost never fires for cross-origin network stalls, so the per-attempt
+        // hard timeout is the real recovery mechanism: when it fires we abandon
+        // the in-flight navigation and re-point the iframe at a cache-busted URL.
+        // Only after every attempt is exhausted do we surface the error UI.
+        function armLoadTimers() {
+          clearLoadTimers();
+          softTimeout = setTimeout(() => {
+            if (!iframeLoaded) {
+              try {
+                console.warn(`${COMPANY_NAME} Docs Widget: iframe is still loading`, {
+                  src: iframe.src,
+                  elapsedMs: softTimeoutMs,
+                });
+              } catch (e) {}
+            }
+          }, softTimeoutMs);
+          hardTimeout = setTimeout(() => {
+            if (iframeLoaded) return;
+            if (loadAttempt < MAX_LOAD_ATTEMPTS) {
+              loadAttempt += 1;
+              logError("Docs widget iframe load timed out; retrying", {
+                attempt: loadAttempt,
+                maxAttempts: MAX_LOAD_ATTEMPTS,
                 src: iframe.src,
-                elapsedMs: softTimeoutMs,
               });
-            } catch (e) {}
-          }
-        }, softTimeoutMs);
-        const hardTimeout = setTimeout(() => {
-          if (!iframeLoaded) {
-            logError("Docs widget iframe failed to load (timeout)", { src: iframe.src, timeoutMs: hardTimeoutMs });
-            showErrorInContainer(
-              container,
-              "Failed to load docs widget. Please refresh the page."
-            );
-          }
-        }, hardTimeoutMs);
+              // A differing URL is required to force a fresh navigation; some
+              // browsers no-op an identical src re-assignment.
+              iframe.src = baseIframeSrc +
+                (baseIframeSrc.indexOf('?') === -1 ? '?' : '&') +
+                '_retry=' + loadAttempt;
+              armLoadTimers();
+            } else {
+              logError("Docs widget iframe failed to load (timeout)", {
+                src: iframe.src,
+                timeoutMs: perAttemptTimeoutMs,
+                attempts: loadAttempt,
+              });
+              showErrorInContainer(
+                container,
+                "Failed to load docs widget. Please refresh the page."
+              );
+            }
+          }, perAttemptTimeoutMs);
+        }
+        armLoadTimers();
 
         iframe.onload = () => {
           iframeLoaded = true;
-          clearTimeout(softTimeout);
-          clearTimeout(hardTimeout);
+          clearLoadTimers();
           visibilityFallbackTimeout = setTimeout(() => {
             if (!resizeSignalReceived && container.style.display === 'none') {
               applyErrorContainerLayout({
@@ -455,8 +494,7 @@
         };
 
         iframe.onerror = (error) => {
-          clearTimeout(softTimeout);
-          clearTimeout(hardTimeout);
+          clearLoadTimers();
           if (visibilityFallbackTimeout) {
             clearTimeout(visibilityFallbackTimeout);
           }
