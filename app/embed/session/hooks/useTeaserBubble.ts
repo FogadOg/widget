@@ -15,10 +15,24 @@ export function useTeaserBubble({
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
+  // Same locale-resolution priority as getLocalizedText in EmbedClient:
+  // user's locale -> base locale -> widget default language -> English -> first available.
+  // Empty strings count as missing so a blank entry doesn't block fallback.
   const rawMessage = widgetConfig?.teaser_message;
-  const teaserMessage: string | null = rawMessage
-    ? (rawMessage[locale] ?? rawMessage['en'] ?? Object.values(rawMessage)[0] ?? null)
-    : null;
+  const teaserMessage: string | null = (() => {
+    if (!rawMessage || typeof rawMessage !== 'object') return null;
+    const baseLocale = locale.split('-')[0];
+    const defaultLang = widgetConfig?.default_language || 'en';
+    const candidates = [locale, baseLocale, defaultLang, 'en'];
+    for (const lang of candidates) {
+      const value = rawMessage[lang];
+      if (typeof value === 'string' && value.trim()) return value;
+    }
+    const first = Object.values(rawMessage).find(
+      (v) => typeof v === 'string' && v.trim()
+    );
+    return first ?? null;
+  })();
 
   const storageKey = widgetConfig?.id ? `${DISMISSED_PREFIX}${widgetConfig.id}` : null;
 
