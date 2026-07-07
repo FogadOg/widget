@@ -63,14 +63,19 @@ export function useDialogState({
   // Ensures session is created only once (on first open), not on every open/close.
   const sessionInitializedRef = useRef(false);
 
-  // When the dialog starts already-open (startOpen=true), handleOpenChange never
-  // fires so WIDGET_RESIZE is never sent. Send it once on mount to ensure the
-  // parent container is full-screen from the start.
+  // handleOpenChange never fires for the initial state, so WIDGET_RESIZE is
+  // never sent on mount. Send it once here: full-screen when starting open
+  // (startOpen=true), and an explicit hide when starting closed — otherwise the
+  // loader never learns the widget has no collapsed UI and falls back to an
+  // invisible 420x280 container that blocks clicks on the page (and on the chat
+  // widget's teaser bubble) in the bottom-right corner.
   useEffect(() => {
-    if (!open || initialPreviewConfig) return;
-    if (typeof window === 'undefined' || !window.parent) return;
+    if (initialPreviewConfig) return;
+    if (typeof window === 'undefined' || !window.parent || window.parent === window) return;
     window.parent.postMessage(
-      { type: 'WIDGET_RESIZE', data: { width: '100vw', height: '100vh' } },
+      open
+        ? { type: 'WIDGET_RESIZE', data: { width: '100vw', height: '100vh' } }
+        : { type: 'WIDGET_RESIZE', data: { width: 0, height: 0, hide: true } },
       parentOrigin,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps

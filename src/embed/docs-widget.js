@@ -401,6 +401,11 @@
           }
         }
         let visibilityFallbackTimeout = null;
+        // True once the widget has told us its size (including an explicit
+        // hide). Guards the load-fallback below: a widget that starts closed
+        // legitimately hides its container, and sizing it to the 420x280 error
+        // layout would create an invisible click-blocking overlay.
+        let resizeSignalReceived = false;
         const parsedLoadTimeout = Number(script.getAttribute('data-load-timeout-ms'));
         const hardTimeoutMs = Number.isFinite(parsedLoadTimeout) && parsedLoadTimeout > 0
           ? Math.max(parsedLoadTimeout, 20000)
@@ -431,7 +436,7 @@
           clearTimeout(softTimeout);
           clearTimeout(hardTimeout);
           visibilityFallbackTimeout = setTimeout(() => {
-            if (container.style.display === 'none') {
+            if (!resizeSignalReceived && container.style.display === 'none') {
               applyErrorContainerLayout({
                 source: 'load-fallback',
                 errorType: 'missing_resize_signal',
@@ -1021,6 +1026,7 @@
 
             switch (type) {
               case "WIDGET_RESIZE":
+                resizeSignalReceived = true;
                 if (data?.hide) {
                   container.style.display = "none";
                   container.style.width = "0";
