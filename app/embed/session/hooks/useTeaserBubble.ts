@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { WidgetConfig } from '../../../../types/widget';
 
+// Historic versions persisted dismissal here; cleared on load so the teaser
+// isn't still suppressed for visitors who dismissed it under the old scheme.
 const DISMISSED_PREFIX = 'companin-teaser-dismissed-';
 
 export function useTeaserBubble({
@@ -13,6 +15,11 @@ export function useTeaserBubble({
   locale: string;
 }) {
   const [visible, setVisible] = useState(false);
+  // Lags `visible` by the parent iframe's resize transition (300ms) so the
+  // bubble never renders into a viewport that is still growing around it.
+  const [bubbleShown, setBubbleShown] = useState(false);
+  // In-memory only: dismissal hides the teaser for this page view; a reload
+  // starts fresh and the teaser is shown again after its delay.
   const [dismissed, setDismissed] = useState(false);
 
   // Same locale-resolution priority as getLocalizedText in EmbedClient:
@@ -36,33 +43,42 @@ export function useTeaserBubble({
 
   const storageKey = widgetConfig?.id ? `${DISMISSED_PREFIX}${widgetConfig.id}` : null;
 
-  // Restore permanent dismissal from localStorage
+  // Clean up the legacy persisted-dismissal flag from older widget versions.
   useEffect(() => {
     if (!storageKey) return;
-    try {
-      if (localStorage.getItem(storageKey) === '1') setDismissed(true);
-    } catch {}
+    try { localStorage.removeItem(storageKey); } catch {}
   }, [storageKey]);
 
   // Show the teaser after the configured delay
   useEffect(() => {
     if (!teaserMessage || dismissed) {
-      setVisible(false);
-      return;
+      const timer = setTimeout(() => setVisible(false), 0);
+      return () => clearTimeout(timer);
     }
     const delayMs = widgetConfig?.teaser_delay ?? 3000;
-    if (delayMs <= 0) {
-      setVisible(true);
-      return;
-    }
-    const timer = setTimeout(() => setVisible(true), delayMs);
+    const timer = setTimeout(() => setVisible(true), Math.max(delayMs, 0));
     return () => clearTimeout(timer);
   // delayMs is a primitive — spreading the dependency is intentional
   }, [teaserMessage, widgetConfig?.teaser_delay, dismissed]);
 
+  // Render the bubble only after the iframe has finished expanding: `visible`
+  // triggers the resize; the bubble follows once the parent's 0.3s CSS
+  // transition has run. Hiding is immediate (shrink happens after removal).
+  useEffect(() => {
+    if (!visible) {
+      const timer = setTimeout(() => setBubbleShown(false), 0);
+      return () => clearTimeout(timer);
+    }
+    const timer = setTimeout(() => setBubbleShown(true), 350);
+    return () => clearTimeout(timer);
+  }, [visible]);
+
   // Hide when the widget panel is opened
   useEffect(() => {
-    if (!isCollapsed) setVisible(false);
+    if (!isCollapsed) {
+      const timer = setTimeout(() => setVisible(false), 0);
+      return () => clearTimeout(timer);
+    }
   }, [isCollapsed]);
 
   // Auto-dismiss after teaser_dismiss_after ms (0 = never)
@@ -73,23 +89,21 @@ export function useTeaserBubble({
     const timer = setTimeout(() => {
       setVisible(false);
       setDismissed(true);
-      if (storageKey) {
-        try { localStorage.setItem(storageKey, '1'); } catch {}
-      }
     }, dismissAfter);
     return () => clearTimeout(timer);
-  }, [visible, widgetConfig?.teaser_dismiss_after, storageKey]);
+  }, [visible, widgetConfig?.teaser_dismiss_after]);
 
   const dismissTeaser = useCallback(() => {
     setVisible(false);
     setDismissed(true);
-    if (storageKey) {
-      try { localStorage.setItem(storageKey, '1'); } catch {}
-    }
-  }, [storageKey]);
+  }, []);
 
   return {
-    showTeaser: visible && isCollapsed && !!teaserMessage,
+    showTeaser: bubbleShown && isCollapsed && !!teaserMessage,
+    // True while the iframe must be sized to fit the bubble — from the moment
+    // the teaser fires until it is dismissed/hidden. While false the iframe
+    // stays button-sized so it doesn't cover the host page.
+    teaserExpanded: visible && isCollapsed && !!teaserMessage,
     teaserConfigured: !!teaserMessage,
     teaserMessage,
     dismissTeaser,

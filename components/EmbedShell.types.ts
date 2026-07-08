@@ -50,11 +50,16 @@ export type Props = {
   isPersistent?: boolean;
   /** Whether the proactive teaser bubble is currently visible */
   showTeaser?: boolean;
+  /** True while the teaser is live (fired, not dismissed). During the gap before
+   *  showTeaser the bubble renders hidden so it can be measured for the resize. */
+  teaserExpanded?: boolean;
   /** Whether a teaser is configured (pre-sizes the iframe even before the delay fires) */
   teaserConfigured?: boolean;
   /** Locale-resolved teaser message string */
   teaserMessage?: string | null;
-  /** Permanently dismiss the teaser */
+  /** Reports the rendered bubble's size so the iframe can be sized to fit it exactly */
+  onTeaserMeasure?: (size: { width: number; height: number }) => void;
+  /** Dismiss the teaser for this page view */
   onDismissTeaser?: () => void;
   sessionExpiredBanner?: boolean;
   onDismissSessionExpiredBanner?: () => void;

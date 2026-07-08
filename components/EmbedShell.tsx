@@ -70,8 +70,10 @@ export default function EmbedShell({
   previewPositioning = false,
   isPreview = false,
   showTeaser = false,
+  teaserExpanded = false,
   teaserConfigured = false,
   teaserMessage = null,
+  onTeaserMeasure,
   onDismissTeaser,
 }: Props) {
   const { locale: hookLocale } = useWidgetTranslation();
@@ -98,6 +100,17 @@ export default function EmbedShell({
   // Ref for the collapsed launcher button, so focus returns to it on close. (#15)
   const launcherRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
+
+  // Measure the teaser bubble as soon as it renders (hidden at first) so the
+  // iframe can be resized to the bubble's real footprint instead of its
+  // 240px max-width — a short message shouldn't reserve a wide click-blocking
+  // strip of the host page.
+  const teaserBubbleRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!teaserExpanded || !teaserMessage || !onTeaserMeasure) return;
+    const el = teaserBubbleRef.current;
+    if (el) onTeaserMeasure({ width: el.offsetWidth, height: el.offsetHeight });
+  }, [teaserExpanded, teaserMessage, onTeaserMeasure]);
 
   // "Jump to latest" affordance: shown when the user has scrolled up so new
   // messages don't yank them back to the bottom mid-read.
@@ -403,8 +416,9 @@ export default function EmbedShell({
           {isCollapsed ? (
             teaserConfigured ? (
               /* Wrapper anchors the launcher at bottom-right whenever a teaser is
-                 configured. The iframe is pre-sized for the bubble so no mid-session
-                 resize is needed when the bubble appears. */
+                 configured. The iframe grows just before the bubble renders and
+                 shrinks back to button size once it's hidden (see useTeaserBubble /
+                 useWidgetResize), so the collapsed iframe never overhangs the page. */
               <div
                 style={{
                   position: 'fixed',
@@ -418,13 +432,22 @@ export default function EmbedShell({
                   gap: '8px',
                 }}
               >
-                {/* Speech bubble — only shown when delay has fired and not dismissed */}
-                {showTeaser && (
+                {/* Speech bubble — mounted (hidden) while the teaser is live so it
+                    can be measured before the iframe resize; revealed once the
+                    parent's size transition has settled (showTeaser). */}
+                {(teaserExpanded || showTeaser) && (
                   <div
+                    ref={teaserBubbleRef}
                     role="status"
                     aria-live="polite"
                     style={{
-                      position: 'relative',
+                      // While hidden for measurement the bubble is pulled out of
+                      // flow with width:max-content — the iframe is still
+                      // button-sized at that point and would otherwise squeeze
+                      // the text into a wrapped, unrepresentative footprint.
+                      ...(showTeaser
+                        ? { position: 'relative' as const }
+                        : { position: 'absolute' as const, bottom: 0, right: 0, width: 'max-content' as const }),
                       maxWidth: '240px',
                       backgroundColor: '#ffffff',
                       color: textColor,
@@ -433,9 +456,10 @@ export default function EmbedShell({
                       boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
                       cursor: 'pointer',
                       lineHeight: '1.5',
+                      visibility: showTeaser ? 'visible' : 'hidden',
                       ...fontStyles,
                     }}
-                    className="teaser-bubble-enter"
+                    className={showTeaser ? 'teaser-bubble-enter' : undefined}
                     onClick={toggleCollapsed}
                   >
                     <p style={{ margin: 0 }}>{teaserMessage}</p>

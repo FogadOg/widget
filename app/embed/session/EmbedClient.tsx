@@ -1014,18 +1014,28 @@ export default function EmbedClient({
   }, [isCollapsed, initialPreviewConfig]);
 
   // Proactive teaser bubble shown beside the launcher before first open
-  const { showTeaser, teaserConfigured, teaserMessage, dismissTeaser } = useTeaserBubble({
+  const { showTeaser, teaserExpanded, teaserConfigured, teaserMessage, dismissTeaser } = useTeaserBubble({
     widgetConfig,
     isCollapsed,
     locale: activeLocale,
   });
+
+  // Rendered footprint of the teaser bubble, reported by EmbedShell so the
+  // iframe is sized to the actual message instead of the bubble's max-width.
+  const [teaserSize, setTeaserSize] = useState<{ width: number; height: number } | null>(null);
+  const handleTeaserMeasure = useCallback((size: { width: number; height: number }) => {
+    setTeaserSize((prev) =>
+      prev && prev.width === size.width && prev.height === size.height ? prev : size
+    );
+  }, []);
 
   // Unread tracking is handled by useUnreadTracking hook above
   // Widget resize is handled by useWidgetResize hook
   useWidgetResize({
     widgetConfig,
     isCollapsed,
-    teaserConfigured,
+    teaserExpanded,
+    teaserSize,
     initialParentOrigin,
     parentTargetOrigin,
     safePostToParent,
@@ -2269,8 +2279,10 @@ export default function EmbedClient({
         onCloseUnsureModal={() => setShowUnsureModal(false)}
         onDismissHandoff={() => setShowHandoffModal(false)}
         showTeaser={showTeaser}
+        teaserExpanded={teaserExpanded}
         teaserConfigured={teaserConfigured}
         teaserMessage={teaserMessage}
+        onTeaserMeasure={handleTeaserMeasure}
         onDismissTeaser={dismissTeaser}
         hideCloseButton={isPersistent}
         isPersistent={isPersistent}

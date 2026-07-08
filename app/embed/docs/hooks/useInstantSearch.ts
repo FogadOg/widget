@@ -67,8 +67,10 @@ export function useInstantSearch(
   useEffect(() => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current)
 
+    // The too-short/empty case resets state synchronously in updateQuery
+    // (the event that causes it), not here, so there's nothing to do but
+    // skip scheduling a search.
     if (!query || query.trim().length < MIN_QUERY_LEN) {
-      setState((prev) => (prev.status === 'idle' ? prev : { status: 'idle' }))
       return
     }
 
@@ -81,10 +83,17 @@ export function useInstantSearch(
     }
   }, [query, runSearch])
 
+  const updateQuery = useCallback((value: string) => {
+    setQuery(value)
+    if (!value || value.trim().length < MIN_QUERY_LEN) {
+      setState((prev) => (prev.status === 'idle' ? prev : { status: 'idle' }))
+    }
+  }, [])
+
   const clearSearch = useCallback(() => {
     setQuery('')
     setState((prev) => (prev.status === 'idle' ? prev : { status: 'idle' }))
   }, [])
 
-  return { query, setQuery, state, clearSearch }
+  return { query, setQuery: updateQuery, state, clearSearch }
 }

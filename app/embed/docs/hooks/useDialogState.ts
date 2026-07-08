@@ -78,7 +78,6 @@ export function useDialogState({
         : { type: 'WIDGET_RESIZE', data: { width: 0, height: 0, hide: true } },
       parentOrigin,
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOpenChange = (newOpen: boolean) => {
