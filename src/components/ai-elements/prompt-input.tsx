@@ -231,7 +231,7 @@ export function PromptInputAttachment({
               variant="ghost"
             >
               <XIcon />
-              <span className="sr-only">Remove</span>
+              <span className="sr-only">{en.removeAttachment}</span>
             </Button>
           </div>
 

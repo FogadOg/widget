@@ -902,7 +902,7 @@ export default function EmbedShell({
               />
               {!widgetConfig?.hide_branding && (
               <div className="p-2 text-center text-xs flex items-center justify-center gap-2 flex-wrap" style={{ color: mutedTextColor }}>
-                <span title="Hosted in the EU · GDPR compliant">🇪🇺 EU hosted · GDPR</span>
+                <span title={translate(locale, 'euHostedGdpr')}>🇪🇺 EU hosted · GDPR</span>
                 <span aria-hidden>·</span>
                 <span>{poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline" style={{ color: textColor, fontWeight: 500 }}>{COMPANY_NAME}</a></span>
               </div>

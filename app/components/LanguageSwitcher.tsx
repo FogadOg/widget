@@ -17,7 +17,13 @@ const LANGUAGES = [
 
 const LOCALE_PATTERN = new RegExp(`^/(${LANGUAGES.map((l) => l.code).join('|')})(?=/|$)`);
 
-export default function LanguageSwitcher({ locale }: { locale: string }) {
+export default function LanguageSwitcher({
+  locale,
+  ariaLabel = 'Switch language',
+}: {
+  locale: string;
+  ariaLabel?: string;
+}) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -33,7 +39,7 @@ export default function LanguageSwitcher({ locale }: { locale: string }) {
     <div className="relative group">
       <button
         className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
-        aria-label="Switch language"
+        aria-label={ariaLabel}
       >
         <img
           src={`https://cdn.jsdelivr.net/gh/HatScripts/circle-flags@2.7.0/flags/${current.flag}.svg`}

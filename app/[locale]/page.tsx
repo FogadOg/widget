@@ -10,7 +10,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
     <div className="flex min-h-screen items-center justify-center bg-muted font-sans">
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-center gap-8 py-16 px-8 bg-background sm:px-16">
         <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
-          <LanguageSwitcher locale={locale} />
+          <LanguageSwitcher ariaLabel={t.switchLanguage} locale={locale} />
         </div>
         <div className="flex flex-col items-center gap-6 text-center">
           <div className="rounded-full bg-primary p-4">

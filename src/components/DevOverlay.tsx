@@ -17,6 +17,7 @@
  */
 
 import React, { useEffect, useReducer, useRef, useState } from 'react';
+import { t as translate } from '../../lib/i18n';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -577,7 +578,7 @@ export function DevOverlay(): React.ReactElement | null {
               style={btnStyle}
               onClick={() => (simOffline ? restoreOnline() : simulateOffline())}
             >
-              {simOffline ? 'Go online' : 'Simulate offline'}
+              {simOffline ? translate('en', 'devOverlayGoOnline') : translate('en', 'devOverlaySimulateOffline')}
             </button>
           </span>
         )}
@@ -626,7 +627,7 @@ export function DevOverlay(): React.ReactElement | null {
               renderState()
             ) : tab === 'timeline' ? (
               state.events.length === 0 ? (
-                <div style={{ padding: '12px 10px', color: '#475569' }}>No timeline yet.</div>
+                <div style={{ padding: '12px 10px', color: '#475569' }}>{translate('en', 'devOverlayNoTimeline')}</div>
               ) : (
                 state.events.map(renderTimelineEntry)
               )
@@ -639,7 +640,7 @@ export function DevOverlay(): React.ReactElement | null {
 
           <div style={footerStyle}>
             <button style={btnStyle} onClick={() => dispatch({ type: 'clear' })}>
-              Clear
+              {translate('en', 'devOverlayClear')}
             </button>
             <button
               style={{
@@ -648,7 +649,7 @@ export function DevOverlay(): React.ReactElement | null {
               }}
               onClick={() => dispatch({ type: 'toggle-persist' })}
             >
-              {state.persisted ? 'Persisting ✓' : 'Persist'}
+              {state.persisted ? translate('en', 'devOverlayPersisting') : translate('en', 'devOverlayPersist')}
             </button>
             <button
               style={{
@@ -656,9 +657,9 @@ export function DevOverlay(): React.ReactElement | null {
                 background: simOffline ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.08)',
               }}
               onClick={() => (simOffline ? restoreOnline() : simulateOffline())}
-              title="Patch fetch() to simulate an offline connection"
+              title={translate('en', 'devOverlaySimulateOfflineTooltip')}
             >
-              {simOffline ? 'Offline ✓' : 'Offline'}
+              {simOffline ? translate('en', 'devOverlayOfflineActive') : translate('en', 'devOverlayOffline')}
             </button>
             <button
               style={btnStyle}
@@ -680,9 +681,9 @@ export function DevOverlay(): React.ReactElement | null {
                   if (w) { w.document.body.innerText = safeStringify(payload); }
                 }
               }}
-              title="Copy all events + state as JSON for bug reports"
+              title={translate('en', 'devOverlayCopyTooltip')}
             >
-              Copy
+              {translate('en', 'devOverlayCopy')}
             </button>
             <span style={{ marginLeft: 'auto', color: '#475569' }}>
               {errors.length} err · {timings.length} renders

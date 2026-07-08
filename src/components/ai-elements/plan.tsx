@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import DynamicIcon from "@/components/DynamicIcon";
+import en from "../../../locales/en.json";
 import type { ComponentProps } from "react";
 import { createContext, useContext } from "react";
 import { Shimmer } from "./shimmer";
@@ -136,7 +137,7 @@ export const PlanTrigger = ({ className, ...props }: PlanTriggerProps) => (
       {...props}
     >
       <DynamicIcon name="ChevronsUpDownIcon" className="size-4" />
-      <span className="sr-only">Toggle plan</span>
+      <span className="sr-only">{en.togglePlan}</span>
     </Button>
   </CollapsibleTrigger>
 );

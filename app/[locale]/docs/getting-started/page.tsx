@@ -21,7 +21,7 @@ export default async function GettingStartedPage({ params }: { params: Promise<{
             <ArrowLeft size={14} />
             {t.gettingStartedBack}
           </Link>
-          <LanguageSwitcher locale={locale} />
+          <LanguageSwitcher ariaLabel={t.switchLanguage} locale={locale} />
         </div>
         {/* Header */}
         <div className="flex flex-col gap-2">

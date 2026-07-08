@@ -14,6 +14,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { createHandshake } from './handshake';
+import { t as translate } from '../../lib/i18n';
 
 interface EmbedConfig {
   agentId?: string;
@@ -78,10 +79,10 @@ export function EmbedEntry({ allowedOrigins = [] }: EmbedEntryProps) {
     return (
       <div
         role="status"
-        aria-label="Loading widget"
+        aria-label={translate('en', 'widgetLoadingAriaLabel')}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}
       >
-        <span className="sr-only">Loading…</span>
+        <span className="sr-only">{translate('en', 'widgetLoading')}</span>
       </div>
     );
   }

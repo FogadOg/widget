@@ -6,6 +6,7 @@ import useEmblaCarousel, { type UseEmblaCarouselType } from "embla-carousel-reac
 import DynamicIcon from "@/components/DynamicIcon"
 import { cn } from "@/lib/utils"
 import { Button } from "./button"
+import en from "../../../locales/en.json"
 
 const ArrowLeft = (props: any) => <DynamicIcon name="ArrowLeft" {...props} />
 const ArrowRight = (props: any) => <DynamicIcon name="ArrowRight" {...props} />
@@ -207,7 +208,7 @@ function CarouselPrevious({
       {...props}
     >
       <ArrowLeft />
-      <span className="sr-only">Previous slide</span>
+      <span className="sr-only">{en.carouselPreviousSlide}</span>
     </Button>
   )
 }
@@ -237,7 +238,7 @@ function CarouselNext({
       {...props}
     >
       <ArrowRight />
-      <span className="sr-only">Next slide</span>
+      <span className="sr-only">{en.carouselNextSlide}</span>
     </Button>
   )
 }

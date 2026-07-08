@@ -395,7 +395,7 @@ export function MessageAttachment({
               variant="ghost"
             >
               <XIcon />
-              <span className="sr-only">Remove</span>
+              <span className="sr-only">{en.removeAttachment}</span>
             </Button>
           )}
         </>
@@ -423,7 +423,7 @@ export function MessageAttachment({
               variant="ghost"
             >
               <XIcon />
-              <span className="sr-only">Remove</span>
+              <span className="sr-only">{en.removeAttachment}</span>
             </Button>
           )}
         </>

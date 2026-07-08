@@ -11,6 +11,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { t as translate } from '../../lib/i18n';
 
 // localStorage keys for remembering the last-used IDs between reloads.
 const LS_PREFIX = 'companin-devharness-';
@@ -165,9 +166,9 @@ export default function DevHarness() {
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif', color: 'var(--foreground)' }}>
       {/* Controls */}
       <div style={{ width: 360, flexShrink: 0, borderRight: '1px solid var(--border)', padding: 16, overflowY: 'auto', background: 'var(--muted)' }}>
-        <h1 style={{ fontSize: 16, margin: '0 0 4px' }}>Widget Dev Harness</h1>
+        <h1 style={{ fontSize: 16, margin: '0 0 4px' }}>{translate('en', 'devHarnessTitle')}</h1>
         <p style={{ fontSize: 12, color: 'var(--muted-foreground)', margin: '0 0 16px' }}>
-          Embeds <code>/embed/session</code> like a real host page. Dev-only.
+          {translate('en', 'devHarnessDescription')}
         </p>
 
         <div style={{ display: 'grid', gap: 12 }}>
@@ -193,37 +194,36 @@ export default function DevHarness() {
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
             <input type="checkbox" checked={startOpen} onChange={(e) => setStartOpen(e.target.checked)} />
-            Start open
+            {translate('en', 'devHarnessStartOpen')}
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
             <input type="checkbox" checked={showOverlay} onChange={(e) => setShowOverlay(e.target.checked)} />
-            Show DevOverlay (<code>widget_debug=1</code>)
+            {translate('en', 'devHarnessShowOverlay')}
           </label>
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
-          <span title={ready ? '' : 'Fill in all three IDs first'}>
+          <span title={ready ? '' : translate('en', 'devHarnessFillIdsFirst')}>
             <Button size="sm" onClick={apply} disabled={!ready}>
-              Apply &amp; reload
+              {translate('en', 'devHarnessApplyReload')}
             </Button>
           </span>
-          <Button size="sm" variant="secondary" onClick={reloadIframe}>Reload iframe</Button>
+          <Button size="sm" variant="secondary" onClick={reloadIframe}>{translate('en', 'devHarnessReloadIframe')}</Button>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-          <Button size="sm" variant="secondary" onClick={clearSession}>Clear session</Button>
+          <Button size="sm" variant="secondary" onClick={clearSession}>{translate('en', 'devHarnessClearSession')}</Button>
           <Button
             size="sm"
             variant="secondary"
             className={offline ? 'bg-warning text-warning-foreground hover:bg-warning/90' : undefined}
             onClick={toggleOffline}
           >
-            {offline ? 'Restore online' : 'Simulate offline'}
+            {offline ? translate('en', 'devHarnessRestoreOnline') : translate('en', 'devHarnessSimulateOffline')}
           </Button>
         </div>
 
         <p style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 16, lineHeight: 1.5 }}>
-          Position, theme and most behaviour come from the dashboard config (<code>configId</code>),
-          not from this harness. <code>startOpen</code> and <code>locale</code> are passed via the URL.
+          {translate('en', 'devHarnessConfigNote')}
         </p>
       </div>
 
@@ -241,7 +241,7 @@ export default function DevHarness() {
             />
           ) : (
             <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'var(--muted-foreground)', fontSize: 14 }}>
-              Enter Client / Agent / Config IDs and press “Apply &amp; reload”.
+              {translate('en', 'devHarnessEmptyStateIds')}
             </div>
           )}
         </div>
@@ -259,7 +259,7 @@ export default function DevHarness() {
           </div>
           <div style={{ flex: 1, overflowY: 'auto', fontFamily: 'monospace', fontSize: 11, padding: '4px 0' }}>
             {log.length === 0 ? (
-              <div style={{ padding: '8px 10px', color: '#475569' }}>No messages yet. The widget posts here as it loads.</div>
+              <div style={{ padding: '8px 10px', color: '#475569' }}>{translate('en', 'devHarnessNoMessages')}</div>
             ) : (
               log.map((e) => (
                 <div key={e.id} style={{ padding: '2px 10px', display: 'flex', gap: 8, alignItems: 'baseline' }}>

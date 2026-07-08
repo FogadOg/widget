@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import en from "../../../locales/en.json"
 
 function Command({
   className,
@@ -32,8 +33,8 @@ function Command({
 }
 
 function CommandDialog({
-  title = "Command Palette",
-  description = "Search for a command to run...",
+  title = en.commandPaletteTitle,
+  description = en.commandPaletteDescription,
   children,
   className,
   showCloseButton = true,

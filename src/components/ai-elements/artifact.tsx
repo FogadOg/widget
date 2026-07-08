@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import DynamicIcon from "@/components/DynamicIcon";
+import en from "../../../locales/en.json";
 
 type LucideIcon = any;
 const XIcon = (props: any) => <DynamicIcon name="XIcon" {...props} />;
@@ -61,7 +62,7 @@ export const ArtifactClose = ({
     {...props}
   >
     {children ?? <XIcon className="size-4" />}
-    <span className="sr-only">Close</span>
+    <span className="sr-only">{en.close}</span>
   </Button>
 );
 

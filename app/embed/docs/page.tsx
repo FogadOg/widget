@@ -114,7 +114,7 @@ export default async function DocsPage({ searchParams }: Props) {
           {t.widgetConfigMissingParams as string}
         </p>
         <p style={{ color: 'var(--muted-foreground, #6b7280)', fontSize: '14px', lineHeight: '1.6' }}>
-          Provide a single <code style={{ backgroundColor: 'var(--muted, #f3f4f6)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>data-widget-key</code>, or all three of:
+          {t.embedWidgetKeyHelp as string} <code style={{ backgroundColor: 'var(--muted, #f3f4f6)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>data-widget-key</code>, or all three of:
         </p>
         <ul style={{ color: 'var(--muted-foreground, #6b7280)', fontSize: '14px', lineHeight: '1.8' }}>
           <li><code style={{ backgroundColor: 'var(--muted, #f3f4f6)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>data-client-id</code></li>
@@ -154,7 +154,7 @@ export default async function DocsPage({ searchParams }: Props) {
           locale,
           t.docsConfigError as string,
           <p style={{ color: 'var(--muted-foreground, #6b7280)', fontSize: '14px', lineHeight: '1.6' }}>
-            Widget token verification is enabled but not configured correctly.
+            {t.embedTokenMisconfigured as string}
           </p>,
           {
             errorType: 'token_config_error',
@@ -173,9 +173,9 @@ export default async function DocsPage({ searchParams }: Props) {
       if (!verifiedClaims) {
         return renderDocsEmbedErrorCard(
           locale,
-          'Unauthorized widget request',
+          t.embedUnauthorizedTitle as string,
           <p style={{ color: 'var(--muted-foreground, #6b7280)', fontSize: '14px', lineHeight: '1.6' }}>
-            The embed token is invalid or expired. Please regenerate your widget snippet.
+            {t.embedTokenInvalidOrExpired as string}
           </p>,
           {
             errorType: 'invalid_token',
