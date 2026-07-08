@@ -11,6 +11,7 @@ import EmbedClient from '../app/embed/session/EmbedClient';
 import * as helpers from '../app/embed/session/helpers';
 import { defaultProps } from './__fixtures__/EmbedClient.fixtures';
 import { setupBeforeEach } from './__helpers__/EmbedClient.helpers';
+import { WIDGET_LOCALE_STORAGE_KEY } from '../lib/i18n';
 
 // Mock all dependencies
 jest.mock('../app/embed/session/helpers');
@@ -308,16 +309,14 @@ describe('EmbedClient Component', () => {
     });
   });
   describe('Active Locale Resolution', () => {
-    test('uses hook locale when initial locale is empty', async () => {
-      const useWidgetTranslation = require('../hooks/useWidgetTranslation').useWidgetTranslation;
-      useWidgetTranslation.mockReturnValue({
-        translations: {
-          failedToLoadWidget: 'Failed to load widget',
-          failedToCreateSession: 'Failed to create session',
-          sessionOrAuthError: 'Session or auth error',
-          failedToSendMessage: 'Failed to send message',
-        },
-        locale: 'fr',
+    test('uses saved locale when initial locale is empty', async () => {
+      // activeLocale is resolved via resolveInitialWidgetLocale (real lib/i18n,
+      // not mocked here), whose priority is: saved manual choice in
+      // localStorage > initialLocale prop > browser language > 'en'. With
+      // locale="" this exercises the saved-choice branch.
+      (window.localStorage.getItem as jest.Mock).mockImplementation((key: string) => {
+        if (key === WIDGET_LOCALE_STORAGE_KEY) return 'fr';
+        return null;
       });
       mockFetch.mockImplementation((url: string, options?: any) => {
         if (url.includes('/messages') && options?.method === 'POST') {
@@ -366,6 +365,14 @@ describe('EmbedClient Component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
       }, { timeout: 5000 });
+      // Session creation is deferred/async — wait for it to complete before
+      // submitting, otherwise handleSubmit bails early with no sessionId yet.
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/sessions'),
+          expect.objectContaining({ method: 'POST' })
+        );
+      });
       fireEvent.change(screen.getByTestId('input'), { target: { value: 'Hello' } });
       fireEvent.click(screen.getByTestId('submit-btn'));
       await act(async () => {
@@ -377,17 +384,10 @@ describe('EmbedClient Component', () => {
       const body = JSON.parse(postCall?.[1]?.body || '{}');
       expect(body.locale).toBe('fr');
     });
-    test('falls back to en when initial and hook locales are empty', async () => {
-      const useWidgetTranslation = require('../hooks/useWidgetTranslation').useWidgetTranslation;
-      useWidgetTranslation.mockReturnValue({
-        translations: {
-          failedToLoadWidget: 'Failed to load widget',
-          failedToCreateSession: 'Failed to create session',
-          sessionOrAuthError: 'Session or auth error',
-          failedToSendMessage: 'Failed to send message',
-        },
-        locale: '',
-      });
+    test('falls back to en when initial locale is empty and nothing is saved', async () => {
+      // No saved locale (localStorage.getItem returns null by default here)
+      // and locale="" below, so resolveInitialWidgetLocale falls through to
+      // the browser language / final 'en' default.
       mockFetch.mockImplementation((url: string, options?: any) => {
         if (url.includes('/messages') && options?.method === 'POST') {
           return Promise.resolve({
@@ -435,6 +435,14 @@ describe('EmbedClient Component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
       }, { timeout: 5000 });
+      // Session creation is deferred/async — wait for it to complete before
+      // submitting, otherwise handleSubmit bails early with no sessionId yet.
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/sessions'),
+          expect.objectContaining({ method: 'POST' })
+        );
+      });
       fireEvent.change(screen.getByTestId('input'), { target: { value: 'Hello' } });
       fireEvent.click(screen.getByTestId('submit-btn'));
       await act(async () => {
@@ -462,7 +470,7 @@ describe('EmbedClient Component', () => {
     });
     test('creates new session when no stored session exists', async () => {
       mockHelpers.getStoredSession.mockReturnValue(null);
-      render(<EmbedClient {...defaultProps} />);
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('/sessions'),
@@ -513,7 +521,7 @@ describe('EmbedClient Component', () => {
           text: async () => ''
         });
       });
-      render(<EmbedClient {...defaultProps} />);
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('existing-session-456'),
@@ -716,7 +724,7 @@ describe('EmbedClient Component', () => {
   });
   describe('Session Management Functions', () => {
     test('createSession: creates new session successfully', async () => {
-      render(<EmbedClient {...defaultProps} />);
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('/sessions'),
@@ -1681,23 +1689,48 @@ describe('EmbedClient Component', () => {
   });
   describe('Session Expiry Check Interval', () => {
     test('clears session state when session expires in localStorage', async () => {
-      jest.useFakeTimers();
-      mockHelpers.getStoredSession
-        .mockReturnValueOnce({ sessionId: 'session-123', expiresAt: '2026-12-31T23:59:59Z' })
-        .mockReturnValue(null); // Session expired on subsequent calls
-      render(<EmbedClient {...defaultProps} />);
+      jest.useFakeTimers({ doNotFake: ['queueMicrotask'] });
+      jest.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      // checkSessionExpiry reads localStorage directly (not via the mocked
+      // helpers) and only refreshes when the session is real, so:
+      // - isStorageAvailable must report storage as usable
+      // - getStoredSession seeds a restored session on bootstrap (startOpen)
+      // - localStorage.getItem(sessionStorageKey) returns an expiresAt within
+      //   30s of "now" once the 60s interval fires
+      mockHelpers.isStorageAvailable.mockReturnValue(true);
+      mockHelpers.getStoredSession.mockReturnValue({ sessionId: 'session-123', expiresAt: '2026-01-01T00:05:00Z' });
+      (window.localStorage.getItem as jest.Mock).mockImplementation((key: string) => {
+        if (key === 'session-key-en') {
+          return JSON.stringify({ sessionId: 'session-123', expiresAt: '2026-01-01T00:01:00Z' });
+        }
+        return null;
+      });
+      const sessionsPostCallsBefore = () =>
+        mockFetch.mock.calls.filter((call: any[]) => call[0].includes('/sessions') && call[1]?.method === 'POST').length;
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
       await act(async () => {
         jest.advanceTimersByTime(0); // Initial render
       });
       await waitFor(() => {
         expect(screen.queryByTestId('embed-shell')).toBeInTheDocument();
       });
+      // Wait for bootstrap's session restoration to complete so sessionId/authToken are set.
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/messages'),
+          expect.any(Object)
+        );
+      });
+      const postCountBefore = sessionsPostCallsBefore();
       // Fast-forward 60 seconds to trigger expiry check
       await act(async () => {
         jest.advanceTimersByTime(60000);
       });
-      // Verify getStoredSession was called multiple times
-      expect(mockHelpers.getStoredSession.mock.calls.length).toBeGreaterThanOrEqual(2);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      // Verify the near-expiry session triggers a silent refresh (new session creation)
+      expect(sessionsPostCallsBefore()).toBeGreaterThan(postCountBefore);
       jest.useRealTimers();
     });
     test('interval is cleaned up on unmount', async () => {
@@ -1786,10 +1819,18 @@ describe('EmbedClient Component', () => {
         if (key === 'lastread-key') return 'msg-1';
         return null;
       });
-      render(<EmbedClient {...defaultProps} />);
+      // Unread tracking only fires while the widget is collapsed, and messages
+      // are only loaded once bootstrap's session creation runs (deferred until
+      // the widget opens). So: start open to load messages, then collapse it
+      // so the "isCollapsed && messages.length > 0" unread-tracking effect runs.
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
       await waitFor(() => {
         expect(screen.queryByTestId('embed-shell')).toBeInTheDocument();
       }, { timeout: 3000 });
+      await waitFor(() => {
+        expect(screen.getByTestId('messages')).toHaveTextContent('3 messages');
+      }, { timeout: 3000 });
+      fireEvent.click(screen.getByTestId('toggle-btn'));
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 300));
       });
@@ -1905,10 +1946,17 @@ describe('EmbedClient Component', () => {
           throw new Error('Storage quota exceeded');
         }
       });
-      render(<EmbedClient {...defaultProps} startOpen={false} />);
+      // Bootstrap's session creation (which loads messages) is deferred until the
+      // widget opens, and unread tracking only runs while collapsed — so open
+      // first to load messages, then collapse to trigger the unread-count save.
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
       await waitFor(() => {
         expect(screen.queryByTestId('embed-shell')).toBeInTheDocument();
       }, { timeout: 3000 });
+      await waitFor(() => {
+        expect(screen.getByTestId('messages')).toHaveTextContent('2 messages');
+      }, { timeout: 3000 });
+      fireEvent.click(screen.getByTestId('toggle-btn'));
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 400));
       });
@@ -2011,7 +2059,14 @@ describe('EmbedClient Component', () => {
         }
         return Promise.reject(new Error('Unmocked'));
       });
-      render(<EmbedClient {...defaultProps} />);
+      // createSession only runs once the widget opens (bootstrap defers session
+      // creation until isCollapsed is false). isCollapsed flips to false only
+      // after widgetConfig loads and a follow-up effect applies it, so wait for
+      // that transition before waiting on the session-creation side effects.
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
+      await waitFor(() => {
+        expect(screen.getByTestId('collapsed-state')).toHaveTextContent('expanded');
+      }, { timeout: 3000 });
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 400));
       });
@@ -2055,7 +2110,14 @@ describe('EmbedClient Component', () => {
         }
         return Promise.reject(new Error('Unmocked'));
       });
-      render(<EmbedClient {...defaultProps} />);
+      // createSession only runs once the widget opens (bootstrap defers session
+      // creation until isCollapsed is false). isCollapsed flips to false only
+      // after widgetConfig loads and a follow-up effect applies it, so wait for
+      // that transition before waiting on the session-creation side effects.
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
+      await waitFor(() => {
+        expect(screen.getByTestId('collapsed-state')).toHaveTextContent('expanded');
+      }, { timeout: 3000 });
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 400));
       });
@@ -2108,7 +2170,7 @@ describe('EmbedClient Component', () => {
         }
         return Promise.reject(new Error('Unmocked'));
       });
-      render(<EmbedClient {...defaultProps} />);
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
       await waitFor(() => {
         expect(retryWithBackoff).toHaveBeenCalled();
       }, { timeout: 3000 });
@@ -2267,7 +2329,7 @@ describe('EmbedClient Component', () => {
         }
         return Promise.reject(new Error('Unmocked'));
       });
-      render(<EmbedClient {...defaultProps} />);
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('/feedback'),
@@ -2311,7 +2373,7 @@ describe('EmbedClient Component', () => {
         return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: {} }) });
       });
       global.fetch = mockFetch as any;
-      render(<EmbedClient {...defaultProps} />);
+      render(<EmbedClient {...defaultProps} startOpen={true} />);
       await waitFor(() => {
         expect(logErrorSpy).toHaveBeenCalled();
       }, { timeout: 3000 });
@@ -3498,6 +3560,16 @@ describe('EmbedClient Component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
       });
+      // Session creation is deferred/async — wait for it to complete before
+      // submitting, otherwise handleSubmit bails early with no sessionId yet
+      // and the sendMessage retryWithBackoff call (which this test targets)
+      // never happens.
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/sessions'),
+          expect.objectContaining({ method: 'POST' })
+        );
+      });
       const submitBtn = screen.getByTestId('submit-btn');
       const input = screen.getByTestId('input');
       fireEvent.change(input, { target: { value: 'Retry test' } });
@@ -3557,6 +3629,14 @@ describe('EmbedClient Component', () => {
       render(<EmbedClient {...defaultProps} startOpen={true} />);
       await waitFor(() => {
         expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
+      });
+      // Session creation is deferred/async — wait for it to complete before
+      // submitting, otherwise handleSubmit bails early with no sessionId yet.
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/sessions'),
+          expect.objectContaining({ method: 'POST' })
+        );
       });
       const submitBtn = screen.getByTestId('submit-btn');
       const input = screen.getByTestId('input');
@@ -3675,6 +3755,14 @@ describe('EmbedClient Component', () => {
       render(<EmbedClient {...defaultProps} startOpen={true} />);
       await waitFor(() => {
         expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
+      });
+      // Session creation is deferred/async — wait for it to complete before
+      // submitting, otherwise handleSubmit bails early with no sessionId yet.
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/sessions'),
+          expect.objectContaining({ method: 'POST' })
+        );
       });
       const submitBtn = screen.getByTestId('submit-btn');
       const input = screen.getByTestId('input');
@@ -4373,6 +4461,14 @@ describe('EmbedClient Component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
       });
+      // Session creation is deferred/async — wait for it to complete before
+      // clicking, otherwise handleSubmit bails early with no sessionId yet.
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/sessions'),
+          expect.objectContaining({ method: 'POST' })
+        );
+      });
       fireEvent.click(screen.getByTestId('followup-undefined-btn'));
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 200));
@@ -4714,18 +4810,24 @@ describe('EmbedClient Component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
       });
+      // Widget starts collapsed, so bootstrap defers session creation/message
+      // loading until the widget is opened (lazy session creation). The first
+      // open triggers createSession -> loadSessionMessages, but toggleCollapsed
+      // reads `messages` synchronously at click time (before that async load
+      // resolves), so the very first open always sees zero messages. Close and
+      // reopen once messages have loaded so the second toggle's closure
+      // observes the populated `messages` array.
+      const toggleBtn = screen.getByTestId('toggle-btn');
+      fireEvent.click(toggleBtn);
       await waitFor(() => {
         expect(screen.getByTestId('messages')).toHaveTextContent('1 messages');
       });
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 200));
-      });
-      const toggleBtn = screen.getByTestId('toggle-btn');
-      fireEvent.click(toggleBtn);
+      fireEvent.click(toggleBtn); // close
+      fireEvent.click(toggleBtn); // reopen — messages are now loaded
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
       });
-      // When widget opens (isCollapsed becomes false), lastReadMessageId is saved
+      // When widget opens with messages already loaded, lastReadMessageId is saved
       const setItemCalls = (window.localStorage.setItem as jest.Mock).mock.calls;
       const lastReadCall = setItemCalls.find((call: any[]) => call[0] === 'lastread-key');
       expect(lastReadCall).toBeDefined();

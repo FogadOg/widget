@@ -215,6 +215,9 @@ describe('Embed session page', () => {
         widgetConfigError: 'Widget Configuration Error',
         widgetConfigMissingParams: 'Missing required parameters. Please ensure your widget script includes:',
         widgetConfigOurDocumentation: 'our documentation',
+        embedTokenMisconfigured: 'Widget token verification is enabled but not configured correctly.',
+        embedUnauthorizedTitle: 'Unauthorized widget request',
+        embedTokenInvalidOrExpired: 'The embed token is invalid or expired. Please regenerate your widget snippet.',
       }),
     }));
     const page = require('../app/embed/session/page').default;
@@ -251,6 +254,9 @@ describe('Embed session page', () => {
         widgetConfigError: 'Widget Configuration Error',
         widgetConfigMissingParams: 'Missing required parameters. Please ensure your widget script includes:',
         widgetConfigOurDocumentation: 'our documentation',
+        embedTokenMisconfigured: 'Widget token verification is enabled but not configured correctly.',
+        embedUnauthorizedTitle: 'Unauthorized widget request',
+        embedTokenInvalidOrExpired: 'The embed token is invalid or expired. Please regenerate your widget snippet.',
       }),
     }));
     const page = require('../app/embed/session/page').default;
