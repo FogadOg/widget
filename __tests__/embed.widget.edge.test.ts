@@ -175,10 +175,14 @@ describe('widget edge cases', () => {
       window.history.pushState({}, '', '/?widget_debug=1');
       addBootScript({ 'data-client-id': 'c9', 'data-agent-id': 'a9', 'data-config-id': 'cfg9' });
       require('../src/embed/widget.js');
-      // advance the iframe load timeout (15s)
-      jest.advanceTimersByTime(15000);
-      // allow pending tasks
-      await Promise.resolve();
+      // Each load attempt now retries up to MAX_LOAD_ATTEMPTS (3) times before
+      // surfacing the terminal error, each waiting perAttemptTimeoutMs (12s in
+      // prod, since data-dev isn't set here). Advance past all three attempts.
+      for (let i = 0; i < 3; i++) {
+        jest.advanceTimersByTime(12000);
+        // allow the retry's re-armed timeout / iframe.src reassignment to settle
+        await Promise.resolve();
+      }
       const widget = (window as any).CompaninWidget;
       const errs = widget.getErrors();
       expect(errs.some((e: any) => /Widget iframe failed to load \(timeout\)/.test(e.message))).toBe(true);

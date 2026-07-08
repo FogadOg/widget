@@ -35,7 +35,7 @@ describe('EmbedShell', () => {
 
   test('input and submit buttons exist', () => {
     render(<EmbedShell {...minimalProps} />);
-    expect(screen.getByPlaceholderText('Type...')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Type your message...')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /send/i })).toBeInTheDocument();
   });
 });
@@ -180,7 +180,7 @@ describe('EmbedShell - logo and avatar', () => {
         flowBtn.click();
       });
       expect(onFollow).toHaveBeenCalledWith(flowResponses[0].buttons[0]);
-      const inputEl = getByPlaceholderText('Type...');
+      const inputEl = getByPlaceholderText('Type your message...');
       // simulate change
       act(() => {
         fireEvent.change(inputEl, { target: { value: 'hello' } });

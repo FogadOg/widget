@@ -29,6 +29,9 @@ jest.mock('../lib/i18n', () => ({
     docsConfigError: 'Docs Agent Configuration Error',
     widgetConfigMissingParams: 'Missing required parameters. Please ensure your widget script includes:',
     widgetConfigOurDocumentation: 'our documentation',
+    embedTokenMisconfigured: 'Widget token verification is enabled but not configured correctly.',
+    embedUnauthorizedTitle: 'Unauthorized widget request',
+    embedTokenInvalidOrExpired: 'The embed token is invalid or expired. Please regenerate your widget snippet.',
   })),
 }));
 import DocsPage from '../app/embed/docs/page';

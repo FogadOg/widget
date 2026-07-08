@@ -38,6 +38,11 @@ describe('DocsClient targeted branches', () => {
   let parentPostMessageSpy: jest.SpyInstance
   let mockParent: { postMessage: jest.Mock }
   beforeEach(() => {
+    // Each test's session-bootstrap assertions assume a clean slate; a session
+    // key written by one test (e.g. "falls back to creating a new session...")
+    // otherwise leaks into later tests reusing the same clientId/agentId ("c"/"a")
+    // and causes them to resume that stale session instead of creating a new one.
+    localStorage.clear()
     getAuthTokenMock.mockReset()
     getAuthTokenMock.mockResolvedValue('tok')
     mockAuthTokenValue = 'tok'
@@ -105,7 +110,7 @@ describe('DocsClient targeted branches', () => {
     expect(getLocalizedText({ es: 'Hola', de: 'Hallo' }, 'fr')).toBe('Hola')
   })
   it('uses the referrer fallback when widget origin is resolved during bootstrap', async () => {
-    render(<DocsClient clientId="c" agentId="a" configId="cfg" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c" agentId="a" configId="cfg" locale="en" startOpen />)
     await waitFor(() => expect(getAuthTokenMock).toHaveBeenCalled())
     expect(getAuthTokenMock.mock.calls[0][1]).toBe('https://parent.example')
   })
@@ -113,9 +118,16 @@ describe('DocsClient targeted branches', () => {
     getAuthTokenMock.mockResolvedValueOnce(null)
     mockAuthTokenValue = null
     mockAuthErrorValue = null
-    render(<DocsClient clientId="c" agentId="a" configId="cfg" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c" agentId="a" configId="cfg" locale="en" startOpen />)
     await waitFor(() => expect(getAuthTokenMock).toHaveBeenCalled())
-    expect(global.fetch).not.toHaveBeenCalled()
+    // Widget-load telemetry fires unconditionally on mount (independent of the
+    // auth-gated session/config bootstrap), so exclude it here — the intent of
+    // this assertion is that no bootstrap (widget-config / session) fetch is
+    // attempted when no auth token is available.
+    const bootstrapCalls = (global.fetch as jest.Mock).mock.calls.filter(
+      ([url]) => !String(url).includes('/telemetry/events/')
+    )
+    expect(bootstrapCalls).toHaveLength(0)
   })
   it('skips bootstrap when clientId or agentId is missing', async () => {
     render(<DocsClient clientId="" agentId="" configId="cfg" locale="en" startOpen={false} />)
@@ -144,7 +156,7 @@ describe('DocsClient targeted branches', () => {
       }
       return Promise.resolve({ ok: true, json: async () => ({}) }) as any
     }) as any
-    render(<DocsClient clientId="c" agentId="a" configId="cfg" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c" agentId="a" configId="cfg" locale="en" startOpen />)
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/sessions/stored-sess/messages'), expect.objectContaining({ method: 'GET' })))
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/sessions'), expect.objectContaining({ method: 'POST' })))
   })
@@ -247,7 +259,7 @@ describe('DocsClient targeted branches', () => {
       intervalCallback = callback as () => void
       return 1 as any
     }) as any)
-    render(<DocsClient clientId="c" agentId="a" configId="cfg" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c" agentId="a" configId="cfg" locale="en" startOpen />)
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
     // Ensure intervalCallback is defined before calling
     expect(intervalCallback).toBeDefined()
@@ -289,7 +301,10 @@ describe('DocsClient targeted branches', () => {
         }),
       },
     })
-    render(<DocsClient clientId="c" agentId="a" configId="cfg" locale="en" startOpen={false} />)
+    // Messages (and 'hello') only load once session bootstrap runs, which is
+    // deferred until the dialog opens — start open so bootstrap actually runs
+    // and we can verify it completes normally despite postMessage throwing.
+    render(<DocsClient clientId="c" agentId="a" configId="cfg" locale="en" startOpen />)
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
     await waitFor(() => expect(document.body).toHaveTextContent('hello'))
   })

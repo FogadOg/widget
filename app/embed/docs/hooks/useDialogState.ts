@@ -72,12 +72,16 @@ export function useDialogState({
   useEffect(() => {
     if (initialPreviewConfig) return;
     if (typeof window === 'undefined' || !window.parent || window.parent === window) return;
-    window.parent.postMessage(
-      open
-        ? { type: 'WIDGET_RESIZE', data: { width: '100vw', height: '100vh' } }
-        : { type: 'WIDGET_RESIZE', data: { width: 0, height: 0, hide: true } },
-      parentOrigin,
-    );
+    try {
+      window.parent.postMessage(
+        open
+          ? { type: 'WIDGET_RESIZE', data: { width: '100vw', height: '100vh' } }
+          : { type: 'WIDGET_RESIZE', data: { width: 0, height: 0, hide: true } },
+        parentOrigin,
+      );
+    } catch {
+      // ignore — parent may be cross-origin/unreachable in some embed contexts
+    }
   }, []);
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -85,18 +89,22 @@ export function useDialogState({
 
     // Send resize message to parent
     if (typeof window !== 'undefined' && window.parent) {
-      if (newOpen) {
-        // Full screen when dialog opens
-        window.parent.postMessage({
-          type: 'WIDGET_RESIZE',
-          data: { width: '100vw', height: '100vh' }
-        }, parentOrigin);
-      } else {
-        // Back to original size and position when dialog closes
-        window.parent.postMessage({
-          type: 'WIDGET_RESIZE',
-          data: { width: 0, height: 0, hide: true }
-        }, parentOrigin);
+      try {
+        if (newOpen) {
+          // Full screen when dialog opens
+          window.parent.postMessage({
+            type: 'WIDGET_RESIZE',
+            data: { width: '100vw', height: '100vh' }
+          }, parentOrigin);
+        } else {
+          // Back to original size and position when dialog closes
+          window.parent.postMessage({
+            type: 'WIDGET_RESIZE',
+            data: { width: 0, height: 0, hide: true }
+          }, parentOrigin);
+        }
+      } catch {
+        // ignore — parent may be cross-origin/unreachable in some embed contexts
       }
     }
   };

@@ -298,7 +298,7 @@ describe('DocsClient missing effect/flow coverage', () => {
   })
   it('covers createSession success path and stores session when no stored session exists', async () => {
     ;(helpers.getStoredSession as jest.Mock).mockReturnValue(null)
-    render(<DocsClient clientId="c2" agentId="a2" configId="cfg2" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c2" agentId="a2" configId="cfg2" locale="en" startOpen />)
     await waitFor(() => {
       const postCalls = (global.fetch as jest.Mock).mock.calls.filter(([, init]) => init?.method === 'POST')
       expect(postCalls.length).toBeGreaterThan(0)
@@ -307,7 +307,7 @@ describe('DocsClient missing effect/flow coverage', () => {
   })
   it('sends message on suggestion click and submits feedback click path', async () => {
     ;(helpers.getStoredSession as jest.Mock).mockReturnValue(null)
-    render(<DocsClient clientId="c3" agentId="a3" configId="cfg3" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c3" agentId="a3" configId="cfg3" locale="en" startOpen />)
     await waitFor(() => expect(helpers.storeSession).toHaveBeenCalled())
     await waitFor(() => expect(screen.getByText('agent message')).toBeTruthy())
     await waitFor(() => expect(screen.getByText('How do I get started?')).toBeTruthy())
@@ -346,7 +346,7 @@ describe('DocsClient missing effect/flow coverage', () => {
       }
       return { ok: true, json: async () => ({ status: 'success', data: { session_id: 'sess-1', expires_at: Date.now() + 60_000 } }) } as any
     }) as any
-    render(<DocsClient clientId="c4" agentId="a4" configId="cfg4" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c4" agentId="a4" configId="cfg4" locale="en" startOpen />)
     const positiveFeedbackButton = await screen.findByLabelText('Positive feedback')
     fireEvent.click(positiveFeedbackButton)
     await waitFor(() => {
@@ -377,7 +377,7 @@ describe('DocsClient missing effect/flow coverage', () => {
       }
       return { ok: true, json: async () => ({ status: 'success', data: { session_id: 'sess-1', expires_at: Date.now() + 60_000 } }) } as any
     }) as any
-    render(<DocsClient clientId="c5" agentId="a5" configId="cfg5" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c5" agentId="a5" configId="cfg5" locale="en" startOpen />)
     const positiveFeedbackButton = await screen.findByLabelText('Positive feedback')
     fireEvent.click(positiveFeedbackButton)
     await waitFor(() => {
@@ -387,7 +387,7 @@ describe('DocsClient missing effect/flow coverage', () => {
   })
   it('covers handleSubmit empty and attachments branches', async () => {
     ;(helpers.getStoredSession as jest.Mock).mockReturnValue(null)
-    render(<DocsClient clientId="c6" agentId="a6" configId="cfg6" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c6" agentId="a6" configId="cfg6" locale="en" startOpen />)
     await waitFor(() => expect(helpers.storeSession).toHaveBeenCalled())
     fireEvent.click(screen.getByTestId('submit-empty'))
     await waitFor(() => {
@@ -409,18 +409,18 @@ describe('DocsClient missing effect/flow coverage', () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
     mockAuthError = 'Auth failed'
     mockGetAuthToken.mockResolvedValueOnce(null)
-    render(<DocsClient clientId="c7" agentId="a7" configId="cfg7" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c7" agentId="a7" configId="cfg7" locale="en" startOpen />)
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Auth error:', 'Auth failed')
     })
     mockAuthError = null
     mockGetAuthToken.mockResolvedValueOnce(null)
-    render(<DocsClient clientId="c8" agentId="a8" configId="cfg8" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c8" agentId="a8" configId="cfg8" locale="en" startOpen />)
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Auth token request returned null')
     })
     mockGetAuthToken.mockRejectedValueOnce(new Error('token error'))
-    render(<DocsClient clientId="c9" agentId="a9" configId="cfg9" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c9" agentId="a9" configId="cfg9" locale="en" startOpen />)
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error getting auth token:', expect.any(Error))
     })
@@ -428,7 +428,7 @@ describe('DocsClient missing effect/flow coverage', () => {
   })
   it('covers missing client/agent warning branch', async () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
-    render(<DocsClient clientId="" agentId="a10" configId="cfg10" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="" agentId="a10" configId="cfg10" locale="en" startOpen />)
     await waitFor(() => {
       expect(warnSpy).toHaveBeenCalledWith('Missing clientId or agentId')
     })
@@ -438,7 +438,7 @@ describe('DocsClient missing effect/flow coverage', () => {
     ;(helpers.getStoredSession as jest.Mock)
       .mockReturnValueOnce({ sessionId: 'stored-session' })
       .mockReturnValue(null)
-    render(<DocsClient clientId="c11" agentId="a11" configId="cfg11" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c11" agentId="a11" configId="cfg11" locale="en" startOpen />)
     await waitFor(() => expect(screen.getByText('agent message')).toBeTruthy())
     act(() => {
       jest.advanceTimersByTime(60000)
@@ -476,7 +476,7 @@ describe('DocsClient missing effect/flow coverage', () => {
       }
       return { ok: true, json: async () => ({ status: 'success', data: { session_id: 'sess-1', expires_at: Date.now() + 60_000 } }) } as any
     }) as any
-    render(<DocsClient clientId="c12" agentId="a12" configId="cfg12" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c12" agentId="a12" configId="cfg12" locale="en" startOpen />)
     await waitFor(() => {
       expect(parentPostMessage).toHaveBeenCalledWith({ type: 'WIDGET_HIDE' }, expect.any(String))
     })
@@ -539,7 +539,7 @@ describe('DocsClient missing effect/flow coverage', () => {
         json: async () => ({ status: 'success', data: { messages: [] } }),
       } as any
     }) as any
-    render(<DocsClient clientId="c13" agentId="a13" configId="cfg13" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c13" agentId="a13" configId="cfg13" locale="en" startOpen />)
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Session creation failed:', 'Session create failed detail')
     })
@@ -560,7 +560,7 @@ describe('DocsClient missing effect/flow coverage', () => {
         json: async () => ({ status: 'success', data: { messages: [] } }),
       } as any
     }) as any
-    render(<DocsClient clientId="c14" agentId="a14" configId="cfg14" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c14" agentId="a14" configId="cfg14" locale="en" startOpen />)
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Session creation error:', expect.any(Error))
     })
@@ -569,7 +569,7 @@ describe('DocsClient missing effect/flow coverage', () => {
   it('covers addUserMessage missing session/authToken branch', async () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
     mockAuthToken = null
-    render(<DocsClient clientId="c15" agentId="a15" configId="cfg15" locale="en" startOpen={false} />)
+    render(<DocsClient clientId="c15" agentId="a15" configId="cfg15" locale="en" startOpen />)
     await waitFor(() => expect(screen.getByText('How do I get started?')).toBeTruthy())
     fireEvent.click(screen.getByText('How do I get started?'))
     await waitFor(() => {
