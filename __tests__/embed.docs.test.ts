@@ -546,3 +546,72 @@ describe('API — destroy', () => {
     expect(widgets.destroy('__ghost__')).toBe(false);
   });
 });
+// ---------------------------------------------------------------------------
+// 8. Transient WIDGET_ERROR — loader-driven reload instead of terminal card
+// ---------------------------------------------------------------------------
+describe('transient WIDGET_ERROR retry', () => {
+  const TRANSIENT = {
+    type: 'WIDGET_ERROR',
+    data: { errorType: 'resolver_unavailable', transient: true },
+  };
+  const ERROR_SHOW = {
+    type: 'WIDGET_SHOW',
+    data: { source: 'embed-error', errorType: 'resolver_unavailable', width: 420, height: 280 },
+  };
+  let consoleErrorSpy: jest.SpyInstance;
+  beforeEach(() => {
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+  });
+  it('reloads the iframe with a cache-buster instead of emitting error', () => {
+    const { api, iframe } = loadDocsWidget(VALID);
+    mockCW(iframe!);
+    const onError = jest.fn();
+    api.on('error', onError);
+    fromIframe(iframe!, TRANSIENT);
+    return new Promise<void>((res) => setTimeout(() => {
+      expect(iframe!.src).toContain('_retry=2');
+      expect(onError).not.toHaveBeenCalled();
+      api.destroy();
+      res();
+    }, 0));
+  });
+  it('suppresses the embed-error WIDGET_SHOW while a retry is pending', () => {
+    const { api, iframe } = loadDocsWidget(VALID);
+    mockCW(iframe!);
+    const cont = iframe!.parentElement as HTMLElement;
+    fromIframe(iframe!, TRANSIENT);
+    fromIframe(iframe!, ERROR_SHOW);
+    expect(cont.style.display).toBe('none');
+    api.destroy();
+  });
+  it('surfaces the card and emits error once the attempt budget is exhausted', () => {
+    const { api, iframe } = loadDocsWidget(VALID);
+    mockCW(iframe!);
+    const onError = jest.fn();
+    api.on('error', onError);
+    fromIframe(iframe!, TRANSIENT); // attempt 2 scheduled
+    fromIframe(iframe!, TRANSIENT); // attempt 3 scheduled
+    fromIframe(iframe!, TRANSIENT); // budget exhausted → terminal
+    fromIframe(iframe!, ERROR_SHOW); // no longer suppressed
+    const cont = iframe!.parentElement as HTMLElement;
+    expect(cont.style.display).toBe('block');
+    return new Promise<void>((res) => setTimeout(() => {
+      expect(onError).toHaveBeenCalledTimes(1);
+      api.destroy();
+      res();
+    }, 0));
+  });
+  it('a WIDGET_RESIZE after a successful retry lifts the suppression', () => {
+    const { api, iframe } = loadDocsWidget(VALID);
+    mockCW(iframe!);
+    const cont = iframe!.parentElement as HTMLElement;
+    fromIframe(iframe!, TRANSIENT);
+    fromIframe(iframe!, { type: 'WIDGET_RESIZE', data: { width: 320, height: 480 } });
+    fromIframe(iframe!, ERROR_SHOW);
+    expect(cont.style.display).toBe('block');
+    api.destroy();
+  });
+});

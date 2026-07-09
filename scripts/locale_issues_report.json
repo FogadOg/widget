@@ -1,10 +1,22 @@
 {
   "de.json": {
-    "total_keys": 150,
+    "total_keys": 206,
     "empty_values_count": 0,
     "empty_values_sample": [],
-    "untranslated_count": 6,
+    "untranslated_count": 21,
     "untranslated_sample": [
+      {
+        "key": "gettingStartedStep1Title",
+        "value": "Get your Widget ID"
+      },
+      {
+        "key": "gettingStartedStep1Desc",
+        "value": "In the dashboard, go to {customize}, select your widget config, and copy its Widget ID."
+      },
+      {
+        "key": "gettingStartedStep2Desc",
+        "value": "Choose your framework and paste the snippet into your app, replacing {key} with your Widget ID."
+      },
       {
         "key": "handoffNameLabel",
         "value": "Name"
@@ -28,6 +40,10 @@
       {
         "key": "uncertaintyLogAgent",
         "value": "Agent:"
+      },
+      {
+        "key": "thinking",
+        "value": "Thinking..."
       }
     ],
     "suspicious_markers_count": 0,
@@ -36,11 +52,23 @@
     "placeholder_mismatches_sample": []
   },
   "es.json": {
-    "total_keys": 150,
+    "total_keys": 206,
     "empty_values_count": 0,
     "empty_values_sample": [],
-    "untranslated_count": 4,
+    "untranslated_count": 17,
     "untranslated_sample": [
+      {
+        "key": "gettingStartedStep1Title",
+        "value": "Get your Widget ID"
+      },
+      {
+        "key": "gettingStartedStep1Desc",
+        "value": "In the dashboard, go to {customize}, select your widget config, and copy its Widget ID."
+      },
+      {
+        "key": "gettingStartedStep2Desc",
+        "value": "Choose your framework and paste the snippet into your app, replacing {key} with your Widget ID."
+      },
       {
         "key": "sessionExpiredTitle",
         "value": "Your session expired"
@@ -56,31 +84,43 @@
       {
         "key": "agentTyping",
         "value": "Customer Support AI Agent is typing"
+      },
+      {
+        "key": "thinking",
+        "value": "Thinking..."
+      },
+      {
+        "key": "thoughtForFewSeconds",
+        "value": "Thought for a few seconds"
+      },
+      {
+        "key": "thoughtForSeconds",
+        "value": "Thought for {duration} seconds"
       }
     ],
     "suspicious_markers_count": 0,
     "suspicious_markers_sample": [],
-    "placeholder_mismatches_count": 1,
-    "placeholder_mismatches_sample": [
-      {
-        "key": "gettingStartedStep1Desc",
-        "en": [
-          "{customize}",
-          "{datasources}"
-        ],
-        "loc": [
-          "{datasources}",
-          "{personalizar}"
-        ]
-      }
-    ]
+    "placeholder_mismatches_count": 0,
+    "placeholder_mismatches_sample": []
   },
   "fr.json": {
-    "total_keys": 150,
+    "total_keys": 206,
     "empty_values_count": 0,
     "empty_values_sample": [],
-    "untranslated_count": 5,
+    "untranslated_count": 18,
     "untranslated_sample": [
+      {
+        "key": "gettingStartedStep1Title",
+        "value": "Get your Widget ID"
+      },
+      {
+        "key": "gettingStartedStep1Desc",
+        "value": "In the dashboard, go to {customize}, select your widget config, and copy its Widget ID."
+      },
+      {
+        "key": "gettingStartedStep2Desc",
+        "value": "Choose your framework and paste the snippet into your app, replacing {key} with your Widget ID."
+      },
       {
         "key": "handoffMessageLabel",
         "value": "Message"
@@ -100,31 +140,39 @@
       {
         "key": "agentTyping",
         "value": "Customer Support AI Agent is typing"
+      },
+      {
+        "key": "thinking",
+        "value": "Thinking..."
+      },
+      {
+        "key": "thoughtForFewSeconds",
+        "value": "Thought for a few seconds"
       }
     ],
     "suspicious_markers_count": 0,
     "suspicious_markers_sample": [],
-    "placeholder_mismatches_count": 1,
-    "placeholder_mismatches_sample": [
-      {
-        "key": "gettingStartedStep1Desc",
-        "en": [
-          "{customize}",
-          "{datasources}"
-        ],
-        "loc": [
-          "{datasources}",
-          "{personnaliser}"
-        ]
-      }
-    ]
+    "placeholder_mismatches_count": 0,
+    "placeholder_mismatches_sample": []
   },
   "it.json": {
-    "total_keys": 150,
+    "total_keys": 206,
     "empty_values_count": 0,
     "empty_values_sample": [],
-    "untranslated_count": 4,
+    "untranslated_count": 19,
     "untranslated_sample": [
+      {
+        "key": "gettingStartedStep1Title",
+        "value": "Get your Widget ID"
+      },
+      {
+        "key": "gettingStartedStep1Desc",
+        "value": "In the dashboard, go to {customize}, select your widget config, and copy its Widget ID."
+      },
+      {
+        "key": "gettingStartedStep2Desc",
+        "value": "Choose your framework and paste the snippet into your app, replacing {key} with your Widget ID."
+      },
       {
         "key": "sessionExpiredTitle",
         "value": "Your session expired"
@@ -140,34 +188,46 @@
       {
         "key": "agentTyping",
         "value": "Customer Support AI Agent is typing"
+      },
+      {
+        "key": "thinking",
+        "value": "Thinking..."
+      },
+      {
+        "key": "thoughtForFewSeconds",
+        "value": "Thought for a few seconds"
+      },
+      {
+        "key": "thoughtForSeconds",
+        "value": "Thought for {duration} seconds"
       }
     ],
     "suspicious_markers_count": 0,
     "suspicious_markers_sample": [],
-    "placeholder_mismatches_count": 1,
-    "placeholder_mismatches_sample": [
-      {
-        "key": "gettingStartedStep1Desc",
-        "en": [
-          "{customize}",
-          "{datasources}"
-        ],
-        "loc": [
-          "{datasources}",
-          "{personalizza}"
-        ]
-      }
-    ]
+    "placeholder_mismatches_count": 0,
+    "placeholder_mismatches_sample": []
   },
   "nb.json": {
-    "total_keys": 150,
+    "total_keys": 206,
     "empty_values_count": 0,
     "empty_values_sample": [],
-    "untranslated_count": 6,
+    "untranslated_count": 20,
     "untranslated_sample": [
       {
         "key": "appTitle",
         "value": "Customer Support AI Agent Widget"
+      },
+      {
+        "key": "gettingStartedStep1Title",
+        "value": "Get your Widget ID"
+      },
+      {
+        "key": "gettingStartedStep1Desc",
+        "value": "In the dashboard, go to {customize}, select your widget config, and copy its Widget ID."
+      },
+      {
+        "key": "gettingStartedStep2Desc",
+        "value": "Choose your framework and paste the snippet into your app, replacing {key} with your Widget ID."
       },
       {
         "key": "sessionExpiredTitle",
@@ -188,34 +248,38 @@
       {
         "key": "uncertaintyLogAgent",
         "value": "Agent:"
+      },
+      {
+        "key": "thinking",
+        "value": "Thinking..."
       }
     ],
     "suspicious_markers_count": 0,
     "suspicious_markers_sample": [],
-    "placeholder_mismatches_count": 1,
-    "placeholder_mismatches_sample": [
-      {
-        "key": "gettingStartedStep1Desc",
-        "en": [
-          "{customize}",
-          "{datasources}"
-        ],
-        "loc": [
-          "{datasources}",
-          "{tilpass}"
-        ]
-      }
-    ]
+    "placeholder_mismatches_count": 0,
+    "placeholder_mismatches_sample": []
   },
   "nl.json": {
-    "total_keys": 150,
+    "total_keys": 206,
     "empty_values_count": 0,
     "empty_values_sample": [],
-    "untranslated_count": 6,
+    "untranslated_count": 22,
     "untranslated_sample": [
       {
         "key": "appTitle",
         "value": "Customer Support AI Agent Widget"
+      },
+      {
+        "key": "gettingStartedStep1Title",
+        "value": "Get your Widget ID"
+      },
+      {
+        "key": "gettingStartedStep1Desc",
+        "value": "In the dashboard, go to {customize}, select your widget config, and copy its Widget ID."
+      },
+      {
+        "key": "gettingStartedStep2Desc",
+        "value": "Choose your framework and paste the snippet into your app, replacing {key} with your Widget ID."
       },
       {
         "key": "sessionExpiredTitle",
@@ -236,6 +300,10 @@
       {
         "key": "uncertaintyLogAgent",
         "value": "Agent:"
+      },
+      {
+        "key": "thinking",
+        "value": "Thinking..."
       }
     ],
     "suspicious_markers_count": 0,
@@ -244,11 +312,23 @@
     "placeholder_mismatches_sample": []
   },
   "pl.json": {
-    "total_keys": 150,
+    "total_keys": 206,
     "empty_values_count": 0,
     "empty_values_sample": [],
-    "untranslated_count": 5,
+    "untranslated_count": 20,
     "untranslated_sample": [
+      {
+        "key": "gettingStartedStep1Title",
+        "value": "Get your Widget ID"
+      },
+      {
+        "key": "gettingStartedStep1Desc",
+        "value": "In the dashboard, go to {customize}, select your widget config, and copy its Widget ID."
+      },
+      {
+        "key": "gettingStartedStep2Desc",
+        "value": "Choose your framework and paste the snippet into your app, replacing {key} with your Widget ID."
+      },
       {
         "key": "sessionExpiredTitle",
         "value": "Your session expired"
@@ -268,31 +348,39 @@
       {
         "key": "uncertaintyLogAgent",
         "value": "Agent:"
+      },
+      {
+        "key": "thinking",
+        "value": "Thinking..."
+      },
+      {
+        "key": "thoughtForFewSeconds",
+        "value": "Thought for a few seconds"
       }
     ],
     "suspicious_markers_count": 0,
     "suspicious_markers_sample": [],
-    "placeholder_mismatches_count": 1,
-    "placeholder_mismatches_sample": [
-      {
-        "key": "gettingStartedStep1Desc",
-        "en": [
-          "{customize}",
-          "{datasources}"
-        ],
-        "loc": [
-          "{datasources}",
-          "{dostosuj}"
-        ]
-      }
-    ]
+    "placeholder_mismatches_count": 0,
+    "placeholder_mismatches_sample": []
   },
   "pt.json": {
-    "total_keys": 150,
+    "total_keys": 206,
     "empty_values_count": 0,
     "empty_values_sample": [],
-    "untranslated_count": 4,
+    "untranslated_count": 19,
     "untranslated_sample": [
+      {
+        "key": "gettingStartedStep1Title",
+        "value": "Get your Widget ID"
+      },
+      {
+        "key": "gettingStartedStep1Desc",
+        "value": "In the dashboard, go to {customize}, select your widget config, and copy its Widget ID."
+      },
+      {
+        "key": "gettingStartedStep2Desc",
+        "value": "Choose your framework and paste the snippet into your app, replacing {key} with your Widget ID."
+      },
       {
         "key": "sessionExpiredTitle",
         "value": "Your session expired"
@@ -308,6 +396,18 @@
       {
         "key": "agentTyping",
         "value": "Customer Support AI Agent is typing"
+      },
+      {
+        "key": "thinking",
+        "value": "Thinking..."
+      },
+      {
+        "key": "thoughtForFewSeconds",
+        "value": "Thought for a few seconds"
+      },
+      {
+        "key": "thoughtForSeconds",
+        "value": "Thought for {duration} seconds"
       }
     ],
     "suspicious_markers_count": 0,
@@ -316,11 +416,23 @@
     "placeholder_mismatches_sample": []
   },
   "sv.json": {
-    "total_keys": 150,
+    "total_keys": 206,
     "empty_values_count": 0,
     "empty_values_sample": [],
-    "untranslated_count": 5,
+    "untranslated_count": 20,
     "untranslated_sample": [
+      {
+        "key": "gettingStartedStep1Title",
+        "value": "Get your Widget ID"
+      },
+      {
+        "key": "gettingStartedStep1Desc",
+        "value": "In the dashboard, go to {customize}, select your widget config, and copy its Widget ID."
+      },
+      {
+        "key": "gettingStartedStep2Desc",
+        "value": "Choose your framework and paste the snippet into your app, replacing {key} with your Widget ID."
+      },
       {
         "key": "sessionExpiredTitle",
         "value": "Your session expired"
@@ -340,6 +452,14 @@
       {
         "key": "uncertaintyLogAgent",
         "value": "Agent:"
+      },
+      {
+        "key": "thinking",
+        "value": "Thinking..."
+      },
+      {
+        "key": "thoughtForFewSeconds",
+        "value": "Thought for a few seconds"
       }
     ],
     "suspicious_markers_count": 0,

@@ -178,6 +178,8 @@
   "embedUnauthorizedTitle": "Solicitação de widget não autorizada",
   "embedTokenInvalidOrExpired": "O token de incorporação é inválido ou expirou. Por favor, regenere seu trecho de widget.",
   "embedWidgetKeyHelp": "Fornecer um único",
+  "embedTemporarilyUnavailableTitle": "Assistente temporariamente indisponível",
+  "embedTemporarilyUnavailableMessage": "Não foi possível carregar o assistente neste momento. Uma nova tentativa será feita automaticamente — verifique novamente em instantes.",
   "euHostedGdpr": "Hospedado na UE · Compatível com o GDPR",
   "devOverlayNoTimeline": "Ainda sem cronograma.",
   "devOverlayGoOnline": "Vá online",

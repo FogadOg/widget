@@ -178,6 +178,8 @@
   "embedUnauthorizedTitle": "Ongeautoriseerd widgetverzoek",
   "embedTokenInvalidOrExpired": "De insluittoken is ongeldig of verlopen. Gelieve uw widgetfragment opnieuw te genereren.",
   "embedWidgetKeyHelp": "Geef een enkele",
+  "embedTemporarilyUnavailableTitle": "Assistent tijdelijk niet beschikbaar",
+  "embedTemporarilyUnavailableMessage": "De assistent kon nu niet worden geladen. Er wordt automatisch opnieuw geprobeerd — kijk zo nog eens.",
   "euHostedGdpr": "Gehost in de EU · GDPR-conform",
   "devOverlayNoTimeline": "Nog geen tijdlijn.",
   "devOverlayGoOnline": "Ga online",

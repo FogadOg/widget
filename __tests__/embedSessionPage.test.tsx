@@ -409,4 +409,42 @@ describe('Embed session page', () => {
     const html = renderToStaticMarkup(element as any);
     expect(html).toContain('Widget Configuration Error');
   });
+  test('renders the transient unavailable card (not missing-params) when the resolver is down', async () => {
+    const embedClientPath = require.resolve('../app/embed/session/EmbedClient');
+    const errorBoundaryPath = require.resolve('../components/ErrorBoundary');
+    const i18nPath = require.resolve('../lib/i18n');
+    jest.doMock(embedClientPath, () => ({
+      __esModule: true,
+      default: (props: any) => React.createElement('div', { 'data-embed-client': '1', 'data-props': JSON.stringify(props) })
+    }));
+    jest.doMock(errorBoundaryPath, () => ({
+      __esModule: true,
+      default: ({ children }: any) => React.createElement('div', { 'data-error-boundary': '1' }, children)
+    }));
+    jest.doMock(i18nPath, () => ({
+      getLocaleDirection: () => 'ltr',
+      getTranslations: () => ({
+        widgetConfigError: 'Widget Configuration Error',
+        widgetConfigMissingParams: 'Missing required parameters.',
+        widgetConfigOurDocumentation: 'our documentation',
+        embedTemporarilyUnavailableTitle: 'Assistant temporarily unavailable',
+        embedTemporarilyUnavailableMessage: 'We couldn\'t load the assistant right now. It will retry automatically — please check back in a moment.',
+      }),
+    }));
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({}) });
+    (global as any).fetch = fetchMock;
+    const page = require('../app/embed/session/page').default;
+    const element = await page({ searchParams: Promise.resolve({ key: 'wgt_down' }) });
+    const html = renderToStaticMarkup(element as any);
+    // transient failures are retried before giving up
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(html).toContain('Assistant temporarily unavailable');
+    // reporter payload marks the error retryable for the loader
+    expect(html).toContain('resolver_unavailable');
+    expect(html).toContain('%22transient%22%3Atrue');
+    // NOT the permanent configuration-error card
+    expect(html).not.toContain('Widget Configuration Error');
+    consoleErrorSpy.mockRestore();
+  });
 });

@@ -178,6 +178,8 @@
   "embedUnauthorizedTitle": "Obehörig widgetförfrågan",
   "embedTokenInvalidOrExpired": "Inbäddningstoken är ogiltig eller har gått ut. Vänligen regenerera din widgetsnutt.",
   "embedWidgetKeyHelp": "Ge en enda",
+  "embedTemporarilyUnavailableTitle": "Assistenten är tillfälligt otillgänglig",
+  "embedTemporarilyUnavailableMessage": "Assistenten kunde inte läsas in just nu. Ett nytt försök görs automatiskt — titta tillbaka om en stund.",
   "euHostedGdpr": "Värd i EU · GDPR-kompatibel",
   "devOverlayNoTimeline": "Ingen tidslinje än.",
   "devOverlayGoOnline": "Gå online",

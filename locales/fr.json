@@ -178,6 +178,8 @@
   "embedUnauthorizedTitle": "Demande de widget non autorisée",
   "embedTokenInvalidOrExpired": "Le jeton d'intégration est invalide ou a expiré. Veuillez régénérer votre extrait de widget.",
   "embedWidgetKeyHelp": "Fournir un seul",
+  "embedTemporarilyUnavailableTitle": "Assistant temporairement indisponible",
+  "embedTemporarilyUnavailableMessage": "Impossible de charger l'assistant pour le moment. Une nouvelle tentative aura lieu automatiquement — veuillez revenir dans un instant.",
   "euHostedGdpr": "Hébergé dans l'UE · Conforme au RGPD",
   "devOverlayNoTimeline": "Pas encore de calendrier.",
   "devOverlayGoOnline": "Aller en ligne",

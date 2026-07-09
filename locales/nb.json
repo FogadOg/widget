@@ -178,6 +178,8 @@
   "embedUnauthorizedTitle": "Uautorisert widgetforespørsel",
   "embedTokenInvalidOrExpired": "Embed-tokenet er ugyldig eller utløpt. Vennligst regenerer widget-snippetet ditt.",
   "embedWidgetKeyHelp": "Gi en enkelt",
+  "embedTemporarilyUnavailableTitle": "Assistenten er midlertidig utilgjengelig",
+  "embedTemporarilyUnavailableMessage": "Assistenten kunne ikke lastes inn akkurat nå. Den prøver automatisk på nytt — sjekk igjen om et øyeblikk.",
   "euHostedGdpr": "Vertet i EU · GDPR-kompatibel",
   "devOverlayNoTimeline": "Ingen tidslinje ennå.",
   "devOverlayGoOnline": "Gå på nett",

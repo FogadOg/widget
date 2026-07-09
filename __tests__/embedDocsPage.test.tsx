@@ -32,6 +32,8 @@ jest.mock('../lib/i18n', () => ({
     embedTokenMisconfigured: 'Widget token verification is enabled but not configured correctly.',
     embedUnauthorizedTitle: 'Unauthorized widget request',
     embedTokenInvalidOrExpired: 'The embed token is invalid or expired. Please regenerate your widget snippet.',
+    embedTemporarilyUnavailableTitle: 'Assistant temporarily unavailable',
+    embedTemporarilyUnavailableMessage: 'We couldn\'t load the assistant right now. It will retry automatically — please check back in a moment.',
   })),
 }));
 import DocsPage from '../app/embed/docs/page';
@@ -217,5 +219,48 @@ describe('Docs page server component', () => {
     expect(props.agentId).toBe('a-docs');
     expect(props.configId).toBe('cfg-docs');
     expect(props.locale).toBe('de');
+  });
+  test('renders the transient unavailable card (not missing-params) when the resolver is down', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({}) });
+    (global as any).fetch = fetchMock;
+    const element = await (DocsPage as any)({ searchParams: Promise.resolve({ key: 'wgt_down' }) });
+    const html = renderToStaticMarkup(element as any);
+    // transient failures are retried before giving up
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(html).toContain('Assistant temporarily unavailable');
+    // reporter payload marks the error retryable for the loader
+    expect(html).toContain('resolver_unavailable');
+    expect(html).toContain('%22transient%22%3Atrue');
+    // NOT the permanent configuration-error card
+    expect(html).not.toContain('data-client-id');
+    consoleErrorSpy.mockRestore();
+  });
+  test('renders the missing-params card without retrying when the resolver rejects the key', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({}) });
+    (global as any).fetch = fetchMock;
+    const element = await (DocsPage as any)({ searchParams: Promise.resolve({ key: 'wgt_bad' }) });
+    const html = renderToStaticMarkup(element as any);
+    // a definitive 4xx answer is not retried
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(html).toContain('Docs Agent Configuration Error');
+    expect(html).not.toContain('resolver_unavailable');
+    consoleErrorSpy.mockRestore();
+  });
+  test('recovers and renders DocsClient when the resolver succeeds on a retry', async () => {
+    const fetchMock = jest.fn()
+      .mockRejectedValueOnce(new Error('socket hang up'))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { clientId: 'c-retry', agentId: 'a-retry', configId: 'cfg-retry' } }),
+      });
+    (global as any).fetch = fetchMock;
+    const element = await (DocsPage as any)({ searchParams: Promise.resolve({ key: 'wgt_retry' }) });
+    const html = renderToStaticMarkup(element as any);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const m = html.match(/data-props="([^"]*)"/);
+    const props = JSON.parse((m ? m[1] : '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
+    expect(props.clientId).toBe('c-retry');
   });
 });

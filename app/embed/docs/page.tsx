@@ -1,6 +1,5 @@
 import DocsClient from './DocsClient';
 import { getTranslations } from '../../../lib/i18n';
-import { API } from '../../../lib/api';
 import {
   getEmbedTokenSecretsFromEnv,
   isJwtLikeClientId,
@@ -8,6 +7,7 @@ import {
   verifyEmbedToken,
 } from '../../../lib/embedToken';
 import { renderDocsEmbedErrorCard } from './renderEmbedErrorCard';
+import { resolveInstallKeyServer } from '../../../lib/resolveInstallKey';
 
 type Props = {
   searchParams: Promise<{
@@ -22,35 +22,6 @@ type Props = {
     loaderVersion?: string;
   }>;
 };
-
-/**
- * Resolve a single install key (wgt_…) to the embed triple via the backend
- * resolver, server-side. Returns null on any failure so the caller falls back
- * to the standard "missing params" error card.
- */
-async function resolveInstallKey(
-  key: string,
-): Promise<{ clientId: string; agentId: string; configId: string; locale?: string } | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
-  try {
-    const res = await fetch(API.embedResolveServer(key), { cache: 'no-store', signal: controller.signal });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const json = await res.json();
-    const data = json?.data;
-    if (!data?.clientId || !data?.agentId || !data?.configId) return null;
-    return {
-      clientId: String(data.clientId),
-      agentId: String(data.agentId),
-      configId: String(data.configId),
-      locale: data.locale ? String(data.locale) : undefined,
-    };
-  } catch {
-    clearTimeout(timer);
-    return null;
-  }
-}
 
 function fromBase64Url(input: string): Buffer {
   const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
@@ -93,19 +64,40 @@ export default async function DocsPage({ searchParams }: Props) {
 
   // Single-key snippet: resolve the public key to the triple server-side when
   // the explicit IDs weren't supplied. The explicit form always wins.
+  let resolverUnavailable = false;
   if ((!clientId || !agentId || !configId) && key) {
-    const resolved = await resolveInstallKey(key);
-    if (resolved) {
+    const resolved = await resolveInstallKeyServer(key);
+    if (resolved.status === 'resolved') {
       clientId = resolved.clientId;
       agentId = resolved.agentId;
       configId = resolved.configId;
       if (!params.locale && resolved.locale) locale = resolved.locale;
+    } else if (resolved.status === 'unavailable') {
+      resolverUnavailable = true;
     }
   }
 
   const t = getTranslations(locale);
 
   if (!clientId || !agentId || !configId) {
+    // A resolver outage is not a configuration error: the install key may be
+    // perfectly valid. Render a transient card whose reporter payload carries
+    // `transient: true` so the loader retries the embed (hidden) instead of
+    // parking the visitor on a terminal "check your installation" card.
+    if (resolverUnavailable) {
+      return renderDocsEmbedErrorCard(
+        locale,
+        t.embedTemporarilyUnavailableTitle as string,
+        <p style={{ color: 'var(--muted-foreground, #6b7280)', fontSize: '14px', lineHeight: '1.6' }}>
+          {t.embedTemporarilyUnavailableMessage as string}
+        </p>,
+        {
+          errorType: 'resolver_unavailable',
+          logMessage: 'Install key resolver was unreachable after retries; the loader will retry the docs embed.',
+          context: { locale, transient: true },
+        }
+      );
+    }
     return renderDocsEmbedErrorCard(
       locale,
       t.docsConfigError as string,

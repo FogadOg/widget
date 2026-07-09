@@ -551,6 +551,12 @@
         const perAttemptTimeoutMs = isDev ? 60000 : 12000;
         let loadAttempt = 1;
         let loadTimeout = null;
+        // True while a reload is scheduled for a transient error card (e.g.
+        // the install-key resolver was briefly unreachable). Suppresses the
+        // card's WIDGET_SHOW so the visitor never sees an error we are about
+        // to recover from.
+        let transientRetryPending = false;
+        const TRANSIENT_RETRY_DELAY_MS = 1500;
         function armLoadTimeout() {
           clearTimeout(loadTimeout);
           loadTimeout = setTimeout(() => {
@@ -1440,6 +1446,9 @@
 
             switch (type) {
             case "WIDGET_RESIZE":
+                // A resize means the real widget booted — the retried load
+                // recovered, so error-card suppression no longer applies.
+                transientRetryPending = false;
                 if (data?.hide) {
                   allowDisplay = false;
                   container.style.display = "none";
@@ -1546,6 +1555,11 @@
                 break;
 
               case "WIDGET_SHOW":
+                // The transient error card also posts WIDGET_SHOW; keep the
+                // container hidden while its reload is pending.
+                if (transientRetryPending && data && data.source === 'embed-error') {
+                  break;
+                }
                 if (visibilityFallbackTimeout) {
                   clearTimeout(visibilityFallbackTimeout);
                   visibilityFallbackTimeout = null;
@@ -1628,6 +1642,36 @@
                 break;
 
               case "WIDGET_ERROR":
+                // A transient error card (backend blip while resolving the
+                // embed) is recoverable: spend the remaining load-attempt
+                // budget reloading the embed instead of surfacing a terminal
+                // error to a production visitor. Only when every attempt is
+                // exhausted does the card show and the error event fire.
+                if (data && data.transient === true && loadAttempt < MAX_LOAD_ATTEMPTS) {
+                  loadAttempt += 1;
+                  transientRetryPending = true;
+                  logError("Widget reported a transient error; retrying", {
+                    errorType: data && data.errorType,
+                    attempt: loadAttempt,
+                    maxAttempts: MAX_LOAD_ATTEMPTS,
+                  });
+                  if (visibilityFallbackTimeout) {
+                    clearTimeout(visibilityFallbackTimeout);
+                    visibilityFallbackTimeout = null;
+                  }
+                  clearTimeout(loadTimeout);
+                  iframeLoaded = false;
+                  // First retry is immediate (the embed server already applied
+                  // its own backoff before giving up); later ones back off.
+                  setTimeout(() => {
+                    iframe.src = baseIframeSrc +
+                      (baseIframeSrc.indexOf('?') === -1 ? '?' : '&') +
+                      '_retry=' + loadAttempt;
+                    armLoadTimeout();
+                  }, TRANSIENT_RETRY_DELAY_MS * (loadAttempt - 2));
+                  break;
+                }
+                transientRetryPending = false;
                 logError("Widget reported an error", data);
                 if ((data && data.source === 'embed-error') || isCompactContainer()) {
                   applyErrorContainerLayout(data);

@@ -178,6 +178,8 @@
   "embedUnauthorizedTitle": "Nieautoryzowane żądanie widżetu",
   "embedTokenInvalidOrExpired": "Token osadzania jest nieprawidłowy lub wygasł. Proszę wygenerować ponownie swój fragment widżetu.",
   "embedWidgetKeyHelp": "Proszę podać pojedynczy",
+  "embedTemporarilyUnavailableTitle": "Asystent tymczasowo niedostępny",
+  "embedTemporarilyUnavailableMessage": "Nie udało się teraz załadować asystenta. Próba zostanie automatycznie ponowiona — sprawdź ponownie za chwilę.",
   "euHostedGdpr": "Hostowane w UE · Zgodne z RODO",
   "devOverlayNoTimeline": "Nie ma jeszcze harmonogramu.",
   "devOverlayGoOnline": "Wejdź do sieci",

@@ -178,6 +178,8 @@
   "embedUnauthorizedTitle": "Unbefugte Widget-Anfrage",
   "embedTokenInvalidOrExpired": "Das Einbettungstoken ist ungültig oder abgelaufen. Bitte regenerieren Sie Ihren Widget-Snippet.",
   "embedWidgetKeyHelp": "Bitte geben Sie einen einzelnen",
+  "embedTemporarilyUnavailableTitle": "Assistent vorübergehend nicht verfügbar",
+  "embedTemporarilyUnavailableMessage": "Der Assistent konnte gerade nicht geladen werden. Es wird automatisch ein neuer Versuch gestartet – bitte schauen Sie gleich noch einmal vorbei.",
   "euHostedGdpr": "In der EU gehostet · DSGVO-konform",
   "devOverlayNoTimeline": "Noch kein Zeitplan.",
   "devOverlayGoOnline": "Gehe online",

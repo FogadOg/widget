@@ -178,6 +178,8 @@
   "embedUnauthorizedTitle": "Unauthorized widget request",
   "embedTokenInvalidOrExpired": "The embed token is invalid or expired. Please regenerate your widget snippet.",
   "embedWidgetKeyHelp": "Provide a single",
+  "embedTemporarilyUnavailableTitle": "Assistant temporarily unavailable",
+  "embedTemporarilyUnavailableMessage": "We couldn't load the assistant right now. It will retry automatically — please check back in a moment.",
   "euHostedGdpr": "Hosted in the EU · GDPR compliant",
   "devOverlayNoTimeline": "No timeline yet.",
   "devOverlayGoOnline": "Go online",
