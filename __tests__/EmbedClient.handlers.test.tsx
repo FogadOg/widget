@@ -78,7 +78,7 @@ describe('EmbedClient handlers', () => {
     mockFetch = jest.fn((url: string, options?: any) => {
       if (url.includes('/agents/')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { name: 'Test' } }) });
       if (url.includes('/widget-config/')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: {} }) });
-      if (url.includes('/sessions')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { session_id: 'sess-1' } }) });
+      if (url.includes('/sessions') && !url.includes('/messages')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { session_id: 'sess-1' } }) });
       if (url.includes('/messages') && options?.method === 'POST') return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: {} }) });
       if (url.includes('/messages')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { messages: [] } }) });
       return Promise.resolve({ ok: true, json: async () => ({}) });

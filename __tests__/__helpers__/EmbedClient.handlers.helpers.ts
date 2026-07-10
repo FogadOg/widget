@@ -47,7 +47,7 @@ export function createFetchMock(): jest.Mock {
     if (url.includes('/widget-config/'))
       return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: {} }) });
 
-    if (url.includes('/sessions'))
+    if (url.includes('/sessions') && !url.includes('/messages'))
       return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { session_id: 'sess-1' } }) });
 
     if (url.includes('/messages') && options?.method === 'POST')

@@ -619,7 +619,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
           });
         }
-        if (url.includes('/sessions')) {
+        if (url.includes('/sessions') && !url.includes('/messages')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({
@@ -1121,7 +1121,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/sessions')) {
+        if (url.includes('/sessions') && !url.includes('/messages')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({
@@ -1192,7 +1192,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { primary_color: '#000', feedback_enabled: true } }),
           });
         }
-        if (url.includes('/sessions')) {
+        if (url.includes('/sessions') && !url.includes('/messages')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { session_id: 's1', expires_at: '2026-12-31T23:59:59Z' } }),
@@ -1350,7 +1350,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/sessions')) {
+        if (url.includes('/sessions') && !url.includes('/messages')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { session_id: 's1', expires_at: '2026-12-31T23:59:59Z' } }),
@@ -1385,7 +1385,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success' }),
           });
         }
-        if (url.includes('/sessions')) {
+        if (url.includes('/sessions') && !url.includes('/messages')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { session_id: 's1', expires_at: '2026-12-31T23:59:59Z' } }),
@@ -1547,7 +1547,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/sessions')) {
+        if (url.includes('/sessions') && !url.includes('/messages')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({
@@ -1601,7 +1601,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { primary_color: '#000' } }),
           });
         }
-        if (url.includes('/sessions')) {
+        if (url.includes('/sessions') && !url.includes('/messages')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: { session_id: 's1', expires_at: '2026-12-31T23:59:59Z' } }),
@@ -2153,7 +2153,7 @@ describe('EmbedClient Component', () => {
             }),
           });
         }
-        if (url.includes('/sessions')) {
+        if (url.includes('/sessions') && !url.includes('/messages')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({
@@ -4379,7 +4379,7 @@ describe('EmbedClient Component', () => {
             json: async () => ({ status: 'success', data: { name: 'Test' } }),
           });
         }
-        if (url.includes('/sessions')) {
+        if (url.includes('/sessions') && !url.includes('/messages')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ status: 'success', data: {} }),

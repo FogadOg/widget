@@ -44,7 +44,7 @@ describe.skip('DocsClient basic flows', () => {
     // Basic fetch mock: respond positively to session creation and messages
     // Basic fetch mock: respond positively to session creation and messages
     (global as any).fetch = jest.fn((url: string, opts: any) => {
-      if (opts && opts.method === 'POST' && url.includes('/sessions')) {
+      if (opts && opts.method === 'POST' && url.includes('/sessions') && !url.includes('/messages')) {
         return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: { session_id: 'sess-1', expires_at: new Date(Date.now() + 100000).toISOString(), messages: [] } }) })
       }
       if (opts && opts.method === 'GET' && url.includes('/widget-config/')) {
