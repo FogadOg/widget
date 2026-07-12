@@ -6,6 +6,8 @@ import { FOCUS_RING } from '../EmbedShell.constants';
 
 // Shared message composer: auto-growing textarea with Enter-to-send /
 // Shift+Enter for a newline, and a 16px font size to avoid iOS focus zoom.
+type ComposerAttachment = { id: string; filename: string };
+
 export function Composer({
   input,
   setInput,
@@ -22,6 +24,12 @@ export function Composer({
   sendLabel,
   stopLabel,
   inputRef,
+  fileUploadEnabled = false,
+  pendingAttachments = [],
+  uploadingFiles = 0,
+  onPickFiles,
+  onRemoveAttachment,
+  attachLabel = 'Attach file',
 }: {
   input: string;
   setInput: (v: string) => void;
@@ -38,7 +46,14 @@ export function Composer({
   sendLabel: string;
   stopLabel: string;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
+  fileUploadEnabled?: boolean;
+  pendingAttachments?: ComposerAttachment[];
+  uploadingFiles?: number;
+  onPickFiles?: (files: FileList) => void;
+  onRemoveAttachment?: (id: string) => void;
+  attachLabel?: string;
 }) {
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const autoGrow = (el: HTMLTextAreaElement | null) => {
     if (!el) return;
     el.style.height = 'auto';
@@ -61,7 +76,68 @@ export function Composer({
       className="p-3 border-t"
       style={{ borderColor: subtleBorderColor }}
     >
+      {fileUploadEnabled && (pendingAttachments.length > 0 || uploadingFiles > 0) && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {pendingAttachments.map((att) => (
+            <span
+              key={att.id}
+              className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs"
+              style={{ borderColor: subtleBorderColor, ...fontStyles }}
+            >
+              <span className="truncate max-w-[140px]">📎 {att.filename}</span>
+              {onRemoveAttachment && (
+                <button
+                  type="button"
+                  onClick={() => onRemoveAttachment(att.id)}
+                  aria-label={`Remove ${att.filename}`}
+                  className="opacity-60 hover:opacity-100"
+                >
+                  ×
+                </button>
+              )}
+            </span>
+          ))}
+          {uploadingFiles > 0 && (
+            <span className="inline-flex items-center gap-1 text-xs opacity-70" style={fontStyles}>
+              <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" aria-hidden="true" />
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex items-end space-x-2">
+        {fileUploadEnabled && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0 && onPickFiles) {
+                  onPickFiles(e.target.files);
+                }
+                e.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label={attachLabel}
+              title={attachLabel}
+              className={`shrink-0 inline-flex items-center justify-center px-2.5 py-2 border hover:opacity-90 ${FOCUS_RING}`}
+              style={{
+                borderColor: subtleBorderColor,
+                borderRadius: `${buttonBorderRadius}px`,
+                color: 'inherit',
+                ['--tw-ring-color' as string]: withAlpha(primaryColor, 0.6),
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+              </svg>
+            </button>
+          </>
+        )}
         <textarea
           ref={inputRef}
           rows={1}

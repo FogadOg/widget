@@ -75,6 +75,11 @@ export default function EmbedShell({
   teaserMessage = null,
   onTeaserMeasure,
   onDismissTeaser,
+  fileUploadEnabled = false,
+  pendingAttachments = [],
+  uploadingFiles = 0,
+  onPickFiles,
+  onRemoveAttachment,
 }: Props) {
   const { locale: hookLocale } = useWidgetTranslation();
   const locale = localeProp || hookLocale;
@@ -923,6 +928,12 @@ export default function EmbedShell({
                 sendLabel={sendLabel}
                 stopLabel={stopLabel}
                 inputRef={inputRef}
+                fileUploadEnabled={fileUploadEnabled}
+                pendingAttachments={pendingAttachments}
+                uploadingFiles={uploadingFiles}
+                onPickFiles={onPickFiles}
+                onRemoveAttachment={onRemoveAttachment}
+                attachLabel={translate(locale, 'uploadFiles')}
               />
               {!widgetConfig?.hide_branding && (
               <div className="p-2 text-center text-xs flex items-center justify-center gap-2 flex-wrap" style={{ color: mutedTextColor }}>
@@ -1252,6 +1263,12 @@ export default function EmbedShell({
                   sendLabel={sendLabel}
                   stopLabel={stopLabel}
                   inputRef={inputRef}
+                  fileUploadEnabled={fileUploadEnabled}
+                  pendingAttachments={pendingAttachments}
+                  uploadingFiles={uploadingFiles}
+                  onPickFiles={onPickFiles}
+                  onRemoveAttachment={onRemoveAttachment}
+                  attachLabel={translate(locale, 'uploadFiles')}
                 />
                 {!widgetConfig?.hide_branding && (
                 <div className="p-2 text-center text-xs" style={{ color: mutedTextColor }}>

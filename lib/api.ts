@@ -56,6 +56,12 @@ export const API = {
   },
   sessionFeedback: (sessionId: string) => `${getApiV1BaseUrl()}/sessions/${sessionId}/feedback`,
   sessionHeartbeat: (sessionId: string) => `${getApiV1BaseUrl()}/sessions/${sessionId}/heartbeat`,
+  sessionFiles: (sessionId: string) => {
+    if (!sessionId) {
+      throw new Error('API.sessionFiles called with empty sessionId');
+    }
+    return `${getApiV1BaseUrl()}/sessions/${sessionId}/files`;
+  },
 
   // Message endpoints
   messageFeedback: (messageId: string) => `${getApiV1BaseUrl()}/message/${messageId}/feedback`,

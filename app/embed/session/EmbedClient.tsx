@@ -178,6 +178,13 @@ export default function EmbedClient({
   const lastReadStorageKey = helpers.lastReadStorageKey(initialClientId, initialAgentId);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  // File-upload composer state: files the visitor has uploaded (server-side)
+  // and will attach to their next message. Populated by handlePickFiles, drained
+  // on send. `uploadingFiles` counts in-flight uploads for the composer spinner.
+  const [pendingAttachments, setPendingAttachments] = useState<import('../../../types/widget').MessageAttachment[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(0);
+  const pendingAttachmentsRef = useRef<import('../../../types/widget').MessageAttachment[]>([]);
+  useEffect(() => { pendingAttachmentsRef.current = pendingAttachments; }, [pendingAttachments]);
   // Streaming state: holds the partial agent message being streamed
   const {
     streamingMessage,
@@ -1153,10 +1160,53 @@ export default function EmbedClient({
     [parentSensitiveOrigin],
   );
 
+  // Upload picked files to the session, appending each to pendingAttachments and
+  // emitting WIDGET_FILE_UPLOADED so the host page can react. Best-effort per file:
+  // one failure surfaces an error but doesn't block the others.
+  const handlePickFiles = useCallback(async (files: FileList | File[]) => {
+    const list = Array.from(files || []);
+    if (list.length === 0) return;
+    const sid = sessionIdRef.current || sessionId;
+    const token = authTokenRef.current || authToken;
+    if (!sid || !token) {
+      setError(String(t.sessionOrAuthError) || 'Session or authentication error');
+      return;
+    }
+    for (const file of list) {
+      setUploadingFiles((n) => n + 1);
+      try {
+        const attachment = await helpers.uploadSessionFile(sid, file, token);
+        setPendingAttachments((prev) => [...prev, attachment]);
+        if (parentSensitiveOrigin) {
+          try {
+            window.parent.postMessage(
+              { type: EMBED_EVENTS.FILE_UPLOADED, data: attachment },
+              parentSensitiveOrigin,
+            );
+          } catch {
+            // host may be navigating — non-fatal
+          }
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(t.failedToSendMessage));
+        logError(err instanceof Error ? err : new Error(String(err)), { action: 'uploadSessionFile' });
+      } finally {
+        setUploadingFiles((n) => Math.max(0, n - 1));
+      }
+    }
+  }, [sessionId, authToken, parentSensitiveOrigin, t]);
+
+  const handleRemoveAttachment = useCallback((id: string) => {
+    setPendingAttachments((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
   const handleSubmit = useCallback(async (e: React.FormEvent, messageText?: string, skipAddingUserMessage?: boolean) => {
     e.preventDefault();
     const rawMessage = messageText || input;
     if (!rawMessage.trim()) return;
+    // Attachments ride along with a typed message (backend requires non-empty
+    // content). Button/flow sends (skipAddingUserMessage) never carry attachments.
+    const attachmentsToSend = skipAddingUserMessage ? [] : pendingAttachmentsRef.current;
     // Re-entrancy guard: block ANY submit while a send/stream is in flight. Button
     // and suggestion submits (skipAddingUserMessage) previously bypassed this, which
     // let a rapid double-click spawn concurrent streams that clobbered the shared
@@ -1280,15 +1330,19 @@ export default function EmbedClient({
       }
     }
 
-    // Immediately add the user message to the UI
+    // Immediately add the user message to the UI (with any pending attachments
+    // so they render on the optimistic bubble before the reload confirms them).
     const userMessage: Message = {
       id: `temp-${Date.now()}`,
       text: message,
       from: 'user',
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      ...(attachmentsToSend.length > 0 ? { attachments: attachmentsToSend } : {}),
     };
     if (!skipAddingUserMessage) {
       setMessages(prev => [...prev, userMessage]);
+      // Drain the composer's pending attachments — they're now on this message.
+      if (attachmentsToSend.length > 0) setPendingAttachments([]);
     }
 
     // Notify parent about the sent message
@@ -1342,6 +1396,9 @@ export default function EmbedClient({
                 },
                 ...(identifiedUserRef.current
                   ? { user_context: identifiedUserRef.current }
+                  : {}),
+                ...(attachmentsToSend.length > 0
+                  ? { attachment_ids: attachmentsToSend.map((a) => a.id) }
                   : {}),
               }),
               signal: controller.signal,
@@ -2230,6 +2287,16 @@ export default function EmbedClient({
         input={input}
         setInput={setInput}
         handleSubmit={handleSubmit}
+        // File-upload composer UI is built but intentionally OFF for now.
+        // The picker (attach button + chips), upload wiring, event emission, and
+        // backend endpoint all still exist — to turn it on, restore the
+        // plan-gated line below and remove the hardcoded `false`.
+        // fileUploadEnabled={!!safeWidgetConfig?.file_upload_enabled}
+        fileUploadEnabled={false}
+        pendingAttachments={pendingAttachments}
+        uploadingFiles={uploadingFiles}
+        onPickFiles={handlePickFiles}
+        onRemoveAttachment={handleRemoveAttachment}
         error={error}
         locale={activeLocale}
         availableLocales={availableLocales}

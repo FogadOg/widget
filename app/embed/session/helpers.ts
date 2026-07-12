@@ -2,7 +2,34 @@ import { API } from '../../../lib/api';
 import { logError } from '../../../lib/errorHandling';
 import { getOrCreateVisitorId, getStoredSessionByKey, storeSessionByKey } from '../../../lib/sessionStorage';
 import { STORAGE_PREFIX } from '../../../lib/constants';
-import type { Message, SourceData } from '../../../types/widget';
+import type { Message, MessageAttachment, SourceData } from '../../../types/widget';
+
+/**
+ * Upload a file attachment for a session. Returns the created attachment
+ * (whose `id` is later passed to the send call as `attachment_ids`) or throws
+ * with a caller-displayable message on failure.
+ */
+export async function uploadSessionFile(
+  sessionId: string,
+  file: File,
+  token?: string | null,
+): Promise<MessageAttachment> {
+  if (!sessionId) throw new Error('uploadSessionFile called with empty sessionId');
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const form = new FormData();
+  form.append('file', file);
+  const response = await fetch(API.sessionFiles(sessionId), {
+    method: 'POST',
+    headers, // NB: no Content-Type — the browser sets the multipart boundary.
+    body: form,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data?.status !== 'success') {
+    throw new Error(data?.detail || `File upload failed (${response.status})`);
+  }
+  return data.data as MessageAttachment;
+}
 
 /**
  * Storage keys for widget instances.
@@ -174,6 +201,7 @@ export async function loadSessionMessages(
         sender: 'user' | 'assistant';
         created_at?: string;
         sources?: unknown[];
+        attachments?: MessageAttachment[];
         metadata?: Message['metadata'];
       };
       const loaded: Message[] = (data.data.messages as unknown[]).map((msg: unknown) => {
@@ -184,6 +212,7 @@ export async function loadSessionMessages(
           from: m.sender === 'assistant' ? 'agent' : m.sender,
           timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
           sources: (m.sources as SourceData[]) || [],
+          attachments: (m.attachments as MessageAttachment[]) || [],
           metadata: m.metadata,
         };
       });

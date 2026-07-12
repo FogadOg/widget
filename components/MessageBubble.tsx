@@ -14,12 +14,14 @@ import { normalizeHexColor, getReadableTextColor, withAlpha } from '../lib/color
 import { STATUS_COLORS } from '../lib/constants';
 
 type Source = { url?: string; title?: string; snippet?: string };
+type Attachment = { id: string; filename: string; content_type?: string; size_bytes?: number; url?: string | null };
 type Message = {
   id: string;
   text: string;
   from: 'user' | 'agent';
   timestamp?: number;
   sources?: Source[];
+  attachments?: Attachment[];
   metadata?: {
     safety_policy_action?: string;
     safety_decision_reason?: string;
@@ -374,6 +376,23 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
       <div className="flex flex-col items-end w-full" aria-live={isPending ? 'polite' : undefined}>
         <div className={`max-w-[80%] px-3.5 py-2.5`} style={bubbleStyle} data-pending={isPending ? 'true' : 'false'}>
           <div style={{ opacity: isPending ? 0.9 : 1 }}>{message.text}</div>
+          {message.attachments && message.attachments.length > 0 && (
+            <div className="mt-1.5 flex flex-col gap-1">
+              {message.attachments.map((att) => (
+                <a
+                  key={att.id}
+                  href={att.url ?? '#'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs underline underline-offset-2"
+                  style={{ color: 'inherit', opacity: 0.9 }}
+                >
+                  <span aria-hidden>📎</span>
+                  <span className="truncate max-w-[200px]">{att.filename}</span>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
         {isPending && (

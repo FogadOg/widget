@@ -61,6 +61,12 @@ export type Props = {
   onTeaserMeasure?: (size: { width: number; height: number }) => void;
   /** Dismiss the teaser for this page view */
   onDismissTeaser?: () => void;
+  /** Widget file-upload composer wiring (gated by the widget_file_upload plan feature). */
+  fileUploadEnabled?: boolean;
+  pendingAttachments?: Array<{ id: string; filename: string }>;
+  uploadingFiles?: number;
+  onPickFiles?: (files: FileList) => void;
+  onRemoveAttachment?: (id: string) => void;
   sessionExpiredBanner?: boolean;
   onDismissSessionExpiredBanner?: () => void;
   isOffline?: boolean;

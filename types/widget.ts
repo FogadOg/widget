@@ -11,6 +11,14 @@ export type SourceData = {
   reference_id?: string;
 };
 
+export type MessageAttachment = {
+  id: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  url: string | null;
+};
+
 export type Message = {
   id: string;
   text: string;
@@ -18,6 +26,7 @@ export type Message = {
   timestamp?: number;
   hasFeedback?: boolean;
   sources?: SourceData[];
+  attachments?: MessageAttachment[];
   metadata?: {
     assistant_unsure?: boolean;
     handoff?: boolean;
@@ -132,6 +141,8 @@ export type WidgetConfig = {
   hide_branding?: boolean;
   /** When false, the org's plan doesn't include support tickets — the human-handoff flow is disabled. */
   support_tickets_enabled?: boolean;
+  /** When true, the composer shows a file-attach control (widget_file_upload plan feature + org toggle). */
+  file_upload_enabled?: boolean;
   // Design system
   spacing?: 'compact' | 'comfortable' | 'spacious';
   open_animation?: 'none' | 'slide' | 'spring' | 'fade';
