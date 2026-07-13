@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { DEFAULTS, DEFAULT_COLORS, SHADOW_INTENSITY, SIZE_PRESETS } from '../lib/constants';
+import { useMemo, useEffect, useState } from 'react';
+import { DEFAULTS, DEFAULT_COLORS, DARK_DEFAULTS, SHADOW_INTENSITY, SIZE_PRESETS } from '../lib/constants';
 import type { WidgetConfig } from '../types/widget';
 import { normalizeHexColor, getReadableTextColor, getRelativeLuminance, withAlpha } from '../lib/colors';
 
@@ -9,11 +9,37 @@ const SPACING_MAP = {
   spacious:    { padding: '20px', gap: '16px' },
 } as const;
 
+// Tracks the visitor's OS-level dark-mode preference, re-rendering when it
+// changes. Used to resolve theme='system'. SSR-safe (returns false until mounted).
+function usePrefersDark(): boolean {
+  const [prefersDark, setPrefersDark] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    setPrefersDark(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setPrefersDark(e.matches);
+    mq.addEventListener?.('change', handler);
+    return () => mq.removeEventListener?.('change', handler);
+  }, []);
+  return prefersDark;
+}
+
 export function useWidgetStyles(widgetConfig?: WidgetConfig) {
   const primaryColor = normalizeHexColor(widgetConfig?.primary_color, DEFAULT_COLORS.PRIMARY);
   const secondaryColor = normalizeHexColor(widgetConfig?.secondary_color, DEFAULT_COLORS.SECONDARY);
-  const backgroundColor = normalizeHexColor(widgetConfig?.background_color, DEFAULT_COLORS.BACKGROUND);
-  const textColor = normalizeHexColor(widgetConfig?.text_color, DEFAULT_COLORS.TEXT);
+  const rawBackground = normalizeHexColor(widgetConfig?.background_color, DEFAULT_COLORS.BACKGROUND);
+  const rawText = normalizeHexColor(widgetConfig?.text_color, DEFAULT_COLORS.TEXT);
+  // Resolve the effective theme. 'system' follows the visitor's OS setting.
+  const prefersDark = usePrefersDark();
+  const themeSetting = widgetConfig?.theme ?? 'light';
+  const isDarkTheme = themeSetting === 'dark' || (themeSetting === 'system' && prefersDark);
+  // In dark mode substitute a dark surface/text only when the configured colors
+  // look light — so an admin who deliberately set dark colors is respected, and
+  // the derived neutrals below (which key off background/text) adapt for free.
+  const backgroundColor = isDarkTheme && getRelativeLuminance(rawBackground) > 0.5
+    ? DARK_DEFAULTS.BACKGROUND : rawBackground;
+  const textColor = isDarkTheme && getRelativeLuminance(rawText) < 0.5
+    ? DARK_DEFAULTS.TEXT : rawText;
   // WCAG-contrast text color for any surface painted with primaryColor (buttons,
   // user bubbles, etc.) so a light brand color doesn't yield unreadable white. (#10)
   const readableOnPrimary = getReadableTextColor(primaryColor);

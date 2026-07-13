@@ -151,6 +151,9 @@ export type WidgetConfig = {
   respect_reduced_motion?: boolean;
   visual_effect?: 'none' | 'glassmorphism' | 'frosted';
   font_source?: 'system' | 'google';
+  // Color theme. 'system' follows the visitor's prefers-color-scheme; 'dark'
+  // swaps in a dark surface/text set (all derived neutrals adapt in useWidgetStyles).
+  theme?: 'light' | 'dark' | 'system';
 };
 
 /**

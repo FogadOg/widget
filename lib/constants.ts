@@ -71,6 +71,15 @@ export const DEFAULT_COLORS = {
   SHADOW: '#000000',
 } as const;
 
+// Dark-theme surface + text. Substituted for a light-looking background/text
+// when the resolved theme is dark (see useWidgetStyles). The widget derives all
+// neutrals (muted text, borders, skeletons, agent-bubble surface) from these,
+// so swapping the two here is enough to produce a coherent dark widget.
+export const DARK_DEFAULTS = {
+  BACKGROUND: '#0f172a',
+  TEXT: '#e2e8f0',
+} as const;
+
 // Semantic status colors — the one place color carries *meaning* in the widget
 // (error / offline / warning), kept theme-independent on purpose so a critical
 // message reads the same on every brand. Mirrors the values previously inlined
