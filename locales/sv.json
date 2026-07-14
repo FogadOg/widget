@@ -212,5 +212,9 @@
   "commandPaletteDescription": "Sök efter ett kommando att köra...",
   "widgetLoading": "Laddar…",
   "widgetLoadingAriaLabel": "Laddar widget",
-  "switchLanguage": "Byt språk"
+  "switchLanguage": "Byt språk",
+  "consentNoticeTitle": "Kom ihåg den här chatten?",
+  "consentNoticeBody": "Vi vill spara din konversation i din webbläsare så att den inte går förlorad vid omladdning. Inget sparas förrän du godkänner.",
+  "consentAccept": "Tillåt",
+  "consentDecline": "Nej tack"
 }

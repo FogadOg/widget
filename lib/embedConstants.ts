@@ -32,6 +32,8 @@ export const EMBED_EVENTS = {
   USER_UPDATED: 'WIDGET_USER_UPDATED',
   /** A file was uploaded by the user (future). */
   FILE_UPLOADED: 'WIDGET_FILE_UPLOADED',
+  /** Visitor answered the in-widget storage-consent notice (data: {granted}). */
+  CONSENT_CHANGED: 'WIDGET_CONSENT_CHANGED',
 
   // ── Message interceptors ──────────────────────────────────────────────────
   /** Iframe requests parent to run interceptors; parent replies with INTERCEPT_RESPONSE. */

@@ -212,5 +212,9 @@
   "commandPaletteDescription": "Recherchez une commande à exécuter...",
   "widgetLoading": "Chargement…",
   "widgetLoadingAriaLabel": "Chargement du widget",
-  "switchLanguage": "Changer de langue"
+  "switchLanguage": "Changer de langue",
+  "consentNoticeTitle": "Mémoriser cette conversation ?",
+  "consentNoticeBody": "Nous souhaitons enregistrer votre conversation dans votre navigateur afin qu'elle ne soit pas perdue en cas de rechargement. Rien n'est enregistré sans votre accord.",
+  "consentAccept": "Autoriser",
+  "consentDecline": "Non merci"
 }

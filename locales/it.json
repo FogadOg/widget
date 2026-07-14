@@ -212,5 +212,9 @@
   "commandPaletteDescription": "Cerca un comando da eseguire...",
   "widgetLoading": "Caricamento…",
   "widgetLoadingAriaLabel": "Caricamento widget",
-  "switchLanguage": "Cambia lingua"
+  "switchLanguage": "Cambia lingua",
+  "consentNoticeTitle": "Ricordare questa chat?",
+  "consentNoticeBody": "Vorremmo salvare la tua conversazione nel browser così non andrà persa se ricarichi la pagina. Nulla viene salvato finché non accetti.",
+  "consentAccept": "Consenti",
+  "consentDecline": "No, grazie"
 }

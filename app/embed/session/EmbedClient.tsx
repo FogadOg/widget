@@ -144,8 +144,10 @@ export default function EmbedClient({
   }, [initialLocale]);
 
   // Install the consent gate before any storage helper runs (LAUNCH-READINESS #16).
-  // Until the host page postMessages WIDGET_CONSENT_GRANT, visitor IDs and
-  // session IDs are kept in-memory only.
+  // Until consent is granted — by the visitor via the in-widget notice, or by
+  // the host page postMessaging WIDGET_CONSENT_GRANT — visitor IDs and session
+  // IDs are kept in-memory only.
+  const [consentPromptVisible, setConsentPromptVisible] = useState(false);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -153,6 +155,15 @@ export default function EmbedClient({
         const mod = await import('../../../lib/sessionStorage');
         if (cancelled) return;
         mod.setConsentRequired(initialConsentRequired);
+        if (!initialConsentRequired) return;
+        // An accept from a previous page load is honored silently; otherwise
+        // surface the in-widget notice so enabling the gate no longer disables
+        // persistence with no way for the visitor to opt in.
+        if (mod.hasPersistedConsentChoice()) {
+          mod.grantStorageConsent();
+        } else {
+          setConsentPromptVisible(true);
+        }
       } catch {
         // sessionStorage module is required for the widget; if it can't import
         // there are larger problems and the bootstrap will surface them.
@@ -473,6 +484,8 @@ export default function EmbedClient({
   // Listen for consent grant/revoke from the host page via the widget loader's
   // postMessage relay (window.CompaninWidget.grantConsent / revokeConsent).
   // Origin-validated so a malicious framing page cannot forge consent.
+  // A host-driven choice also settles the in-widget notice (grant hides it;
+  // revoke re-surfaces it so the visitor can opt back in).
   useEffect(() => {
     if (!initialConsentRequired) return;
     const handler = async (event: MessageEvent) => {
@@ -481,13 +494,35 @@ export default function EmbedClient({
       if (t !== 'WIDGET_CONSENT_GRANT' && t !== 'WIDGET_CONSENT_REVOKE') return;
       try {
         const mod = await import('../../../lib/sessionStorage');
-        if (t === 'WIDGET_CONSENT_GRANT') mod.grantStorageConsent();
-        else mod.revokeStorageConsent();
+        if (t === 'WIDGET_CONSENT_GRANT') {
+          mod.grantStorageConsent();
+          setConsentPromptVisible(false);
+        } else {
+          mod.revokeStorageConsent();
+          setConsentPromptVisible(true);
+        }
       } catch {}
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
   }, [initialConsentRequired, parentTargetOrigin]);
+
+  // Visitor's in-widget consent choice. Accept flips the storage gate (and
+  // persists the choice so the notice doesn't reappear next load); decline just
+  // dismisses for this page view — the widget keeps working memory-only either
+  // way. The host page is notified so it can sync its own consent records.
+  const handleConsentAccept = useCallback(async () => {
+    setConsentPromptVisible(false);
+    try {
+      const mod = await import('../../../lib/sessionStorage');
+      mod.grantStorageConsent();
+    } catch {}
+    safePostToParent({ type: EMBED_EVENTS.CONSENT_CHANGED, data: { granted: true } });
+  }, [safePostToParent]);
+  const handleConsentDecline = useCallback(() => {
+    setConsentPromptVisible(false);
+    safePostToParent({ type: EMBED_EVENTS.CONSENT_CHANGED, data: { granted: false } });
+  }, [safePostToParent]);
 
   // Allow the host page to toggle debug mode via postMessage. Works in
   // production so integrators can debug a live embed (chat.enableDebug()).
@@ -2329,6 +2364,9 @@ export default function EmbedClient({
         unreadCount={unreadCount}
         sessionExpiredBanner={sessionExpiredBanner}
         onDismissSessionExpiredBanner={() => setSessionExpiredBanner(false)}
+        showConsentPrompt={consentPromptVisible}
+        onConsentAccept={handleConsentAccept}
+        onConsentDecline={handleConsentDecline}
         isOffline={isOffline}
         feedbackDialog={
           ((showFeedbackDialogOverride !== undefined ? showFeedbackDialogOverride : showFeedbackDialog) && (showFeedbackDialogOverride !== undefined ? true : (sessionId && authToken))) ? (

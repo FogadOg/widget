@@ -212,5 +212,9 @@
   "commandPaletteDescription": "Suche nach einem auszuführenden Befehl...",
   "widgetLoading": "Laden…",
   "widgetLoadingAriaLabel": "Lade-Widget",
-  "switchLanguage": "Sprache wechseln"
+  "switchLanguage": "Sprache wechseln",
+  "consentNoticeTitle": "Diesen Chat merken?",
+  "consentNoticeBody": "Wir möchten Ihre Unterhaltung in Ihrem Browser speichern, damit sie beim Neuladen nicht verloren geht. Ohne Ihre Zustimmung wird nichts gespeichert.",
+  "consentAccept": "Erlauben",
+  "consentDecline": "Nein, danke"
 }

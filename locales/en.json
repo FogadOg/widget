@@ -212,5 +212,9 @@
   "commandPaletteDescription": "Search for a command to run...",
   "widgetLoading": "Loading…",
   "widgetLoadingAriaLabel": "Loading widget",
-  "switchLanguage": "Switch language"
+  "switchLanguage": "Switch language",
+  "consentNoticeTitle": "Remember this chat?",
+  "consentNoticeBody": "We'd like to store your conversation in your browser so it isn't lost if you reload. Nothing is stored until you agree.",
+  "consentAccept": "Allow",
+  "consentDecline": "No thanks"
 }

@@ -14,12 +14,27 @@ let consentGranted = false;
 // In-memory fallback used when storage is gated. Map<storageKey, value>.
 const memoryFallback = new Map<string, string>();
 
+// Marker persisted (with consent) once the visitor accepts, so the in-widget
+// consent notice isn't re-shown on every page load. Cleared by revocation like
+// every other companin-* key.
+const CONSENT_CHOICE_KEY = 'companin-consent-granted';
+
 export const setConsentRequired = (required: boolean): void => {
   consentRequired = !!required;
 };
 
 export const isStorageConsentGranted = (): boolean => {
   return !consentRequired || consentGranted;
+};
+
+// Whether the visitor accepted on a previous page load. Read directly from
+// localStorage: the marker only exists if it was written post-consent.
+export const hasPersistedConsentChoice = (): boolean => {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(CONSENT_CHOICE_KEY) === '1';
+  } catch {
+    return false;
+  }
 };
 
 export const grantStorageConsent = (): void => {
@@ -31,6 +46,7 @@ export const grantStorageConsent = (): void => {
         try { localStorage.setItem(key, value); } catch {}
       }
       memoryFallback.clear();
+      try { localStorage.setItem(CONSENT_CHOICE_KEY, '1'); } catch {}
     }
   } catch {
     // ignore — caller's environment may have no storage at all

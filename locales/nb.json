@@ -212,5 +212,9 @@
   "commandPaletteDescription": "Søk etter en kommando å kjøre...",
   "widgetLoading": "Laster…",
   "widgetLoadingAriaLabel": "Laster widget",
-  "switchLanguage": "Bytt språk"
+  "switchLanguage": "Bytt språk",
+  "consentNoticeTitle": "Huske denne chatten?",
+  "consentNoticeBody": "Vi vil gjerne lagre samtalen din i nettleseren slik at den ikke går tapt ved omlasting. Ingenting lagres før du godtar.",
+  "consentAccept": "Tillat",
+  "consentDecline": "Nei takk"
 }

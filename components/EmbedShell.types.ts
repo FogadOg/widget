@@ -69,6 +69,11 @@ export type Props = {
   onRemoveAttachment?: (id: string) => void;
   sessionExpiredBanner?: boolean;
   onDismissSessionExpiredBanner?: () => void;
+  /** Storage-consent notice (data-consent-required): shown until the visitor
+   *  or the host page grants/declines. Both callbacks present ⇒ banner renders. */
+  showConsentPrompt?: boolean;
+  onConsentAccept?: () => void;
+  onConsentDecline?: () => void;
   isOffline?: boolean;
   /** When true, anchors the widget to bottom-right (preview iframe). Default centers within the loader's small iframe. */
   previewPositioning?: boolean;

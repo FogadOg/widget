@@ -25,6 +25,7 @@ import { ChatSkeleton } from './components/ChatSkeleton';
 import { Suggestions } from './components/Suggestions';
 import { TypingIndicator } from './components/TypingIndicator';
 import { StatusBanners } from './components/StatusBanners';
+import { ConsentBanner } from './components/ConsentBanner';
 import { JumpToLatest } from './components/JumpToLatest';
 import { Composer } from './components/Composer';
 import { LanguageMenu } from './components/LanguageMenu';
@@ -67,6 +68,9 @@ export default function EmbedShell({
   onLocaleChange,
   sessionExpiredBanner = false,
   onDismissSessionExpiredBanner,
+  showConsentPrompt = false,
+  onConsentAccept,
+  onConsentDecline,
   isOffline = false,
   previewPositioning = false,
   isPreview = false,
@@ -410,6 +414,18 @@ export default function EmbedShell({
     sessionExpiredBody: translate(locale, 'sessionExpiredBody'),
     sessionExpiredDismiss: translate(locale, 'sessionExpiredDismiss'),
   };
+  // Storage-consent notice, shared by both render paths below.
+  const consentBanner =
+    showConsentPrompt && onConsentAccept && onConsentDecline ? (
+      <ConsentBanner
+        title={translate(locale, 'consentNoticeTitle')}
+        body={translate(locale, 'consentNoticeBody')}
+        acceptLabel={translate(locale, 'consentAccept')}
+        declineLabel={translate(locale, 'consentDecline')}
+        onAccept={onConsentAccept}
+        onDecline={onConsentDecline}
+      />
+    ) : null;
 
   return (
     <>
@@ -704,6 +720,7 @@ export default function EmbedShell({
                 onDismissSessionExpired={onDismissSessionExpiredBanner}
                 {...bannerLabels}
               />
+              {consentBanner}
 
               <div
                 ref={scrollContainerRef}
@@ -1048,6 +1065,7 @@ export default function EmbedShell({
                   onDismissSessionExpired={onDismissSessionExpiredBanner}
                   {...bannerLabels}
                 />
+                {consentBanner}
 
                 <div
                   ref={scrollContainerRef}

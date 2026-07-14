@@ -212,5 +212,9 @@
   "commandPaletteDescription": "Zoek naar een commando om uit te voeren...",
   "widgetLoading": "Laden…",
   "widgetLoadingAriaLabel": "Laad widget",
-  "switchLanguage": "Schakel taal"
+  "switchLanguage": "Schakel taal",
+  "consentNoticeTitle": "Deze chat onthouden?",
+  "consentNoticeBody": "We willen je gesprek in je browser opslaan zodat het niet verloren gaat bij herladen. Er wordt niets opgeslagen totdat je akkoord gaat.",
+  "consentAccept": "Toestaan",
+  "consentDecline": "Nee, bedankt"
 }

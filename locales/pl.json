@@ -212,5 +212,9 @@
   "commandPaletteDescription": "Szukaj polecenia do uruchomienia...",
   "widgetLoading": "Ładowanie…",
   "widgetLoadingAriaLabel": "Ładowanie widżetu",
-  "switchLanguage": "Przełącz język"
+  "switchLanguage": "Przełącz język",
+  "consentNoticeTitle": "Zapamiętać ten czat?",
+  "consentNoticeBody": "Chcielibyśmy zapisać Twoją rozmowę w przeglądarce, aby nie zginęła po odświeżeniu strony. Nic nie jest zapisywane, dopóki nie wyrazisz zgody.",
+  "consentAccept": "Zezwól",
+  "consentDecline": "Nie, dziękuję"
 }
