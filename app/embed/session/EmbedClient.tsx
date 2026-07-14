@@ -1,6 +1,7 @@
 'use client';
 import { useWidgetAuth } from '../../../hooks/useWidgetAuth';
-import { getLocaleDirection, t as tFn, getTranslations, resolveInitialWidgetLocale, SUPPORTED_LOCALES, WIDGET_LOCALE_STORAGE_KEY } from '../../../lib/i18n';
+import { getLocaleDirection, t as tFn, getTranslations, resolveInitialWidgetLocale, resolveSupportedLocale, isTranslatableLocale, SUPPORTED_LOCALES, WIDGET_LOCALE_STORAGE_KEY } from '../../../lib/i18n';
+import { useRuntimeTranslation, useRuntimeRevision } from '../../../hooks/useRuntimeTranslation';
 import type {
   Message,
   WidgetConfig,
@@ -361,11 +362,25 @@ export default function EmbedClient({
     resolveInitialWidgetLocale(initialLocale)
   );
   const activeLocale = selectedLocale;
+  // For a locale outside the bundled natives, fetch an LLM-translated UI bundle
+  // once and register it; `runtimeRevision` bumps when it lands so the memos
+  // below re-localize. Native/English locales are a no-op.
+  useRuntimeTranslation(activeLocale);
+  const runtimeRevision = useRuntimeRevision();
   // Translations follow the active locale so a mid-conversation language switch
-  // updates every EmbedClient-owned string (errors, handoff modal, etc.).
-  const t = useMemo(() => getTranslations(activeLocale), [activeLocale]);
-  // Every locale the widget UI is translated into is offered in the switcher.
-  const availableLocales = SUPPORTED_LOCALES as unknown as string[];
+  // updates every EmbedClient-owned string (errors, handoff modal, etc.), and
+  // re-run once a runtime bundle registers for a non-native locale.
+  const t = useMemo(() => getTranslations(activeLocale), [activeLocale, runtimeRevision]);
+  // Every bundled locale is offered in the switcher; when the visitor's own
+  // language is a non-native one we translate at runtime, surface it too so
+  // they can switch back to it after picking another.
+  const availableLocales = useMemo(() => {
+    const base = activeLocale.split('-')[0];
+    if (resolveSupportedLocale(activeLocale) || !isTranslatableLocale(activeLocale)) {
+      return SUPPORTED_LOCALES as unknown as string[];
+    }
+    return [base, ...SUPPORTED_LOCALES] as string[];
+  }, [activeLocale]);
   const handleLocaleChange = useCallback((next: string) => {
     setSelectedLocale(next);
     // Persist the manual choice so it survives reloads and wins over browser

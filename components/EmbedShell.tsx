@@ -6,6 +6,7 @@ import InteractionButtons from './InteractionButtons';
 import MessageBubble from './MessageBubble';
 import DynamicIcon from './DynamicIcon';
 import { useWidgetTranslation } from '../hooks/useWidgetTranslation';
+import { useRuntimeRevision } from '../hooks/useRuntimeTranslation';
 import { t as translate, getTranslations } from '../lib/i18n';
 import type {
   Message,
@@ -83,10 +84,13 @@ export default function EmbedShell({
 }: Props) {
   const { locale: hookLocale } = useWidgetTranslation();
   const locale = localeProp || hookLocale;
+  // Re-localize when a runtime-translated bundle registers for a non-native
+  // locale (the revision bumps on registration).
+  const runtimeRevision = useRuntimeRevision();
   // Derive translations from the resolved locale (not the hook's own detected
   // locale) so a mid-conversation language switch re-localizes every string,
   // including the ones read off the `t` map below.
-  const t = useMemo(() => getTranslations(locale), [locale]);
+  const t = useMemo(() => getTranslations(locale), [locale, runtimeRevision]);
   const [liveMessage, setLiveMessage] = useState('');
   const lastAnnouncedId = useRef<string | null>(null);
   const messageFeedbackSet = useMemo(

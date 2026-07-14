@@ -36,8 +36,17 @@ type LanguageMenuProps = {
 // Short display code shown on the trigger (e.g. "de-CH" → "DE").
 const shortCode = (locale: string) => locale.split('-')[0].toUpperCase();
 const nativeName = (locale: string) => {
-  const base = locale.split('-')[0] as SupportedLocale;
-  return LOCALE_LABELS[base] ?? locale.toUpperCase();
+  const base = locale.split('-')[0];
+  if (base in LOCALE_LABELS) return LOCALE_LABELS[base as SupportedLocale];
+  // Runtime-translated locales aren't in LOCALE_LABELS; show the language's
+  // own endonym (e.g. "ja" → "日本語") so the visitor recognizes it.
+  try {
+    const name = new Intl.DisplayNames([base], { type: 'language', fallback: 'code' }).of(base);
+    if (name && name.toLowerCase() !== base.toLowerCase()) return name;
+  } catch {
+    /* Intl.DisplayNames unavailable — fall through */
+  }
+  return locale.toUpperCase();
 };
 
 export function LanguageMenu({

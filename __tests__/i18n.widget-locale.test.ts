@@ -45,8 +45,16 @@ describe('resolveInitialWidgetLocale', () => {
     expect(resolveInitialWidgetLocale('no')).toBe('nb');
   });
 
-  it('defaults to English when nothing resolves', () => {
+  it('preserves a real non-native language so it can be runtime-translated', () => {
+    // Japanese isn't a bundled locale, but it's a real language — keep it
+    // (base "ja") so the widget fetches a runtime translation instead of
+    // silently falling back to English.
     setBrowserLanguages(['ja-JP']);
+    expect(resolveInitialWidgetLocale(undefined)).toBe('ja');
+  });
+
+  it('defaults to English when nothing valid resolves', () => {
+    setBrowserLanguages(['zz-ZZ']);
     expect(resolveInitialWidgetLocale(undefined)).toBe('en');
   });
 });

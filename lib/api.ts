@@ -91,6 +91,9 @@ export const API = {
   widgetConfigVariant: (configId: string, variantId: string) => `${getApiBaseUrl()}/widget-config/${configId}/variants/${variantId}/`,
   supportTickets: () => `${getApiV1BaseUrl()}/support-tickets/`,
 
+  // Runtime translation of the widget UI bundle into a non-native locale.
+  uiTranslations: () => `${getApiV1BaseUrl()}/widget/ui-translations`,
+
   // Logged-in user session lookup — returns the most recent active session
   // for the external_user_id embedded in the visitor JWT.
   sessionByUser: () => `${getApiV1BaseUrl()}/auth/sessions/by-user`,

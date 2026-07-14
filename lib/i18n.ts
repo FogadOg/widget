@@ -62,8 +62,73 @@ type TranslationValue = string | PluralForms | TranslationMap;
 
 export { LOCALES };
 
+// Stable short fingerprint of the English bundle. Used to namespace cached
+// runtime translations client-side so they auto-invalidate when the source
+// strings change (a bundle edit → new version → cache miss → re-fetch).
+const hashString = (input: string): string => {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(i);
+    hash |= 0; // force 32-bit
+  }
+  return (hash >>> 0).toString(36);
+};
+export const UI_BUNDLE_VERSION = hashString(JSON.stringify(en));
+
 const RTL_LOCALES = new Set(["ar", "he", "fa", "ur"]);
 const PLURAL_KEYS = new Set(["zero", "one", "two", "few", "many", "other"]);
+
+// --- Runtime translation registry --------------------------------------------
+// Locales beyond the bundled natives (getRawTranslation/getTranslations) are
+// filled in at runtime: the widget fetches an LLM-translated copy of the
+// English bundle from the backend and registers it here, keyed by base code
+// (e.g. "ja"). A monotonically increasing revision lets React components
+// re-render (via useSyncExternalStore) the moment a bundle arrives.
+const runtimeBundles = new Map<string, TranslationMap>();
+let runtimeRevision = 0;
+const runtimeListeners = new Set<() => void>();
+
+export function registerRuntimeBundle(locale: string, bundle: TranslationMap): void {
+  const base = (normalizeLocale(locale) ?? locale).split("-")[0];
+  if (!base) return;
+  runtimeBundles.set(base, bundle);
+  runtimeRevision += 1;
+  runtimeListeners.forEach((cb) => cb());
+}
+
+export function hasRuntimeBundle(locale?: string | null): boolean {
+  const base = normalizeLocale(locale)?.split("-")[0];
+  return !!base && runtimeBundles.has(base);
+}
+
+const getRuntimeBundle = (locale?: string | null): TranslationMap | undefined => {
+  const base = normalizeLocale(locale)?.split("-")[0];
+  return base ? runtimeBundles.get(base) : undefined;
+};
+
+// External store plumbing for React's useSyncExternalStore.
+export function subscribeRuntimeBundles(cb: () => void): () => void {
+  runtimeListeners.add(cb);
+  return () => runtimeListeners.delete(cb);
+}
+export const getRuntimeRevision = (): number => runtimeRevision;
+
+// A locale we can attempt runtime translation for: a real, platform-recognized
+// language. This filters out well-formed-but-nonsense tags (e.g. "zz-ZZ") so we
+// don't try to translate into a language that doesn't exist. Falls back to a
+// permissive check where Intl.DisplayNames is unavailable.
+export function isTranslatableLocale(locale?: string | null): boolean {
+  const normalized = normalizeLocale(locale);
+  if (!normalized || !isValidLocaleTag(normalized)) return false;
+  const base = normalized.split("-")[0];
+  if (base in LOCALES || base in LOCALE_ALIASES) return true;
+  try {
+    const name = new Intl.DisplayNames(["en"], { type: "language", fallback: "code" }).of(base);
+    return !!name && name.toLowerCase() !== base.toLowerCase();
+  } catch {
+    return true;
+  }
+}
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
@@ -86,10 +151,11 @@ export const getLocaleDirection = (locale?: string | null): "ltr" | "rtl" => {
   const normalized = normalizeLocale(locale);
   if (!normalized) return "ltr";
   const short = normalized.split("-")[0];
-  // Only flip dir when we have a translation for this locale. Showing an RTL
-  // layout with English-fallback text is worse than leaving it LTR-English.
+  // Only flip dir when we actually have translated text for this locale —
+  // bundled natively or fetched at runtime. Showing an RTL layout with
+  // English-fallback text is worse than leaving it LTR-English.
   if (!RTL_LOCALES.has(short)) return "ltr";
-  if (!(short in LOCALES)) return "ltr";
+  if (!(short in LOCALES) && !runtimeBundles.has(short)) return "ltr";
   return "rtl";
 };
 
@@ -98,7 +164,7 @@ const LOCALE_ALIASES: Record<string, SupportedLocale> = {
   no: "nb",  // Norwegian (generic) → Norwegian Bokmål
 };
 
-const resolveSupportedLocale = (locale?: string | null): SupportedLocale | null => {
+export const resolveSupportedLocale = (locale?: string | null): SupportedLocale | null => {
   const normalized = normalizeLocale(locale);
   if (!normalized) return null;
   const short = normalized.split("-")[0];
@@ -108,8 +174,15 @@ const resolveSupportedLocale = (locale?: string | null): SupportedLocale | null 
 };
 
 const getRawTranslation = (locale: string, key: string): TranslationValue | undefined => {
-  const supported = resolveSupportedLocale(locale) ?? "en";
-  return (LOCALES as Record<string, Record<string, TranslationValue>>)[supported]?.[key]
+  const supported = resolveSupportedLocale(locale);
+  if (supported) {
+    return (LOCALES as Record<string, Record<string, TranslationValue>>)[supported]?.[key]
+      ?? (LOCALES as Record<string, Record<string, TranslationValue>>).en?.[key];
+  }
+  // Non-native locale: prefer a runtime-fetched translation, falling back to
+  // the English string for any key the runtime bundle is missing.
+  const runtime = getRuntimeBundle(locale);
+  return runtime?.[key]
     ?? (LOCALES as Record<string, Record<string, TranslationValue>>).en?.[key];
 };
 
@@ -171,6 +244,10 @@ export function t(
 export function getTranslations(locale: string): Record<string, TranslationValue> {
   const supported = resolveSupportedLocale(locale);
   if (supported) return LOCALES[supported];
+  // A runtime-translated bundle is layered over English so any key it lacks
+  // still renders (in English) rather than showing a raw key.
+  const runtime = getRuntimeBundle(locale);
+  if (runtime) return { ...LOCALES.en, ...runtime };
   return LOCALES.en;
 }
 
@@ -180,7 +257,10 @@ export function resolveLocaleCandidates(candidates: Array<string | null | undefi
     if (!normalized || !isValidLocaleTag(normalized)) continue;
     const supported = resolveSupportedLocale(normalized);
     if (supported) return supported;
-    if (getLocaleDirection(normalized) === "rtl") return normalized.split("-")[0];
+    // Preserve any real, translatable language (e.g. "ja-JP" → "ja") so the
+    // widget can fetch a runtime translation for it and pass the visitor's
+    // language to the responder, instead of silently collapsing to English.
+    if (isTranslatableLocale(normalized)) return normalized.split("-")[0];
   }
   return "en";
 }
