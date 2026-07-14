@@ -384,7 +384,26 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
           <ScrollArea ref={scrollAreaRef} className='flex flex-col justify-between overflow-hidden'>
             <DialogHeader className='contents space-y-0 text-left'>
               <div className='flex items-start justify-between gap-3 pl-6 pr-14 pt-6'>
-                <DialogTitle className='p-0'>{getLocalizedText(widgetConfig?.data?.title, activeLocale) || translate(activeLocale, 'docsTitleFallback')}</DialogTitle>
+                <div className='flex min-w-0 items-center gap-2.5'>
+                  {/* Brand accent chip — always visible, painted with the
+                      configured secondary color (parity with the chat widget's
+                      secondary-colored header controls). Shows the widget logo
+                      when set, else a docs icon. */}
+                  <span
+                    aria-hidden
+                    className='flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md'
+                    style={{ backgroundColor: widgetStyles.secondaryColor, color: widgetStyles.readableOnSecondary }}
+                  >
+                    {widgetConfig?.data?.logo ? (
+                      <img src={widgetConfig.data.logo} alt='' className='h-full w-full object-contain p-1' />
+                    ) : (
+                      <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth={2} className='h-4 w-4'>
+                        <path strokeLinecap='round' strokeLinejoin='round' d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z' />
+                      </svg>
+                    )}
+                  </span>
+                  <DialogTitle className='truncate p-0'>{getLocalizedText(widgetConfig?.data?.title, activeLocale) || translate(activeLocale, 'docsTitleFallback')}</DialogTitle>
+                </div>
                 {availableLocales.length >= 2 && (
                   <LanguageMenu
                     variant='subtle'

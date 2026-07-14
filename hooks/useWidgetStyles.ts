@@ -43,6 +43,9 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
   // WCAG-contrast text color for any surface painted with primaryColor (buttons,
   // user bubbles, etc.) so a light brand color doesn't yield unreadable white. (#10)
   const readableOnPrimary = getReadableTextColor(primaryColor);
+  // Same, for surfaces painted with secondaryColor (header control buttons, the
+  // docs header accent chip) so the icon/text stays legible on any secondary.
+  const readableOnSecondary = getReadableTextColor(secondaryColor);
 
   // Theme-aware neutrals derived from the configured colors so secondary text,
   // hairlines, skeletons and the typing indicator adapt to any brand/dark theme
@@ -132,6 +135,7 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
     backgroundColor,
     textColor,
     readableOnPrimary,
+    readableOnSecondary,
     mutedTextColor,
     subtleBorderColor,
     skeletonColor,
