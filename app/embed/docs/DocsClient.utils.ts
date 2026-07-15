@@ -105,6 +105,25 @@ export function resolveLocalizedSuggestions(
   return [];
 }
 
+// Validates that an inbound postMessage actually originates from the host page
+// we expect, mirroring the session widget's gate (EmbedClient.utils.ts). Used to
+// stop a malicious framing/sibling window from forging control messages
+// (clear-session, log-stream, diagnostics, identify) to the docs widget. Under
+// dynamic embed-allowlist mode any HTTPS site can frame the widget, so this is
+// the authoritative gate for inbound commands.
+export function isTrustedParentMessage(
+  event: MessageEvent,
+  expectedOrigin: string | null | undefined,
+): boolean {
+  if (typeof window === 'undefined' || window.parent === window) return false;
+  // Tests dispatch plain objects whose `source` is not window.parent; in that
+  // case fall back to matching the expected origin.
+  if (event.source === window.parent) return true;
+  if (!expectedOrigin) return false;
+  if (expectedOrigin !== '*' && event.origin !== expectedOrigin) return false;
+  return true;
+}
+
 export function resolveParentOrigin(initialParentOrigin?: string): string | undefined {
   if (initialParentOrigin) return initialParentOrigin;
   if (typeof window === 'undefined') return undefined;

@@ -575,7 +575,7 @@ export default function EmbedClient({
       } else if (type === 'WIDGET_SET_LOG_LEVEL' && typeof level === 'string') {
         setLogLevel(level as Parameters<typeof setLogLevel>[0]);
       } else if (type === 'WIDGET_ENABLE_LOG_STREAM') {
-        enableLogStream();
+        enableLogStream(parentTargetOrigin || null);
       } else if (type === 'WIDGET_DISABLE_LOG_STREAM') {
         disableLogStream();
       }

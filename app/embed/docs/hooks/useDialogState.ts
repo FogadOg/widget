@@ -6,6 +6,7 @@ import { setLogLevel, enableLogStream, disableLogStream } from '../../../../lib/
 import {
   getStoredSession as helpersGetStoredSession,
 } from '../helpers'
+import { isTrustedParentMessage } from '../DocsClient.utils'
 import { MessageType } from '../DocsClient.types'
 
 interface UseDialogStateParams {
@@ -215,6 +216,11 @@ export function useDialogState({
   // and handle debug utility commands (diagnostics, clear session, offline sim).
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Origin gate: only act on messages from the trusted host page. Without
+      // this any framing/sibling window could forge control messages
+      // (clear-session, log-stream, diagnostics, identify). Mirrors the session
+      // widget's isTrustedParentMessage gate.
+      if (!isTrustedParentMessage(event, parentOrigin)) return;
       const { type, requestId, level, data: hostData } = (event.data || {}) as Record<string, unknown>;
 
       // Logged-in user handshake: the host page (or data-user-token) sends a
@@ -273,8 +279,9 @@ export function useDialogState({
           lastError: error ?? null,
           widgetType: 'docs',
         };
-        if (window.parent) {
-          window.parent.postMessage({ type: 'WIDGET_DIAGNOSTICS_RESPONSE', requestId, data: snap }, parentOrigin || '*');
+        const replyOrigin = parentOrigin || resolveParentOrigin();
+        if (window.parent && replyOrigin) {
+          window.parent.postMessage({ type: 'WIDGET_DIAGNOSTICS_RESPONSE', requestId, data: snap }, replyOrigin);
         }
       } else if (type === 'WIDGET_CLEAR_SESSION') {
         let removed = 0;
@@ -283,8 +290,9 @@ export function useDialogState({
             .filter((k) => k.startsWith('companin-') || k.startsWith('companin_'))
             .forEach((k) => { localStorage.removeItem(k); removed += 1; });
         } catch { /* sandboxed */ }
-        if (window.parent) {
-          window.parent.postMessage({ type: 'WIDGET_CLEAR_SESSION_RESPONSE', requestId, removed }, parentOrigin || '*');
+        const ackOrigin = parentOrigin || resolveParentOrigin();
+        if (window.parent && ackOrigin) {
+          window.parent.postMessage({ type: 'WIDGET_CLEAR_SESSION_RESPONSE', requestId, removed }, ackOrigin);
         }
       } else if (type === 'WIDGET_SIMULATE_OFFLINE') {
         simulateOffline();
@@ -293,7 +301,7 @@ export function useDialogState({
       } else if (type === 'WIDGET_SET_LOG_LEVEL' && typeof level === 'string') {
         setLogLevel(level as Parameters<typeof setLogLevel>[0]);
       } else if (type === 'WIDGET_ENABLE_LOG_STREAM') {
-        enableLogStream();
+        enableLogStream(parentOrigin || resolveParentOrigin() || null);
       } else if (type === 'WIDGET_DISABLE_LOG_STREAM') {
         disableLogStream();
       }

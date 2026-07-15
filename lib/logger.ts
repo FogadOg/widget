@@ -58,15 +58,25 @@ class Logger {
 
   private _minLevel: LogLevel | 'silent' = process.env.NODE_ENV !== 'production' ? 'debug' : 'error';
   private _stream = false;
+  // Origin of the host page log lines are streamed to. Never '*': log lines may
+  // carry session/client IDs and error context, so we only post to the resolved
+  // parent origin. When it's unknown we fail closed (don't broadcast).
+  private _streamOrigin: string | null = null;
 
-  enableStream(): void { this._stream = true; }
-  disableStream(): void { this._stream = false; }
+  enableStream(targetOrigin?: string | null): void {
+    this._stream = true;
+    this._streamOrigin = targetOrigin && targetOrigin !== '*' ? targetOrigin : null;
+  }
+  disableStream(): void { this._stream = false; this._streamOrigin = null; }
   isStreaming(): boolean { return this._stream; }
 
   private _streamToParent(level: LogLevel, message: string, context?: LogContext): void {
     try {
+      // Fail closed: without a known parent origin we do not broadcast (posting
+      // to '*' would leak diagnostics to any framing origin).
+      if (!this._streamOrigin) return;
       if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
-        window.parent.postMessage({ type: 'WIDGET_LOG_STREAM', level, message, context, timestamp: Date.now() }, '*');
+        window.parent.postMessage({ type: 'WIDGET_LOG_STREAM', level, message, context, timestamp: Date.now() }, this._streamOrigin);
       }
     } catch { /* ignore */ }
   }
@@ -222,5 +232,5 @@ export const logInfo = (message: string, context?: LogContext) => logger.info(me
 export const logDebug = (message: string, context?: LogContext) => logger.debug(message, context);
 export const logPerf = (name: string, durationMs: number, context?: LogContext) => logger.perf(name, durationMs, context);
 export const setLogLevel = (level: LogLevel | 'silent') => logger.setLevel(level);
-export const enableLogStream = () => logger.enableStream();
+export const enableLogStream = (targetOrigin?: string | null) => logger.enableStream(targetOrigin);
 export const disableLogStream = () => logger.disableStream();

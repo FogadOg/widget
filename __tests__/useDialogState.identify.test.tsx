@@ -49,9 +49,13 @@ function makeProps(overrides: Record<string, unknown> = {}) {
 }
 
 function dispatchIdentify(token: unknown) {
+  // origin must match makeProps().parentOrigin so the handler's
+  // isTrustedParentMessage gate accepts the message (see beforeEach, which
+  // makes window.parent !== window so we're treated as a framed widget).
   window.dispatchEvent(
     new MessageEvent('message', {
       data: { type: 'HOST_MESSAGE', data: { action: 'identify', token } },
+      origin: 'https://host.example',
     }),
   );
 }
@@ -60,9 +64,16 @@ function dispatchIdentify(token: unknown) {
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe('useDialogState — logged-in user identify handshake', () => {
+  const origParentDescriptor = Object.getOwnPropertyDescriptor(window, 'parent');
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.NEXT_PUBLIC_API_BASE_URL = BASE;
+    // Simulate a framed widget so the handler's origin gate accepts host
+    // messages (jsdom defaults window.parent === window, which the gate rejects).
+    Object.defineProperty(window, 'parent', {
+      value: { postMessage: jest.fn() },
+      configurable: true,
+    });
     (global.fetch as jest.Mock) = jest.fn(async () => ({
       ok: true,
       json: async () => ({ data: { session_id: 'existing-session-9' } }),
