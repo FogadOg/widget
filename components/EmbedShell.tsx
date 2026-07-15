@@ -1132,6 +1132,7 @@ export default function EmbedShell({
                               agentName={agentName}
                               showMessageAvatars={showMessageAvatars}
                               textColor={textColor}
+                              agentBubbleBg={agentBubbleBg}
                               fontStyles={fontStyles}
                               messageBubbleRadius={messageBubbleRadius}
                               onSubmitMessageFeedback={onSubmitMessageFeedback}
@@ -1165,6 +1166,7 @@ export default function EmbedShell({
                               agentName={agentName}
                               showMessageAvatars={showMessageAvatars}
                               textColor={textColor}
+                              agentBubbleBg={agentBubbleBg}
                               fontStyles={fontStyles}
                               messageBubbleRadius={messageBubbleRadius}
                               showTimestamps={false}
@@ -1218,6 +1220,7 @@ export default function EmbedShell({
                         agentName={agentName}
                         showMessageAvatars={showMessageAvatars}
                         textColor={textColor}
+                        agentBubbleBg={agentBubbleBg}
                         fontStyles={fontStyles}
                         messageBubbleRadius={messageBubbleRadius}
                         showTimestamps={false}

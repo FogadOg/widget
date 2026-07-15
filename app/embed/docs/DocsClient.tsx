@@ -71,6 +71,7 @@ import { DevOverlay, useDebugMode, reportDevState } from '../../../src/component
 import { useInstantSearch } from './hooks/useInstantSearch'
 import { DocSearchResults } from './components/DocSearchResults'
 import type { SearchHit } from './hooks/useInstantSearch'
+import { injectCustomAssetsFromConfig } from '../session/EmbedClient.utils'
 
 export { getLocalizedText, resolveLocalizedSuggestions }
 
@@ -318,6 +319,15 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@300;400;500;600;700&display=swap`;
     document.head.appendChild(link);
   }, [fontSource, fontFamily]);
+
+  // Inject the org's custom CSS (parity with the chat widget, which injects it
+  // via injectCustomAssetsFromConfig after config load). The backend gates
+  // custom_css behind the widget_custom_css plan feature before it's served,
+  // so it's already permission-checked by the time it reaches here.
+  const customCss = (widgetConfig?.data as { custom_css?: string | null } | undefined)?.custom_css;
+  useEffect(() => {
+    if (customCss) injectCustomAssetsFromConfig({ custom_css: customCss });
+  }, [customCss]);
 
   // Preview mode: bypass the Dialog stub entirely and render the widget as a
   // direct full-height panel so layout works correctly inside the preview iframe.
