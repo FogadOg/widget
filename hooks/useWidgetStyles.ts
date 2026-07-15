@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { DEFAULTS, DEFAULT_COLORS, DARK_DEFAULTS, SHADOW_INTENSITY, SIZE_PRESETS } from '../lib/constants';
 import type { WidgetConfig } from '../types/widget';
 import { normalizeHexColor, getReadableTextColor, getRelativeLuminance, withAlpha } from '../lib/colors';
@@ -9,19 +9,33 @@ const SPACING_MAP = {
   spacious:    { padding: '20px', gap: '16px' },
 } as const;
 
-// Tracks the visitor's OS-level dark-mode preference, re-rendering when it
-// changes. Used to resolve theme='system'. SSR-safe (returns false until mounted).
+// The visitor's OS-level dark-mode preference, exposed as an external store so
+// React reads it via useSyncExternalStore — no effect + setState, no cascading
+// render. Used to resolve theme='system'. SSR-safe (server snapshot is false).
+const DARK_MEDIA_QUERY = '(prefers-color-scheme: dark)';
+
+function subscribePrefersDark(onChange: () => void): () => void {
+  if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+  const mq = window.matchMedia(DARK_MEDIA_QUERY);
+  mq.addEventListener?.('change', onChange);
+  return () => mq.removeEventListener?.('change', onChange);
+}
+
+function getPrefersDarkSnapshot(): boolean {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  return window.matchMedia(DARK_MEDIA_QUERY).matches;
+}
+
+function getPrefersDarkServerSnapshot(): boolean {
+  return false;
+}
+
 function usePrefersDark(): boolean {
-  const [prefersDark, setPrefersDark] = useState(false);
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    setPrefersDark(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setPrefersDark(e.matches);
-    mq.addEventListener?.('change', handler);
-    return () => mq.removeEventListener?.('change', handler);
-  }, []);
-  return prefersDark;
+  return useSyncExternalStore(
+    subscribePrefersDark,
+    getPrefersDarkSnapshot,
+    getPrefersDarkServerSnapshot,
+  );
 }
 
 export function useWidgetStyles(widgetConfig?: WidgetConfig) {

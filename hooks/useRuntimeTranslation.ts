@@ -35,42 +35,41 @@ export function useRuntimeRevision(): number {
  * LLM-translated bundle from the backend and registers it for `getTranslations`.
  */
 export function useRuntimeTranslation(locale: string): RuntimeTranslationStatus {
-  const [status, setStatus] = useState<RuntimeTranslationStatus>('native');
+  // Re-render the instant any runtime bundle registers, so the derived status
+  // below flips to 'ready' — no need to set state from inside the effect.
+  useRuntimeRevision();
+
+  const base = (locale || '').split('-')[0].toLowerCase();
+  // Bundled natively (incl. aliases like no→nb), English, or not a real
+  // language → nothing to fetch.
+  const needsRuntime =
+    !!base && base !== 'en' && !resolveSupportedLocale(locale) && isTranslatableLocale(locale);
+  const hasBundle = hasRuntimeBundle(base);
+
+  // The only outcome that must be remembered is a fetch failure. Keying it by
+  // base means switching locales naturally clears a prior locale's failure.
+  const [failedBase, setFailedBase] = useState<string | null>(null);
 
   useEffect(() => {
-    const base = (locale || '').split('-')[0].toLowerCase();
-
-    // Bundled natively (incl. aliases like no→nb), English, or not a real
-    // language → nothing to fetch.
-    if (!base || base === 'en' || resolveSupportedLocale(locale) || !isTranslatableLocale(locale)) {
-      setStatus('native');
-      return;
-    }
-
-    if (hasRuntimeBundle(base)) {
-      setStatus('ready');
-      return;
-    }
+    // Everything resolvable synchronously is derived during render; the effect
+    // performs only side effects (cache warm + network fetch). Registering a
+    // bundle bumps the runtime revision, which re-renders us to 'ready'.
+    if (!needsRuntime || hasBundle) return;
 
     // Warm from the client cache first — survives reloads with no network hit.
     try {
       const cached = window.localStorage.getItem(cacheKey(base));
       if (cached) {
         registerRuntimeBundle(base, JSON.parse(cached));
-        setStatus('ready');
         return;
       }
     } catch {
       /* ignore corrupt/unavailable storage */
     }
 
-    if (!getApiBaseUrl()) {
-      setStatus('error');
-      return;
-    }
+    if (!getApiBaseUrl()) return; // derived as 'error' during render
 
     let cancelled = false;
-    setStatus('loading');
     (async () => {
       try {
         const res = await fetch(API.uiTranslations(), {
@@ -88,17 +87,19 @@ export function useRuntimeTranslation(locale: string): RuntimeTranslationStatus 
         } catch {
           /* ignore storage write failures (private mode / quota) */
         }
-        registerRuntimeBundle(base, strings);
-        setStatus('ready');
+        registerRuntimeBundle(base, strings); // revision bump → derived 'ready'
       } catch {
-        if (!cancelled) setStatus('error');
+        if (!cancelled) setFailedBase(base);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [locale]);
+  }, [locale, base, needsRuntime, hasBundle]);
 
-  return status;
+  if (!needsRuntime) return 'native';
+  if (hasBundle) return 'ready';
+  if (!getApiBaseUrl() || failedBase === base) return 'error';
+  return 'loading';
 }
