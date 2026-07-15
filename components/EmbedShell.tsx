@@ -474,8 +474,12 @@ export default function EmbedShell({
                         ? { position: 'relative' as const }
                         : { position: 'absolute' as const, bottom: 0, right: 0, width: 'max-content' as const }),
                       maxWidth: '240px',
-                      backgroundColor: '#ffffff',
+                      // Theme-aware: use the resolved surface/text so the teaser
+                      // stays readable in dark/system themes (was hardcoded #fff,
+                      // which paired with the light dark-theme text = invisible).
+                      backgroundColor,
                       color: textColor,
+                      border: `1px solid ${subtleBorderColor}`,
                       borderRadius: '12px',
                       padding: '10px 32px 10px 14px',
                       boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
@@ -499,7 +503,7 @@ export default function EmbedShell({
                         background: 'none',
                         border: 'none',
                         cursor: 'pointer',
-                        color: '#9ca3af',
+                        color: mutedTextColor,
                         fontSize: '16px',
                         lineHeight: 1,
                         padding: '2px 4px',
@@ -517,7 +521,7 @@ export default function EmbedShell({
                         right: '22px',
                         width: '12px',
                         height: '12px',
-                        backgroundColor: '#ffffff',
+                        backgroundColor,
                         transform: 'rotate(45deg)',
                         boxShadow: '2px 2px 4px rgba(0,0,0,0.1)',
                       }}
