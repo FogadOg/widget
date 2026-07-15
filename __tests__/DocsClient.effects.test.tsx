@@ -506,15 +506,22 @@ describe('DocsClient missing effect/flow coverage', () => {
   it('WIDGET_DEBUG_ENABLE / DISABLE messages toggle the debug flag', async () => {
     localStorage.removeItem('widget_debug')
     global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ data: {} }) })) as any
+    // The handler is origin-gated (isTrustedParentMessage): simulate a framed
+    // widget whose message comes from the parent window, so control messages are
+    // trusted. Without this the gate correctly rejects them.
+    const originalParent = Object.getOwnPropertyDescriptor(window, 'parent')
+    const mockParent = { postMessage: jest.fn() }
+    Object.defineProperty(window, 'parent', { configurable: true, value: mockParent })
     render(<DocsClient clientId="c13" agentId="a13" configId="cfg13" locale="en" startOpen={false} />)
     act(() => {
-      window.dispatchEvent(new MessageEvent('message', { data: { type: 'WIDGET_DEBUG_ENABLE' } }))
+      window.dispatchEvent(new MessageEvent('message', { source: mockParent as any, data: { type: 'WIDGET_DEBUG_ENABLE' } }))
     })
     expect(localStorage.getItem('widget_debug')).toBe('1')
     act(() => {
-      window.dispatchEvent(new MessageEvent('message', { data: { type: 'WIDGET_DEBUG_DISABLE' } }))
+      window.dispatchEvent(new MessageEvent('message', { source: mockParent as any, data: { type: 'WIDGET_DEBUG_DISABLE' } }))
     })
     expect(localStorage.getItem('widget_debug')).toBeNull()
+    if (originalParent) Object.defineProperty(window, 'parent', originalParent)
   })
   it('covers createSession failure and network catch branches', async () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
