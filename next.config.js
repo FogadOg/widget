@@ -29,10 +29,27 @@ const nextConfig = {
     // In dev (Docker bind mount on Windows/macOS) webpack can't get native fs
     // events, so it polls. The default 1s interval hammers the mount and starves
     // the compiler; 3s polling keeps HMR responsive while cutting wasted I/O.
+    //
+    // `ignored` trims the steady-state polling load on the Windows→WSL2 bind
+    // mount: without it, watchpack polls the WHOLE tree every 3s (tests, coverage,
+    // docs, the node_modules/.next volumes) for no benefit. Fewer watched files =
+    // less memory churn in the 9p file-sharing layer. NOTE: this alone does NOT
+    // cure "Watchpack Error (initial scan): ENOMEM" — that was the WSL2 VM being
+    // over-allocated (memory=12GB of a 16GB host) which starved the host-side
+    // bind-mount file server; the real fix lives in ~/.wslconfig (memory=8GB).
     if (dev) {
       config.watchOptions = {
         poll: 3000,
         aggregateTimeout: 300,
+        ignored: [
+          '**/node_modules/**',
+          '**/.next/**',
+          '**/.git/**',
+          '**/__tests__/**',
+          '**/coverage/**',
+          '**/docs/**',
+          '**/.vscode/**',
+        ],
       };
     }
     // Only load the Size Limit analysis plugins when explicitly analyzing
