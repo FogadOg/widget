@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
 const LANGUAGES = [
@@ -26,20 +27,53 @@ export default function LanguageSwitcher({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   const current = LANGUAGES.find((l) => l.code === locale) ?? LANGUAGES[0];
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (wrapperRef.current && target && !wrapperRef.current.contains(target)) {
+        setOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [open]);
 
   const switchLanguage = (newLocale: string) => {
     const pathWithoutLocale = pathname.replace(LOCALE_PATTERN, '') || '/';
     const newPath = `/${newLocale}${pathWithoutLocale === '/' ? '' : pathWithoutLocale}`;
     if (newPath !== pathname) router.push(newPath);
+    setOpen(false);
   };
 
   return (
-    <div className="relative group">
+    <div ref={wrapperRef} className="relative">
       <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
         className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
         aria-label={ariaLabel}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls="language-switcher-menu"
       >
         <img
           src={`https://cdn.jsdelivr.net/gh/HatScripts/circle-flags@2.7.0/flags/${current.flag}.svg`}
@@ -49,15 +83,29 @@ export default function LanguageSwitcher({
           className="flex-shrink-0"
         />
         <span>{current.code.toUpperCase()}</span>
-        <svg className="h-3.5 w-3.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          className={`h-3.5 w-3.5 opacity-60 transition-transform ${open ? 'rotate-180' : ''}`}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>
-      <div className="absolute right-0 top-full mt-1 w-44 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+      <div
+        id="language-switcher-menu"
+        role="menu"
+        className={`absolute right-0 top-full mt-1 w-44 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg transition-all z-50 ${
+          open ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
+        }`}
+      >
         {LANGUAGES.map((lang) => (
           <button
+            type="button"
             key={lang.code}
             onClick={() => switchLanguage(lang.code)}
+            role="menuitem"
             className={`flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors first:rounded-t-lg last:rounded-b-lg ${
               lang.code === locale ? 'font-semibold text-foreground' : 'text-muted-foreground'
             }`}
