@@ -962,7 +962,39 @@ export default function EmbedShell({
               />
               {!widgetConfig?.hide_branding && (
               <div className="p-2 text-center text-xs flex items-center justify-center gap-2 flex-wrap" style={{ color: mutedTextColor }}>
-                <span title={translate(locale, 'euHostedGdpr')}>🇪🇺 EU hosted · GDPR</span>
+                <span className="inline-flex items-center gap-1.5" title={translate(locale, 'euHostedGdpr')}>
+                  <span
+                    aria-hidden
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '9999px',
+                      backgroundColor: '#1e40af',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <svg viewBox="0 0 16 16" width="16" height="16" focusable="false" aria-hidden="true">
+                      <g fill="#facc15">
+                        <circle cx="8" cy="2.6" r="0.55" />
+                        <circle cx="10.7" cy="3.35" r="0.55" />
+                        <circle cx="12.65" cy="5.3" r="0.55" />
+                        <circle cx="13.4" cy="8" r="0.55" />
+                        <circle cx="12.65" cy="10.7" r="0.55" />
+                        <circle cx="10.7" cy="12.65" r="0.55" />
+                        <circle cx="8" cy="13.4" r="0.55" />
+                        <circle cx="5.3" cy="12.65" r="0.55" />
+                        <circle cx="3.35" cy="10.7" r="0.55" />
+                        <circle cx="2.6" cy="8" r="0.55" />
+                        <circle cx="3.35" cy="5.3" r="0.55" />
+                        <circle cx="5.3" cy="3.35" r="0.55" />
+                      </g>
+                    </svg>
+                  </span>
+                  <span>{translate(locale, 'euHostedGdpr')}</span>
+                </span>
                 <span aria-hidden>·</span>
                 <span>{poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline" style={{ color: textColor, fontWeight: 500 }}>{COMPANY_NAME}</a></span>
               </div>
@@ -1300,8 +1332,42 @@ export default function EmbedShell({
                   attachLabel={translate(locale, 'uploadFiles')}
                 />
                 {!widgetConfig?.hide_branding && (
-                <div className="p-2 text-center text-xs" style={{ color: mutedTextColor }}>
-                  {poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline" style={{ color: textColor, fontWeight: 500 }}>{COMPANY_NAME}</a>
+                <div className="p-2 text-center text-xs flex items-center justify-center gap-2 flex-wrap" style={{ color: mutedTextColor }}>
+                  <span className="inline-flex items-center gap-1.5" title={translate(locale, 'euHostedGdpr')}>
+                    <span
+                      aria-hidden
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '9999px',
+                        backgroundColor: '#1e40af',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <svg viewBox="0 0 16 16" width="16" height="16" focusable="false" aria-hidden="true">
+                        <g fill="#facc15">
+                          <circle cx="8" cy="2.6" r="0.55" />
+                          <circle cx="10.7" cy="3.35" r="0.55" />
+                          <circle cx="12.65" cy="5.3" r="0.55" />
+                          <circle cx="13.4" cy="8" r="0.55" />
+                          <circle cx="12.65" cy="10.7" r="0.55" />
+                          <circle cx="10.7" cy="12.65" r="0.55" />
+                          <circle cx="8" cy="13.4" r="0.55" />
+                          <circle cx="5.3" cy="12.65" r="0.55" />
+                          <circle cx="3.35" cy="10.7" r="0.55" />
+                          <circle cx="2.6" cy="8" r="0.55" />
+                          <circle cx="3.35" cy="5.3" r="0.55" />
+                          <circle cx="5.3" cy="3.35" r="0.55" />
+                        </g>
+                      </svg>
+                    </span>
+                    <span>{translate(locale, 'euHostedGdpr')}</span>
+                  </span>
+                  <span aria-hidden>·</span>
+                  <span>{poweredByLabel}<a href="https://companin.tech" target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline" style={{ color: textColor, fontWeight: 500 }}>{COMPANY_NAME}</a></span>
                 </div>
                 )}
               </div>
