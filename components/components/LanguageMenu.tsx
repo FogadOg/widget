@@ -32,8 +32,42 @@ type LanguageMenuProps = {
   borderRadius: number;
 };
 
-// Short display code shown on the trigger (e.g. "de-CH" → "DE").
-const shortCode = (locale: string) => locale.split('-')[0].toUpperCase();
+const LOCALE_TO_FLAG: Record<string, string> = {
+  en: 'gb',
+  de: 'de',
+  es: 'es',
+  fr: 'fr',
+  pt: 'pt',
+  sv: 'se',
+  nl: 'nl',
+  nb: 'no',
+  no: 'no',
+  da: 'dk',
+  fi: 'fi',
+  it: 'it',
+  pl: 'pl',
+  cs: 'cz',
+  sk: 'sk',
+  ro: 'ro',
+  hu: 'hu',
+  tr: 'tr',
+  el: 'gr',
+  uk: 'ua',
+  ru: 'ru',
+  ja: 'jp',
+  ko: 'kr',
+  zh: 'cn',
+  ar: 'sa',
+};
+
+const localeFlagCode = (locale: string): string | null => {
+  const parts = locale.split('-');
+  const explicitRegion = parts.length > 1 ? parts[1] : '';
+  if (explicitRegion && /^[A-Za-z]{2}$/.test(explicitRegion)) return explicitRegion.toLowerCase();
+  const base = parts[0].toLowerCase();
+  return LOCALE_TO_FLAG[base] ?? null;
+};
+
 const nativeName = (locale: string) => {
   const base = locale.split('-')[0];
   if (base in LOCALE_LABELS) return LOCALE_LABELS[base as SupportedLocale];
@@ -181,6 +215,7 @@ export function LanguageMenu({
           >
             {locales.map((code) => {
               const active = code === locale;
+              const flag = localeFlagCode(code);
               return (
                 <button
                   key={code}
@@ -192,7 +227,7 @@ export function LanguageMenu({
                     display: 'flex',
                     width: '100%',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
+                    justifyContent: 'flex-start',
                     gap: '8px',
                     padding: '8px 10px',
                     fontSize: '13px',
@@ -207,8 +242,19 @@ export function LanguageMenu({
                   }}
                   className="hover:opacity-80"
                 >
-                  <span>{nativeName(code)}</span>
-                  <span style={{ opacity: 0.6, fontSize: '11px', fontWeight: 600 }}>{shortCode(code)}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                    {flag ? (
+                      <img
+                        src={`/flags/${flag}.svg`}
+                        alt=""
+                        aria-hidden="true"
+                        style={{ width: '16px', height: '16px', objectFit: 'cover', borderRadius: '9999px', flexShrink: 0 }}
+                      />
+                    ) : (
+                      <span aria-hidden="true" style={{ fontSize: '14px', lineHeight: 1, flexShrink: 0 }}>🌐</span>
+                    )}
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nativeName(code)}</span>
+                  </span>
                 </button>
               );
             })}
@@ -237,12 +283,19 @@ export function LanguageMenu({
         }}
         className={`px-2 py-1 flex items-center gap-1.5 hover:opacity-90 ${FOCUS_RING}`}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
-          <circle cx="12" cy="12" r="10" />
-          <path d="M2 12h20" />
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-        </svg>
-        <span>{shortCode(locale)}</span>
+        {(() => {
+          const flag = localeFlagCode(locale);
+          return flag ? (
+            <img
+              src={`/flags/${flag}.svg`}
+              alt=""
+              aria-hidden="true"
+              style={{ width: '16px', height: '16px', objectFit: 'cover', borderRadius: '9999px', flexShrink: 0 }}
+            />
+          ) : (
+            <span aria-hidden="true" style={{ fontSize: '14px', lineHeight: 1, flexShrink: 0 }}>🌐</span>
+          );
+        })()}
         <svg
           width="12"
           height="12"
