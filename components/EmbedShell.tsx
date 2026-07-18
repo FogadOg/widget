@@ -660,7 +660,7 @@ export default function EmbedShell({
                 transition: '0.3s',
                 boxSizing: 'border-box'
               }}
-              className={openAnimation !== 'none' ? `widget-panel--${openAnimation}` : undefined}
+              className={!previewPositioning && openAnimation !== 'none' ? `widget-panel--${openAnimation}` : undefined}
             >
               <div
                 className="h-full flex flex-col"
@@ -1015,9 +1015,9 @@ export default function EmbedShell({
               aria-haspopup="dialog"
               style={{
                 position: 'fixed',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
+                ...(previewPositioning
+                  ? previewLauncherPos
+                  : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }),
                 zIndex: 999999,
                 backgroundColor: primaryColor,
                 color: readableOnPrimary,
@@ -1044,11 +1044,22 @@ export default function EmbedShell({
               data-ignore-reduced-motion={!respectReducedMotion ? 'true' : undefined}
               style={{
                 position: 'fixed',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: `${widgetWidth}px`,
-                height: `${widgetHeight}px`,
+                ...(previewPositioning
+                  ? {
+                      inset: 0,
+                      margin: 'auto',
+                      width: `${widgetWidth}px`,
+                      height: `${widgetHeight}px`,
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                    }
+                  : {
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: `${widgetWidth}px`,
+                      height: `${widgetHeight}px`,
+                    }),
                 zIndex: 999999,
                 boxShadow: 'rgba(0, 0, 0, 0.2) 0px 10px 40px',
                 borderRadius: `${borderRadius}px`,
@@ -1056,7 +1067,7 @@ export default function EmbedShell({
                 backgroundColor: 'transparent',
                 transition: '0.3s'
               }}
-              className={openAnimation !== 'none' ? `widget-panel--${openAnimation}` : undefined}
+              className={!previewPositioning && openAnimation !== 'none' ? `widget-panel--${openAnimation}` : undefined}
             >
               <div
                 className="h-full flex flex-col overflow-hidden"
