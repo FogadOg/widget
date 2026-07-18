@@ -650,7 +650,14 @@ export default function EmbedShell({
               style={{
                 position: 'fixed',
                 ...(previewPositioning
-                  ? { inset: 0, margin: 'auto', width: `${widgetWidth}px`, height: `${widgetHeight}px`, maxWidth: '100%', maxHeight: '100%' }
+                  ? {
+                      inset: 0,
+                      margin: '24px auto',
+                      width: `${widgetWidth}px`,
+                      height: `${widgetHeight}px`,
+                      maxWidth: '100%',
+                      maxHeight: 'calc(100% - 48px)'
+                    }
                   : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '100%', height: '100%', maxWidth: `${widgetWidth}px`, maxHeight: `${widgetHeight}px` }),
                 zIndex: 999999,
                 boxShadow: 'rgba(0, 0, 0, 0.2) 0px 10px 40px',
@@ -1047,11 +1054,11 @@ export default function EmbedShell({
                 ...(previewPositioning
                   ? {
                       inset: 0,
-                      margin: 'auto',
+                      margin: '24px auto',
                       width: `${widgetWidth}px`,
                       height: `${widgetHeight}px`,
                       maxWidth: '100%',
-                      maxHeight: '100%',
+                      maxHeight: 'calc(100% - 48px)',
                     }
                   : {
                       top: '50%',
