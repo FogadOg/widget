@@ -31,6 +31,21 @@
 				"--runInBand"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "widget-language-focused-tests",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"test",
+				"--",
+				"--runTestsByPath",
+				"__tests__/app.language-switcher.test.tsx",
+				"components/components/__tests__/LanguageMenu.test.tsx",
+				"--runInBand"
+			],
+			"isBackground": false,
+			"group": "test"
 		}
 	]
 }
