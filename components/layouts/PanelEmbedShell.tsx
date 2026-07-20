@@ -169,6 +169,7 @@ export default function PanelEmbedShell(props: Props) {
                 primaryColor={primaryColor}
                 buttonBorderRadius={buttonBorderRadius}
                 fontStyles={fontStyles}
+                indent="0"
               />
             )}
 

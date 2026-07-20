@@ -242,6 +242,7 @@ export default function MinimalEmbedShell(props: Props) {
               primaryColor={primaryColor}
               buttonBorderRadius={buttonBorderRadius}
               fontStyles={fontStyles}
+              indent="0"
             />
           )}
 
