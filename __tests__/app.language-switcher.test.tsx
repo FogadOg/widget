@@ -17,6 +17,10 @@ describe('LanguageSwitcher', () => {
     mockPathname.mockReturnValue('/en');
   });
 
+  const openMenu = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Switch language' }));
+  };
+
   it('renders current locale uppercased', () => {
     render(<LanguageSwitcher locale="en" />);
     expect(screen.getByText('EN')).toBeInTheDocument();
@@ -32,8 +36,8 @@ describe('LanguageSwitcher', () => {
   it('shows all language options in dropdown', () => {
     render(<LanguageSwitcher locale="en" />);
 
-    expect(screen.queryByText('English')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Switch language' }));
+    expect(screen.getByRole('menu')).toHaveClass('invisible');
+    openMenu();
 
     expect(screen.getByText('English')).toBeInTheDocument();
     expect(screen.getByText('Norsk')).toBeInTheDocument();
@@ -51,7 +55,7 @@ describe('LanguageSwitcher', () => {
     mockPathname.mockReturnValue('/en');
     render(<LanguageSwitcher locale="en" />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Switch language' }));
+    openMenu();
     fireEvent.click(screen.getByText('Deutsch'));
 
     expect(mockPush).toHaveBeenCalledWith('/de');
@@ -61,7 +65,7 @@ describe('LanguageSwitcher', () => {
     mockPathname.mockReturnValue('/en/docs/getting-started');
     render(<LanguageSwitcher locale="en" />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Switch language' }));
+    openMenu();
     fireEvent.click(screen.getByText('Français'));
 
     expect(mockPush).toHaveBeenCalledWith('/fr/docs/getting-started');
@@ -71,7 +75,7 @@ describe('LanguageSwitcher', () => {
     mockPathname.mockReturnValue('/en');
     render(<LanguageSwitcher locale="en" />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Switch language' }));
+    openMenu();
     fireEvent.click(screen.getByText('English'));
 
     expect(mockPush).not.toHaveBeenCalled();
@@ -87,9 +91,34 @@ describe('LanguageSwitcher', () => {
     mockPathname.mockReturnValue('/docs/getting-started');
     render(<LanguageSwitcher locale="en" />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Switch language' }));
+    openMenu();
     fireEvent.click(screen.getByText('Norsk'));
 
     expect(mockPush).toHaveBeenCalledWith('/nb/docs/getting-started');
+  });
+
+  it('closes the menu on outside pointer interaction', () => {
+    render(
+      <div>
+        <LanguageSwitcher locale="en" />
+        <button type="button">Outside</button>
+      </div>
+    );
+
+    openMenu();
+    expect(screen.getByRole('menu')).toHaveClass('visible');
+
+    fireEvent.mouseDown(screen.getByRole('button', { name: 'Outside' }));
+
+    expect(screen.getByRole('menu')).toHaveClass('invisible');
+  });
+
+  it('closes the menu on Escape', () => {
+    render(<LanguageSwitcher locale="en" />);
+
+    openMenu();
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.getByRole('menu')).toHaveClass('invisible');
   });
 });
