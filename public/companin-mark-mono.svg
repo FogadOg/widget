@@ -1,0 +1,12 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Companin">
+  <!-- Single-colour version. Uses currentColor so it adapts to context
+       (white on dark, ink on light). Best for email, small favicons,
+       monochrome print, and any place a gradient would muddy at size. -->
+  <g fill="currentColor">
+    <rect x="18" y="47" width="12" height="26" rx="6"/>
+    <rect x="36" y="33" width="12" height="54" rx="6"/>
+    <rect x="54" y="22" width="12" height="76" rx="6"/>
+    <rect x="72" y="33" width="12" height="54" rx="6"/>
+    <rect x="90" y="47" width="12" height="26" rx="6"/>
+  </g>
+</svg>
