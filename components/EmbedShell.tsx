@@ -32,7 +32,17 @@ import { LanguageMenu } from './components/LanguageMenu';
 import MinimalEmbedShell from './layouts/MinimalEmbedShell';
 import PanelEmbedShell from './layouts/PanelEmbedShell';
 
-export default function EmbedShell({
+// Dispatches to the runtime-selected layout shell. Kept hook-free so the
+// variant branch happens before any hooks run — the classic layout's hooks
+// live in ClassicEmbedShell, which only mounts for the 'classic' variant.
+export default function EmbedShell(props: Props) {
+  const runtimeLayoutVariant = (props.widgetConfig?.layout_variant ?? 'classic') as 'classic' | 'minimal' | 'panel';
+  if (runtimeLayoutVariant === 'minimal') return <MinimalEmbedShell {...props} />;
+  if (runtimeLayoutVariant === 'panel') return <PanelEmbedShell {...props} />;
+  return <ClassicEmbedShell {...props} />;
+}
+
+function ClassicEmbedShell({
   isEmbedded,
   isCollapsed,
   toggleCollapsed,
@@ -88,124 +98,6 @@ export default function EmbedShell({
   onPickFiles,
   onRemoveAttachment,
 }: Props) {
-  const runtimeLayoutVariant = (widgetConfig?.layout_variant ?? 'classic') as 'classic' | 'minimal' | 'panel';
-  if (runtimeLayoutVariant === 'minimal') {
-    return <MinimalEmbedShell
-      isEmbedded={isEmbedded}
-      isCollapsed={isCollapsed}
-      toggleCollapsed={toggleCollapsed}
-      messages={messages}
-      isTyping={isTyping}
-      onStopStreaming={onStopStreaming}
-      streamingMessage={streamingMessage}
-      input={input}
-      setInput={setInput}
-      handleSubmit={handleSubmit}
-      error={error}
-      title={title}
-      agentName={agentName}
-      identifiedUserName={identifiedUserName}
-      widgetConfig={widgetConfig}
-      onInteractionButtonClick={onInteractionButtonClick}
-      onFollowUpButtonClick={onFollowUpButtonClick}
-      flowResponses={flowResponses}
-      getLocalizedText={getLocalizedText}
-      showFeedbackDialog={showFeedbackDialog}
-      feedbackDialog={feedbackDialog}
-      messageFeedbackSubmitted={messageFeedbackSubmitted}
-      onSubmitMessageFeedback={onSubmitMessageFeedback}
-      unsureModal={unsureModal}
-      handoffModal={handoffModal}
-      unsureMessages={unsureMessages}
-      onShowUnsureModal={onShowUnsureModal}
-      onCloseUnsureModal={onCloseUnsureModal}
-      onDismissHandoff={onDismissHandoff}
-      unreadCount={unreadCount}
-      hideCloseButton={hideCloseButton}
-      isPersistent={isPersistent}
-      locale={localeProp}
-      availableLocales={availableLocales}
-      onLocaleChange={onLocaleChange}
-      sessionExpiredBanner={sessionExpiredBanner}
-      onDismissSessionExpiredBanner={onDismissSessionExpiredBanner}
-      showConsentPrompt={showConsentPrompt}
-      onConsentAccept={onConsentAccept}
-      onConsentDecline={onConsentDecline}
-      isOffline={isOffline}
-      previewPositioning={previewPositioning}
-      isPreview={isPreview}
-      showTeaser={showTeaser}
-      teaserExpanded={teaserExpanded}
-      teaserConfigured={teaserConfigured}
-      teaserMessage={teaserMessage}
-      onTeaserMeasure={onTeaserMeasure}
-      onDismissTeaser={onDismissTeaser}
-      fileUploadEnabled={fileUploadEnabled}
-      pendingAttachments={pendingAttachments}
-      uploadingFiles={uploadingFiles}
-      onPickFiles={onPickFiles}
-      onRemoveAttachment={onRemoveAttachment}
-    />;
-  }
-  if (runtimeLayoutVariant === 'panel') {
-    return <PanelEmbedShell
-      isEmbedded={isEmbedded}
-      isCollapsed={isCollapsed}
-      toggleCollapsed={toggleCollapsed}
-      messages={messages}
-      isTyping={isTyping}
-      onStopStreaming={onStopStreaming}
-      streamingMessage={streamingMessage}
-      input={input}
-      setInput={setInput}
-      handleSubmit={handleSubmit}
-      error={error}
-      title={title}
-      agentName={agentName}
-      identifiedUserName={identifiedUserName}
-      widgetConfig={widgetConfig}
-      onInteractionButtonClick={onInteractionButtonClick}
-      onFollowUpButtonClick={onFollowUpButtonClick}
-      flowResponses={flowResponses}
-      getLocalizedText={getLocalizedText}
-      showFeedbackDialog={showFeedbackDialog}
-      feedbackDialog={feedbackDialog}
-      messageFeedbackSubmitted={messageFeedbackSubmitted}
-      onSubmitMessageFeedback={onSubmitMessageFeedback}
-      unsureModal={unsureModal}
-      handoffModal={handoffModal}
-      unsureMessages={unsureMessages}
-      onShowUnsureModal={onShowUnsureModal}
-      onCloseUnsureModal={onCloseUnsureModal}
-      onDismissHandoff={onDismissHandoff}
-      unreadCount={unreadCount}
-      hideCloseButton={hideCloseButton}
-      isPersistent={isPersistent}
-      locale={localeProp}
-      availableLocales={availableLocales}
-      onLocaleChange={onLocaleChange}
-      sessionExpiredBanner={sessionExpiredBanner}
-      onDismissSessionExpiredBanner={onDismissSessionExpiredBanner}
-      showConsentPrompt={showConsentPrompt}
-      onConsentAccept={onConsentAccept}
-      onConsentDecline={onConsentDecline}
-      isOffline={isOffline}
-      previewPositioning={previewPositioning}
-      isPreview={isPreview}
-      showTeaser={showTeaser}
-      teaserExpanded={teaserExpanded}
-      teaserConfigured={teaserConfigured}
-      teaserMessage={teaserMessage}
-      onTeaserMeasure={onTeaserMeasure}
-      onDismissTeaser={onDismissTeaser}
-      fileUploadEnabled={fileUploadEnabled}
-      pendingAttachments={pendingAttachments}
-      uploadingFiles={uploadingFiles}
-      onPickFiles={onPickFiles}
-      onRemoveAttachment={onRemoveAttachment}
-    />;
-  }
-
   const { locale: hookLocale } = useWidgetTranslation();
   const locale = localeProp || hookLocale;
   // Re-localize when a runtime-translated bundle registers for a non-native
