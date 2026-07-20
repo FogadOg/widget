@@ -49,6 +49,11 @@ export function resolveDocsLayout(data: unknown): DocsLayoutSpec {
     ? (cfg.layout_variant as string)
     : 'classic') as DocsLayoutSpec['variant'];
   const size = (['sm', 'md', 'lg'].includes(cfg.size as string) ? (cfg.size as string) : 'md');
+  // The panel variant attaches to the side implied by `position` (a "Widget
+  // layout style" field): a left-* corner → left panel, otherwise right. The
+  // centered classic/minimal modal ignores position (stays centered) so existing
+  // docs configs — whose default position is bottom-right — don't shift.
+  const panelSide: 'left' | 'right' = /left/.test(String(cfg.position ?? '')) ? 'left' : 'right';
   const spacing = (['compact', 'comfortable', 'spacious'].includes(cfg.spacing as string)
     ? (cfg.spacing as string)
     : 'comfortable');
@@ -82,6 +87,7 @@ export function resolveDocsLayout(data: unknown): DocsLayoutSpec {
     showAccentChip: variant === 'classic',
     showSubtitle: variant !== 'minimal',
     showRail: variant === 'panel',
+    panelSide,
     showSearch: variant !== 'minimal',
     showSectionBorders: variant !== 'minimal',
     titlePx: TITLE_PX[variant],

@@ -118,7 +118,11 @@ export function PreviewModeWidget({
   searchResultQuery,
 }: PreviewModeWidgetProps) {
   return (
-    <div className={layout.openAnimationClass || undefined} style={{ ...theme.vars, width: '100%', height: '100%', display: 'flex', flexDirection: layout.showRail ? 'row' : 'column', background: theme.panelBackground, backdropFilter: theme.backdropFilter, WebkitBackdropFilter: theme.backdropFilter, overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '100%', display: 'flex', boxSizing: 'border-box', padding: '16px', alignItems: layout.showRail ? 'stretch' : 'center', justifyContent: layout.showRail ? (layout.panelSide === 'left' ? 'flex-start' : 'flex-end') : 'center' }}>
+    {/* Sized, floating panel — reflects the size preset + panel side so the
+        "Widget layout styles" presets visibly change the preview (parity with
+        the chat widget preview). The /preview page's gradient shows around it. */}
+    <div className={layout.openAnimationClass || undefined} style={{ ...theme.vars, width: layout.showRail ? `${layout.panelWidthPx}px` : `${layout.widthVw}vw`, height: layout.showRail ? '100%' : `${layout.heightVh}vh`, maxWidth: '100%', maxHeight: '100%', display: 'flex', flexDirection: layout.showRail ? 'row' : 'column', background: theme.panelBackground, backdropFilter: theme.backdropFilter, WebkitBackdropFilter: theme.backdropFilter, overflow: 'hidden', borderRadius: layout.showRail ? 0 : 'var(--radius)', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
       <div
         aria-live="polite" aria-atomic="true"
         style={{ position: 'absolute', left: '-9999px', height: '1px', width: '1px', overflow: 'hidden' }}
@@ -285,6 +289,7 @@ export function PreviewModeWidget({
         </PromptInput>
       </div>
       </div>
+    </div>
     </div>
   );
 }

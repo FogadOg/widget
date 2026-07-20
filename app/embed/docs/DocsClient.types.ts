@@ -51,6 +51,8 @@ export type DocsLayoutSpec = {
   showSubtitle: boolean;
   /** Render the left utility rail (panel only). */
   showRail: boolean;
+  /** Which edge the panel-variant side panel attaches to (from config `position`). */
+  panelSide: 'left' | 'right';
   /** Show the instant-search box (dropped in minimal for an ask-first, lean shell). */
   showSearch: boolean;
   /** Draw the header/footer section divider borders (dropped in minimal for a flat look). */

@@ -316,7 +316,12 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   const docsContentClass = cn(
     'flex gap-0 p-0 overflow-hidden',
     isDocsPanel
-      ? '!top-0 !right-0 !bottom-0 !left-auto !translate-x-0 !translate-y-0 !max-w-none sm:!max-w-none !rounded-none border-l flex-row'
+      ? cn(
+          '!top-0 !bottom-0 !translate-x-0 !translate-y-0 !max-w-none sm:!max-w-none !rounded-none flex-row',
+          layout.panelSide === 'left'
+            ? '!left-0 !right-auto border-r'
+            : '!right-0 !left-auto border-l',
+        )
       : 'mb-8 !max-w-none sm:!max-w-none flex-col justify-between',
     layout.openAnimationClass,
   );

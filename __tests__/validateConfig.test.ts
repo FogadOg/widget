@@ -78,8 +78,13 @@ describe('validateConfig', () => {
     expect(result.show_typing_indicator).toBeUndefined();
     expect(result.show_message_avatars).toBeUndefined();
     expect(result.show_unread_badge).toBeUndefined();
-    expect(result.position).toBeUndefined();
-    expect(result.edge_offset).toBeUndefined();
+  });
+
+  it('preserves position/edge_offset for docs (used for layout-style placement)', () => {
+    const config = { ...baseConfig, widget_type: 'docs' as const };
+    const { config: result } = validateConfig(config, 'docs') as any;
+    expect(result.position).toBe('bottom-right');
+    expect(result.edge_offset).toBe(20);
   });
 
   it('preserves non-chat fields for docs runtime', () => {

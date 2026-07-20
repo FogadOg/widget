@@ -71,7 +71,13 @@ export class InvalidValueError extends Error {
   }
 }
 
-/** Fields that are only meaningful for 'chat' widgets. */
+/**
+ * Fields that are only meaningful for 'chat' widgets.
+ *
+ * NOTE: `position`/`edge_offset` are intentionally NOT stripped for docs — the
+ * docs widget now honors them (panel-variant side + preview placement) as part
+ * of the "Widget layout styles" presets, mirroring the chat widget.
+ */
 const CHAT_ONLY_FIELDS: ReadonlyArray<keyof WidgetConfig> = [
   'start_open',
   'greeting_message',
@@ -79,9 +85,6 @@ const CHAT_ONLY_FIELDS: ReadonlyArray<keyof WidgetConfig> = [
   'show_typing_indicator',
   'show_message_avatars',
   'show_unread_badge',
-  'position',
-  'edge_offset',
-  'edgeOffset',
 ];
 
 const getIsDev = () => process.env.NODE_ENV === 'development';

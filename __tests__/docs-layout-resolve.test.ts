@@ -36,6 +36,13 @@ describe('resolveDocsLayout — per-variant distinctions', () => {
     expect(new Set([classic.showSectionBorders, minimal.showSectionBorders]).size).toBe(2);
   });
 
+  it('panel side follows config position (left-* → left, else right)', () => {
+    expect(resolveDocsLayout({ layout_variant: 'panel', position: 'bottom-left' }).panelSide).toBe('left');
+    expect(resolveDocsLayout({ layout_variant: 'panel', position: 'top-left' }).panelSide).toBe('left');
+    expect(resolveDocsLayout({ layout_variant: 'panel', position: 'bottom-right' }).panelSide).toBe('right');
+    expect(resolveDocsLayout({ layout_variant: 'panel' }).panelSide).toBe('right');
+  });
+
   it('defaults to classic and honors size/spacing independently of variant', () => {
     expect(resolveDocsLayout({}).variant).toBe('classic');
     expect(resolveDocsLayout(undefined).variant).toBe('classic');
