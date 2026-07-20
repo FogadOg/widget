@@ -54,7 +54,8 @@ import {
 } from "@/components/ai-elements/reasoning"
 import { MessageResponse } from "@/components/ai-elements/message"
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion"
-import { getLocalizedText, resolveLocalizedSuggestions, resolveParentOrigin as resolveParentOriginUtil, buildDocsTheme } from './DocsClient.utils'
+import { getLocalizedText, resolveLocalizedSuggestions, resolveParentOrigin as resolveParentOriginUtil, buildDocsTheme, resolveDocsLayout } from './DocsClient.utils'
+import { cn } from '@/lib/utils'
 import { useWidgetStyles } from '../../../hooks/useWidgetStyles'
 import { Props, MessageType } from './DocsClient.types'
 import { initialMessages } from './DocsClient.constants'
@@ -305,6 +306,29 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   // whole surface (colors, radius, font). See buildDocsTheme.
   const widgetStyles = useWidgetStyles(widgetConfig?.data);
   const theme = buildDocsTheme(widgetStyles);
+  // Resolve the "Widget variant" + "Widget layout styles" into concrete layout
+  // (chrome flags, spacing, size, animation) — parity with the chat widget.
+  const layout = resolveDocsLayout(widgetConfig?.data);
+  const isDocsPanel = layout.variant === 'panel';
+  // Panel = right-anchored full-height side panel (override Radix's centering);
+  // classic/minimal = centered modal sized from the size preset. `!` utilities
+  // beat Radix's own positioning/max-width classes deterministically.
+  const docsContentClass = cn(
+    'flex gap-0 p-0 overflow-hidden',
+    isDocsPanel
+      ? '!top-0 !right-0 !bottom-0 !left-auto !translate-x-0 !translate-y-0 !max-w-none sm:!max-w-none !rounded-none border-l flex-row'
+      : 'mb-8 !max-w-none sm:!max-w-none flex-col justify-between',
+    layout.openAnimationClass,
+  );
+  const docsContentStyle = {
+    ...theme.vars,
+    background: theme.panelBackground,
+    backdropFilter: theme.backdropFilter,
+    WebkitBackdropFilter: theme.backdropFilter,
+    ...(isDocsPanel
+      ? { width: layout.panelWidthPx, maxWidth: '100%', height: '100%' }
+      : { width: `${layout.widthVw}vw`, height: `${layout.heightVh}vh`, maxWidth: '100%', maxHeight: 'calc(100vh - 2rem)' }),
+  };
 
   // Load the selected Google Font (parity with the chat widget).
   const fontSource = widgetConfig?.data?.font_source;
@@ -336,6 +360,10 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
       <>
         <PreviewModeWidget
           theme={theme}
+          layout={layout}
+          accentBg={widgetStyles.secondaryColor}
+          accentFg={widgetStyles.readableOnSecondary}
+          logo={widgetConfig?.data?.logo}
           liveMessage={liveMessage}
           title={title}
           subtitle={subtitle}
@@ -383,22 +411,73 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
-          className='mb-8 flex h-[calc(100vh-20vh)] min-w-[calc(100vw-20vw)] flex-col justify-between gap-0 p-0'
-          style={{ ...theme.vars, background: theme.panelBackground, backdropFilter: theme.backdropFilter, WebkitBackdropFilter: theme.backdropFilter }}
+          showCloseButton={!isDocsPanel}
+          className={docsContentClass}
+          style={docsContentStyle}
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             const textarea = (e.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>('textarea[name="message"]');
             textarea?.focus();
           }}
         >
-          <ScrollArea ref={scrollAreaRef} className='flex flex-col justify-between overflow-hidden'>
+          {layout.showRail && (
+            <div
+              className='flex shrink-0 flex-col items-center gap-3 border-r py-3'
+              style={{ width: 56, borderColor: theme.border, background: widgetStyles.agentBubbleBg }}
+            >
+              <span
+                aria-hidden
+                className='flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg'
+                style={{ backgroundColor: widgetStyles.secondaryColor, color: widgetStyles.readableOnSecondary }}
+              >
+                {widgetConfig?.data?.logo ? (
+                  <img src={widgetConfig.data.logo} alt='' className='h-full w-full object-contain p-1' />
+                ) : (
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth={2} className='h-4 w-4'>
+                    <path strokeLinecap='round' strokeLinejoin='round' d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z' />
+                  </svg>
+                )}
+              </span>
+              <span aria-hidden className='my-0.5 h-px w-6' style={{ background: theme.border }} />
+              {/* Decorative nav affordances so the rail reads as an app sidebar
+                  (parity with the chat Support Panel's rail chip). */}
+              <span aria-hidden className='flex h-9 w-9 items-center justify-center rounded-lg opacity-70' style={{ color: widgetStyles.textColor, background: widgetStyles.backgroundColor }}>
+                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth={2} className='h-4 w-4'>
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z' />
+                </svg>
+              </span>
+              <span aria-hidden className='flex h-9 w-9 items-center justify-center rounded-lg opacity-50' style={{ color: widgetStyles.textColor }}>
+                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth={2} className='h-4 w-4'>
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M4 6h16M4 12h16M4 18h10' />
+                </svg>
+              </span>
+              <button
+                type='button'
+                onClick={() => handleOpenChange(false)}
+                aria-label={translate(activeLocale, 'close')}
+                className='mt-auto flex h-9 w-9 items-center justify-center rounded-lg opacity-70 transition-opacity hover:opacity-100'
+                style={{ color: widgetStyles.textColor }}
+              >
+                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth={2} className='h-4 w-4'>
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' />
+                </svg>
+              </button>
+            </div>
+          )}
+          <div className='flex min-h-0 flex-1 flex-col justify-between overflow-hidden'>
+          <ScrollArea ref={scrollAreaRef} className='flex min-h-0 flex-1 flex-col justify-between overflow-hidden'>
             <DialogHeader className='contents space-y-0 text-left'>
-              <div className='flex items-start justify-between gap-3 pl-6 pr-14 pt-6'>
+              <div
+                className='flex items-start justify-between gap-3'
+                style={{ paddingLeft: layout.padX, paddingRight: layout.padX + (isDocsPanel ? 0 : 32), paddingTop: layout.padY }}
+              >
                 <div className='flex min-w-0 items-center gap-2.5'>
-                  {/* Brand accent chip — always visible, painted with the
-                      configured secondary color (parity with the chat widget's
-                      secondary-colored header controls). Shows the widget logo
-                      when set, else a docs icon. */}
+                  {/* Brand accent chip — shown in the header for the classic
+                      variant (parity with the chat widget's secondary-colored
+                      header controls). Minimal drops it for reduced chrome; panel
+                      moves it into the utility rail. Shows the widget logo when
+                      set, else a docs icon. */}
+                  {layout.showAccentChip && (
                   <span
                     aria-hidden
                     className='flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md'
@@ -412,7 +491,8 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                       </svg>
                     )}
                   </span>
-                  <DialogTitle className='truncate p-0'>{getLocalizedText(widgetConfig?.data?.title, activeLocale) || translate(activeLocale, 'docsTitleFallback')}</DialogTitle>
+                  )}
+                  <DialogTitle className='truncate p-0' style={{ fontSize: layout.titlePx }}>{getLocalizedText(widgetConfig?.data?.title, activeLocale) || translate(activeLocale, 'docsTitleFallback')}</DialogTitle>
                 </div>
                 {availableLocales.length >= 2 && (
                   <LanguageMenu
@@ -432,11 +512,15 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                   />
                 )}
               </div>
-              <DialogDescription className='px-6 text-sm text-muted-foreground'>
+              {layout.showSubtitle && (
+              <DialogDescription className='text-sm text-muted-foreground' style={{ paddingLeft: layout.padX, paddingRight: layout.padX }}>
                 {getLocalizedText(widgetConfig?.data?.subtitle, activeLocale) || translate(activeLocale, 'docsSubtitleFallback')}
               </DialogDescription>
-              {/* Instant search input */}
-              <div className='px-6 pt-3 pb-1'>
+              )}
+              {/* Instant search input — dropped in the minimal variant for an
+                  ask-first, reduced-chrome shell (parity with the chat minimal). */}
+              {layout.showSearch && (
+              <div className='pt-3 pb-1' style={{ paddingLeft: layout.padX, paddingRight: layout.padX }}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <svg
                     aria-hidden
@@ -504,6 +588,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                   </div>
                 )}
               </div>
+              )}
               {isOffline && (
                 <div
                   className="border-l-4 px-6 py-2 text-sm"
@@ -519,11 +604,11 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                 </div>
               )}
               <DialogDescription asChild>
-                <div className='p-6'>
+                <div style={{ paddingLeft: layout.padX, paddingRight: layout.padX, paddingTop: layout.padY, paddingBottom: layout.padY }}>
                   <div className="flex flex-col min-h-0">
                     <div className="flex-1 mb-4">
                       <Conversation>
-                        <ConversationContent>
+                        <ConversationContent className={cn(layout.conversationClassName, layout.messageAnimationClass)}>
                           {messages.map(({ versions, ...message }) => (
                             <MessageBranch defaultBranch={0} key={message.key}>
                               <MessageBranchContent>
@@ -607,7 +692,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
               </DialogDescription>
             </DialogHeader>
           </ScrollArea>
-          <DialogFooter className='px-6 pb-6 sm:justify-end w-full'>
+          <DialogFooter className='sm:justify-end w-full' style={{ paddingLeft: layout.padX, paddingRight: layout.padX, paddingBottom: layout.padY, paddingTop: layout.padY }}>
             <div className="flex flex-col gap-4 w-full">
               {(() => {
                 const resolved = resolveLocalizedSuggestions(
@@ -661,6 +746,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
               </PromptInput>
             </div>
           </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
       {isDebug && <DevOverlay />}

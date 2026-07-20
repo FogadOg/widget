@@ -34,6 +34,47 @@ export type DocsTheme = {
   border: string;
 };
 
+/**
+ * Resolved layout for the docs widget, derived from the config's `layout_variant`
+ * ("Widget variant") plus the size / spacing / animation fields set by the
+ * "Widget layout styles" presets. Parity with the chat widget's three shells:
+ *  - classic — full centered modal with brand chip + subtitle.
+ *  - minimal — reduced chrome (no chip, no subtitle) and tighter density.
+ *  - panel   — right-anchored side panel with a slim utility rail.
+ * Consumed by both render paths (the live Dialog and the admin PreviewModeWidget).
+ */
+export type DocsLayoutSpec = {
+  variant: 'classic' | 'minimal' | 'panel';
+  /** Show the brand accent chip in the header (classic only — panel puts it in the rail). */
+  showAccentChip: boolean;
+  /** Show the subtitle line (hidden in minimal for reduced chrome). */
+  showSubtitle: boolean;
+  /** Render the left utility rail (panel only). */
+  showRail: boolean;
+  /** Show the instant-search box (dropped in minimal for an ask-first, lean shell). */
+  showSearch: boolean;
+  /** Draw the header/footer section divider borders (dropped in minimal for a flat look). */
+  showSectionBorders: boolean;
+  /** Header title font size, px (18 classic / 15 minimal / 16 panel). */
+  titlePx: number;
+  /** Density override for the ai-element conversation list (gap/padding per variant). */
+  conversationClassName: string;
+  /** Horizontal section padding, px (from spacing density). */
+  padX: number;
+  /** Vertical section padding, px (from spacing density). */
+  padY: number;
+  /** Centered-modal width, vw (classic/minimal; from size preset). */
+  widthVw: number;
+  /** Centered-modal height, vh (classic/minimal; from size preset). */
+  heightVh: number;
+  /** Side-panel width, px (panel variant; from size preset). */
+  panelWidthPx: number;
+  /** Entrance-animation class for the panel ('' keeps the default Radix entrance). */
+  openAnimationClass: string;
+  /** Per-message entrance-animation class for the conversation ('' = none). */
+  messageAnimationClass: string;
+};
+
 export type MessageType = {
   key: string;
   from: "user" | "agent";

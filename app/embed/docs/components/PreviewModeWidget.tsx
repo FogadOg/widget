@@ -35,12 +35,20 @@ import {
 } from "@/components/ai-elements/reasoning"
 import { MessageResponse } from "@/components/ai-elements/message"
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion"
-import { MessageType, DocsTheme } from '../DocsClient.types'
+import { MessageType, DocsTheme, DocsLayoutSpec } from '../DocsClient.types'
 import type { SearchHit } from '../hooks/useInstantSearch'
 import { DocSearchResults } from './DocSearchResults'
 
 interface PreviewModeWidgetProps {
   theme: DocsTheme;
+  /** Resolved "Widget variant" + "Widget layout styles" layout (parity with the live widget). */
+  layout: DocsLayoutSpec;
+  /** Utility-rail accent chip background (config secondary color). */
+  accentBg: string;
+  /** Utility-rail accent chip foreground (readable on secondary). */
+  accentFg: string;
+  /** Optional widget logo shown in the rail chip. */
+  logo?: string;
   liveMessage: string;
   title: string;
   subtitle: string;
@@ -75,6 +83,10 @@ interface PreviewModeWidgetProps {
 
 export function PreviewModeWidget({
   theme,
+  layout,
+  accentBg,
+  accentFg,
+  logo,
   liveMessage,
   title,
   subtitle,
@@ -106,22 +118,51 @@ export function PreviewModeWidget({
   searchResultQuery,
 }: PreviewModeWidgetProps) {
   return (
-    <div style={{ ...theme.vars, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: theme.panelBackground, backdropFilter: theme.backdropFilter, WebkitBackdropFilter: theme.backdropFilter, overflow: 'hidden' }}>
+    <div className={layout.openAnimationClass || undefined} style={{ ...theme.vars, width: '100%', height: '100%', display: 'flex', flexDirection: layout.showRail ? 'row' : 'column', background: theme.panelBackground, backdropFilter: theme.backdropFilter, WebkitBackdropFilter: theme.backdropFilter, overflow: 'hidden' }}>
       <div
         aria-live="polite" aria-atomic="true"
         style={{ position: 'absolute', left: '-9999px', height: '1px', width: '1px', overflow: 'hidden' }}
       >{liveMessage}</div>
 
+      {/* Utility rail (panel variant) — mirrors the chat widget's Support Panel:
+          brand chip, decorative nav affordances, subtle surface. */}
+      {layout.showRail && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '56px', padding: '12px 0', borderRight: `1px solid ${theme.border}`, flexShrink: 0, background: 'var(--muted)' }}>
+          <span aria-hidden style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: 'var(--radius)', overflow: 'hidden', background: accentBg, color: accentFg }}>
+            {logo ? (
+              <img src={logo} alt='' style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '4px' }} />
+            ) : (
+              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth={2} style={{ width: '16px', height: '16px' }}>
+                <path strokeLinecap='round' strokeLinejoin='round' d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z' />
+              </svg>
+            )}
+          </span>
+          <span aria-hidden style={{ width: '24px', height: '1px', background: theme.border }} />
+          <span aria-hidden style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: 'var(--radius)', background: 'var(--background)', color: 'var(--foreground)', opacity: 0.7 }}>
+            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth={2} style={{ width: '16px', height: '16px' }}>
+              <path strokeLinecap='round' strokeLinejoin='round' d='M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z' />
+            </svg>
+          </span>
+          <span aria-hidden style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: 'var(--radius)', color: 'var(--foreground)', opacity: 0.5 }}>
+            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth={2} style={{ width: '16px', height: '16px' }}>
+              <path strokeLinecap='round' strokeLinejoin='round' d='M4 6h16M4 12h16M4 18h10' />
+            </svg>
+          </span>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
-        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: theme.title, lineHeight: 1.3 }}>{title}</h2>
-        {subtitle && <p style={{ margin: '4px 0 0', fontSize: '14px', color: theme.subtitle, lineHeight: 1.5 }}>{subtitle}</p>}
+      <div style={{ padding: `${layout.padY}px ${layout.padX}px`, borderBottom: layout.showSectionBorders ? `1px solid ${theme.border}` : 'none', flexShrink: 0 }}>
+        <h2 style={{ margin: 0, fontSize: `${layout.titlePx}px`, fontWeight: 600, color: theme.title, lineHeight: 1.3 }}>{title}</h2>
+        {layout.showSubtitle && subtitle && <p style={{ margin: '4px 0 0', fontSize: '14px', color: theme.subtitle, lineHeight: 1.5 }}>{subtitle}</p>}
         {error && (
           <div style={{ marginTop: '8px', background: 'color-mix(in oklab, var(--warning) 10%, var(--background))', borderLeft: '4px solid var(--warning)', color: 'var(--warning)', padding: '6px 12px', fontSize: '13px' }} role="alert">
             {error}
           </div>
         )}
         {/* Instant search */}
+        {layout.showSearch && (
         <div style={{ marginTop: '12px', position: 'relative' }}>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <svg aria-hidden style={{ position: 'absolute', left: '10px', width: '14px', height: '14px', color: 'var(--muted-foreground)', pointerEvents: 'none' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,12 +197,13 @@ export function PreviewModeWidget({
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Conversation */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: `${layout.padY}px ${layout.padX}px` }}>
         <Conversation>
-          <ConversationContent>
+          <ConversationContent className={[layout.conversationClassName, layout.messageAnimationClass].filter(Boolean).join(' ') || undefined}>
             {messages.map(({ versions, ...message }) => (
               <MessageBranch defaultBranch={0} key={message.key}>
                 <MessageBranchContent>
@@ -219,7 +261,7 @@ export function PreviewModeWidget({
       </div>
 
       {/* Footer */}
-      <div style={{ padding: '12px 24px 20px', borderTop: `1px solid ${theme.border}`, flexShrink: 0 }}>
+      <div style={{ padding: `${layout.padY}px ${layout.padX}px`, borderTop: layout.showSectionBorders ? `1px solid ${theme.border}` : 'none', flexShrink: 0 }}>
         {resolvedSuggestions.length > 0 && (
           <div style={{ marginBottom: '10px' }}>
             <Suggestions>
@@ -241,6 +283,7 @@ export function PreviewModeWidget({
             <PromptInputSubmit disabled={!text.trim() || status === 'streaming'} status={status} />
           </PromptInputFooter>
         </PromptInput>
+      </div>
       </div>
     </div>
   );

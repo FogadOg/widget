@@ -1,6 +1,100 @@
 import type { CSSProperties } from 'react';
 import { hexToRgb } from '../../../lib/colors';
-import type { DocsTheme } from './DocsClient.types';
+import type { DocsTheme, DocsLayoutSpec } from './DocsClient.types';
+
+// Section padding (px) per spacing density. `comfortable` maps to 24/20 so it
+// matches the docs widget's previous hardcoded padding (p-6) — no regression for
+// existing configs, which default to `comfortable`.
+const DOCS_SPACING_PAD: Record<string, { x: number; y: number }> = {
+  compact: { x: 16, y: 14 },
+  comfortable: { x: 24, y: 20 },
+  spacious: { x: 32, y: 28 },
+};
+
+// Modal/side-panel dimensions per size preset. Kept viewport-relative (parity
+// with the docs widget's previous 80vw × 80vh) so `md` — the default — is
+// unchanged; sm/lg scale around it. Panel width is a fixed px side-rail width.
+const DOCS_SIZE: Record<string, { vw: number; vh: number; panel: number }> = {
+  sm: { vw: 64, vh: 70, panel: 400 },
+  md: { vw: 80, vh: 80, panel: 480 },
+  lg: { vw: 92, vh: 90, panel: 600 },
+};
+
+const OPEN_ANIM_CLASS: Record<string, string> = {
+  slide: 'docs-open--slide',
+  spring: 'docs-open--spring',
+  fade: 'docs-open--fade',
+  none: 'docs-open--none',
+};
+
+// Reuses the chat widget's message-entrance keyframes (translateY-based, so they
+// are safe on the docs surface — unlike the panel keyframes, which assume the
+// chat panel's -50% centering transform).
+const MSG_ANIM_CLASS: Record<string, string> = {
+  fade: 'widget-messages--fade',
+  slide: 'widget-messages--slide',
+  none: '',
+};
+
+/**
+ * Resolve the docs widget's layout from its config. Mirrors the chat widget's
+ * `layout_variant` dispatch and layout-style handling (size/spacing/animation)
+ * so the "Widget variant" and "Widget layout styles" admin controls take effect
+ * on the docs widget too. `position`/`edge_offset` are chat-only (stripped for
+ * docs by validateConfig) and intentionally ignored.
+ */
+export function resolveDocsLayout(data: unknown): DocsLayoutSpec {
+  const cfg = (data ?? {}) as Record<string, unknown>;
+  const variant = (['classic', 'minimal', 'panel'].includes(cfg.layout_variant as string)
+    ? (cfg.layout_variant as string)
+    : 'classic') as DocsLayoutSpec['variant'];
+  const size = (['sm', 'md', 'lg'].includes(cfg.size as string) ? (cfg.size as string) : 'md');
+  const spacing = (['compact', 'comfortable', 'spacious'].includes(cfg.spacing as string)
+    ? (cfg.spacing as string)
+    : 'comfortable');
+  const pad = DOCS_SPACING_PAD[spacing];
+  const dim = DOCS_SIZE[size];
+  // Only override the panel's built-in entrance / add per-message animation when
+  // the admin explicitly picked one (i.e. the field is present) — an unset field
+  // keeps the previous default behavior for legacy configs.
+  const openAnimationClass = cfg.open_animation
+    ? (OPEN_ANIM_CLASS[cfg.open_animation as string] ?? '')
+    : '';
+  const messageAnimationClass = cfg.message_animation
+    ? (MSG_ANIM_CLASS[cfg.message_animation as string] ?? '')
+    : '';
+
+  // Per-variant chrome — deliberately distinct, mirroring the chat widget's three
+  // shells (classic = full reader, minimal = lean/flat/dense, panel = app rail).
+  const CONVO_DENSITY: Record<DocsLayoutSpec['variant'], string> = {
+    classic: 'gap-6 p-4',
+    minimal: 'gap-3 p-2',
+    panel: 'gap-4 p-3',
+  };
+  const TITLE_PX: Record<DocsLayoutSpec['variant'], number> = {
+    classic: 18,
+    minimal: 15,
+    panel: 16,
+  };
+
+  return {
+    variant,
+    showAccentChip: variant === 'classic',
+    showSubtitle: variant !== 'minimal',
+    showRail: variant === 'panel',
+    showSearch: variant !== 'minimal',
+    showSectionBorders: variant !== 'minimal',
+    titlePx: TITLE_PX[variant],
+    conversationClassName: CONVO_DENSITY[variant],
+    padX: pad.x,
+    padY: pad.y,
+    widthVw: dim.vw,
+    heightVh: dim.vh,
+    panelWidthPx: dim.panel,
+    openAnimationClass,
+    messageAnimationClass,
+  };
+}
 
 /** Subset of useWidgetStyles() output that buildDocsTheme consumes. */
 type DocsStyleInput = {
