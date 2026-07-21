@@ -18,7 +18,7 @@ import { t as translate } from '../../lib/i18n';
 
 interface EmbedConfig {
   agentId?: string;
-  theme?: 'light' | 'dark';
+  theme?: 'light' | 'dark' | 'system';
   locale?: string;
   [key: string]: unknown;
 }

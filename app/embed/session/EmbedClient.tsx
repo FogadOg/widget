@@ -99,6 +99,7 @@ export default function EmbedClient({
   loaderVersion,
   showFeedbackDialogOverride,
   previewConfig: initialPreviewConfig,
+  themeOverride: initialThemeOverride,
 }: EmbedClientProps) {
   // Stable header bag forwarded on every API request. The X-Widget-Loader-Version
   // header lets the backend gate behaviour changes so old loaders keep working
@@ -359,6 +360,12 @@ export default function EmbedClient({
   const [isEmbedded, setIsEmbedded] = useState(false);
   const [agentName, setAgentName] = useState<string>('');
   const [widgetConfig, setWidgetConfig] = useState<WidgetConfig | null>(null);
+  // Theme forced from the embed (data-theme attribute at init, or setTheme() at
+  // runtime). When set it overrides WidgetConfig.theme regardless of the
+  // dashboard setting; null means "use the dashboard config" (default behavior).
+  const [themeOverride, setThemeOverride] = useState<'light' | 'dark' | 'system' | null>(
+    initialThemeOverride ?? null
+  );
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [shouldRender, setShouldRender] = useState(true);
   // The active UI/response locale. Resolved once on the first client render
@@ -647,6 +654,13 @@ export default function EmbedClient({
   useEffect(() => {
     // Listen for initial config posted from the host page (embed script)
     const { remove } = onInitConfig((data) => {
+      // A theme supplied via the inline window.WidgetConfig or update({ theme })
+      // is treated as an embed-level override, same as data-theme / setTheme().
+      const postedTheme = typeof data.theme === 'string' ? data.theme.trim().toLowerCase() : '';
+      if (postedTheme === 'light' || postedTheme === 'dark' || postedTheme === 'system') {
+        setThemeOverride(postedTheme);
+      }
+
       // Store the posted show_unread_badge flag so it persists across API config loads
       if (typeof data.showUnreadBadge !== 'undefined') {
         postedShowUnreadBadge.current = Boolean(data.showUnreadBadge);
@@ -2154,6 +2168,15 @@ export default function EmbedClient({
             return;
           }
 
+          if (command.action === 'setTheme') {
+            const d = command.data as Record<string, unknown> | null | undefined;
+            const next = typeof d?.theme === 'string' ? d.theme.trim().toLowerCase() : '';
+            if (next === 'light' || next === 'dark' || next === 'system') {
+              setThemeOverride(next);
+            }
+            return;
+          }
+
           if (command.action === 'prefill') {
             const d = command.data as Record<string, unknown> | null | undefined;
             const text = typeof d?.text === 'string' ? d.text : '';
@@ -2313,7 +2336,13 @@ export default function EmbedClient({
 
   // Use a safe default config when widgetConfig hasn't loaded so tests and
   // embedded consumers can still render a minimal shell during initialization.
-  const safeWidgetConfig: WidgetConfig = widgetConfig || ({} as WidgetConfig);
+  // An embed-level themeOverride (data-theme / setTheme() / update({theme}))
+  // wins over the dashboard WidgetConfig.theme — see useWidgetStyles for how the
+  // resolved theme drives light/dark colors.
+  const baseWidgetConfig: WidgetConfig = widgetConfig || ({} as WidgetConfig);
+  const safeWidgetConfig: WidgetConfig = themeOverride
+    ? { ...baseWidgetConfig, theme: themeOverride }
+    : baseWidgetConfig;
 
   if (!shouldRender || isBootstrapping) {
     // Still surface the overlay while bootstrapping so the handshake/auth

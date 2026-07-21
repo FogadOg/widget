@@ -39,6 +39,20 @@ describe('parseHostMessageCommand', () => {
     expect(parseHostMessageCommand({ type: 'show' })).toEqual({ kind: 'action', action: 'open' });
   });
 
+  it('maps the setTheme action and carries the payload through', () => {
+    expect(parseHostMessageCommand({ action: 'setTheme', theme: 'dark' })).toEqual({
+      kind: 'action',
+      action: 'setTheme',
+      data: { action: 'setTheme', theme: 'dark' },
+    });
+    // command matching is case-insensitive
+    expect(parseHostMessageCommand({ action: 'settheme', theme: 'system' })).toEqual({
+      kind: 'action',
+      action: 'setTheme',
+      data: { action: 'settheme', theme: 'system' },
+    });
+  });
+
   it('reads message text from text/message/content/prompt/query object keys', () => {
     expect(parseHostMessageCommand({ text: 'a' })).toEqual({ kind: 'message', text: 'a' });
     expect(parseHostMessageCommand({ message: 'b' })).toEqual({ kind: 'message', text: 'b' });

@@ -76,7 +76,7 @@ import { injectCustomAssetsFromConfig } from '../session/EmbedClient.utils'
 
 export { getLocalizedText, resolveLocalizedSuggestions }
 
-export default function DocsClient({ clientId, agentId, configId, locale: initialLocale, startOpen, pagePath, parentOrigin: initialParentOrigin, loaderVersion, previewConfig: initialPreviewConfig }: Props) {
+export default function DocsClient({ clientId, agentId, configId, locale: initialLocale, startOpen, pagePath, parentOrigin: initialParentOrigin, loaderVersion, previewConfig: initialPreviewConfig, themeOverride: initialThemeOverride }: Props) {
   const embedHeaders = useMemo(
     () => embedOriginHeader(initialParentOrigin, loaderVersion),
     [initialParentOrigin, loaderVersion],
@@ -116,6 +116,11 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     }
   }, []);
   const [liveMessage, setLiveMessage] = useState<string>('');
+  // Theme forced from the embed (data-theme attribute at init, or setTheme() at
+  // runtime). When set it overrides WidgetConfig.theme; null = use the config.
+  const [themeOverride, setThemeOverride] = useState<'light' | 'dark' | 'system' | null>(
+    initialThemeOverride ?? null
+  );
   const lastAnnouncedKey = useRef<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -157,6 +162,31 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   const resolveParentOrigin = useCallback((): string | undefined => {
     return resolveParentOriginUtil(initialParentOrigin);
   }, [initialParentOrigin]);
+
+  // Runtime theme switching from the host page (window.CompaninWidget.setTheme()).
+  // The loader posts HOST_MESSAGE { action: 'setTheme', theme }. Origin-validate
+  // against the known parent before accepting it, then override the config theme.
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      try {
+        if (typeof window !== 'undefined' && window.parent === window) return;
+        if (parentOrigin && parentOrigin !== '*' && event.origin !== parentOrigin) return;
+        const payload = (event.data || {}) as { type?: string; data?: Record<string, unknown> };
+        if (payload.type !== 'HOST_MESSAGE') return;
+        const data = payload.data;
+        const action = typeof data?.action === 'string' ? data.action.toLowerCase() : '';
+        if (action !== 'settheme') return;
+        const next = typeof data?.theme === 'string' ? data.theme.trim().toLowerCase() : '';
+        if (next === 'light' || next === 'dark' || next === 'system') {
+          setThemeOverride(next);
+        }
+      } catch {
+        // Malformed message — ignore.
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [parentOrigin]);
 
   useWidgetLifecycle({
     messages,
@@ -304,7 +334,12 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   // Theme the docs widget from the config. The ai-elements consume shadcn CSS
   // tokens, so mapping the config onto those custom properties re-themes the
   // whole surface (colors, radius, font). See buildDocsTheme.
-  const widgetStyles = useWidgetStyles(widgetConfig?.data);
+  // An embed-level themeOverride (data-theme / setTheme()) wins over the
+  // dashboard WidgetConfig.theme — parity with the chat widget.
+  const themedConfigData = themeOverride && widgetConfig?.data
+    ? { ...widgetConfig.data, theme: themeOverride }
+    : widgetConfig?.data;
+  const widgetStyles = useWidgetStyles(themedConfigData);
   const theme = buildDocsTheme(widgetStyles);
   // Resolve the "Widget variant" + "Widget layout styles" into concrete layout
   // (chrome flags, spacing, size, animation) — parity with the chat widget.

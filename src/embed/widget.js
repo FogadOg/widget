@@ -197,6 +197,12 @@
       script.getAttribute("data-instance") ||
       script.getAttribute("data-key");
     const startOpen = script.getAttribute("data-start-open") === "true";
+    // Theme override (data-theme="light|dark|system"): forces the widget theme
+    // from the embed, overriding the dashboard WidgetConfig.theme. Lets a host
+    // page sync the widget to its own theme. Invalid values are ignored (the
+    // dashboard config is used). Can also be changed at runtime via setTheme().
+    var rawTheme = (script.getAttribute("data-theme") || "").trim().toLowerCase();
+    var theme = (rawTheme === 'light' || rawTheme === 'dark' || rawTheme === 'system') ? rawTheme : null;
     // Proactive open triggers
     const autoOpenDelay = parseInt(script.getAttribute("data-auto-open-delay") || '0', 10) || 0;
     const autoOpenScrollDepth = parseFloat(script.getAttribute("data-auto-open-scroll-depth") || '0') || 0;
@@ -497,6 +503,7 @@
         if (autoOpenScrollDepth > 0) params.set('autoOpenScrollDepth', String(autoOpenScrollDepth));
         if (strictOrigin) params.set('strictOrigin', 'true');
         if (consentRequired) params.set('consentRequired', 'true');
+        if (theme) params.set('theme', theme);
 
         iframe.src = `${baseUrl}/embed/session?${params.toString()}`;
         const resolveIframeTargetOrigin = () => {
@@ -1279,6 +1286,34 @@
             } catch (err) {
               logError('Failed to set context', { error: err.message });
             }
+          },
+
+          /**
+           * setTheme(theme) — switch the widget's light/dark theme at runtime.
+           * Accepts 'light', 'dark', or 'system' (follow the visitor's OS setting).
+           * Overrides the dashboard WidgetConfig.theme and any data-theme attribute.
+           * Handy for syncing the widget to a host page's own theme toggle.
+           * @param {'light'|'dark'|'system'} theme
+           * @returns chainable
+           */
+          setTheme: (theme) => {
+            try {
+              const next = (typeof theme === 'string' ? theme : '').trim().toLowerCase();
+              if (next !== 'light' && next !== 'dark' && next !== 'system') {
+                logError("setTheme() requires 'light', 'dark', or 'system'", { theme });
+                return widgetApi;
+              }
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(
+                  { type: 'HOST_MESSAGE', data: { action: 'setTheme', theme: next } },
+                  targetOrigin
+                );
+              }
+              emitEvent('theme.change', { theme: next }, { rawType: 'HOST_SET_THEME' });
+            } catch (err) {
+              logError('Failed to set theme', { error: err && err.message });
+            }
+            return widgetApi;
           },
 
           /**

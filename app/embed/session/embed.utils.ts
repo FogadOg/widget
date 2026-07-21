@@ -74,6 +74,10 @@ export function parseHostMessageCommand(raw: unknown): ParsedHostMessageCommand 
     if (command === 'context') {
       return { kind: 'action', action: 'context', data: payload };
     }
+
+    if (command === 'settheme') {
+      return { kind: 'action', action: 'setTheme', data: payload };
+    }
   }
 
   const textValue = [payload.text, payload.message, payload.content, payload.prompt, payload.query]

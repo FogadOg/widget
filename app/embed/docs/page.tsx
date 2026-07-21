@@ -20,8 +20,18 @@ type Props = {
     pagePath?: string;
     parentOrigin?: string;
     loaderVersion?: string;
+    theme?: string;
   }>;
 };
+
+const THEME_VALUES = ['light', 'dark', 'system'] as const;
+type ThemeOverride = (typeof THEME_VALUES)[number];
+
+function parseThemeOverride(raw: string | undefined): ThemeOverride | undefined {
+  return raw && (THEME_VALUES as readonly string[]).includes(raw)
+    ? (raw as ThemeOverride)
+    : undefined;
+}
 
 function fromBase64Url(input: string): Buffer {
   const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
@@ -58,6 +68,9 @@ export default async function DocsPage({ searchParams }: Props) {
     parentOrigin,
     loaderVersion,
   } = params;
+
+  // Theme forced by the embed's data-theme attribute; overrides the config.
+  const themeOverride = parseThemeOverride(params.theme);
 
   let { clientId, agentId, configId } = params;
   let locale = params.locale || 'en';
@@ -209,6 +222,7 @@ export default async function DocsPage({ searchParams }: Props) {
       pagePath={pagePath}
       parentOrigin={parentOrigin}
       loaderVersion={loaderVersion}
+      themeOverride={themeOverride}
     />
   );
 }

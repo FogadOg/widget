@@ -350,11 +350,15 @@ describe('DocsClient missing effect/flow coverage', () => {
     const positiveFeedbackButton = await screen.findByLabelText('Positive feedback')
     fireEvent.click(positiveFeedbackButton)
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to submit message feedback:', expect.objectContaining({
-        status: 500,
-        statusText: 'Server Error',
-        body: 'feedback failure body',
-      }))
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '%c[Widget] Error: Failed to submit message feedback',
+        expect.any(String),
+        expect.objectContaining({
+          status: 500,
+          statusText: 'Server Error',
+          body: 'feedback failure body',
+        })
+      )
     })
     consoleErrorSpy.mockRestore()
   })
@@ -381,7 +385,11 @@ describe('DocsClient missing effect/flow coverage', () => {
     const positiveFeedbackButton = await screen.findByLabelText('Positive feedback')
     fireEvent.click(positiveFeedbackButton)
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error submitting message feedback:', expect.any(Error))
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '%c[Widget] Error: Error submitting message feedback',
+        expect.any(String),
+        expect.objectContaining({ error: expect.any(Error) })
+      )
     })
     consoleErrorSpy.mockRestore()
   })
@@ -411,18 +419,30 @@ describe('DocsClient missing effect/flow coverage', () => {
     mockGetAuthToken.mockResolvedValueOnce(null)
     render(<DocsClient clientId="c7" agentId="a7" configId="cfg7" locale="en" startOpen />)
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Auth error:', 'Auth failed')
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '%c[Widget] Error: Auth error',
+        expect.any(String),
+        expect.objectContaining({ authError: 'Auth failed' })
+      )
     })
     mockAuthError = null
     mockGetAuthToken.mockResolvedValueOnce(null)
     render(<DocsClient clientId="c8" agentId="a8" configId="cfg8" locale="en" startOpen />)
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Auth token request returned null')
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '%c[Widget] Error: Auth token request returned null',
+        expect.any(String),
+        ''
+      )
     })
     mockGetAuthToken.mockRejectedValueOnce(new Error('token error'))
     render(<DocsClient clientId="c9" agentId="a9" configId="cfg9" locale="en" startOpen />)
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error getting auth token:', expect.any(Error))
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '%c[Widget] Error: Error getting auth token',
+        expect.any(String),
+        expect.objectContaining({ error: expect.any(Error) })
+      )
     })
     consoleErrorSpy.mockRestore()
   })
@@ -430,7 +450,11 @@ describe('DocsClient missing effect/flow coverage', () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
     render(<DocsClient clientId="" agentId="a10" configId="cfg10" locale="en" startOpen />)
     await waitFor(() => {
-      expect(warnSpy).toHaveBeenCalledWith('Missing clientId or agentId')
+      expect(warnSpy).toHaveBeenCalledWith(
+        '%c[Widget] Warn: Missing clientId or agentId',
+        expect.any(String),
+        ''
+      )
     })
     warnSpy.mockRestore()
   })
@@ -548,7 +572,11 @@ describe('DocsClient missing effect/flow coverage', () => {
     }) as any
     render(<DocsClient clientId="c13" agentId="a13" configId="cfg13" locale="en" startOpen />)
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Session creation failed:', 'Session create failed detail')
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '%c[Widget] Error: Session creation failed',
+        expect.any(String),
+        expect.objectContaining({ errorMsg: 'Session create failed detail' })
+      )
     })
     global.fetch = jest.fn(async (url: any, opts?: any) => {
       const method = opts?.method || 'GET'
@@ -569,7 +597,11 @@ describe('DocsClient missing effect/flow coverage', () => {
     }) as any
     render(<DocsClient clientId="c14" agentId="a14" configId="cfg14" locale="en" startOpen />)
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Session creation error:', expect.any(Error))
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '%c[Widget] Error: Session creation error',
+        expect.any(String),
+        expect.objectContaining({ error: expect.any(Error) })
+      )
     })
     consoleErrorSpy.mockRestore()
   })
@@ -581,7 +613,8 @@ describe('DocsClient missing effect/flow coverage', () => {
     fireEvent.click(screen.getByText('How do I get started?'))
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Cannot send message: missing sessionId or authToken',
+        '%c[Widget] Error: Cannot send message: missing sessionId or authToken',
+        expect.any(String),
         expect.objectContaining({ authToken: false })
       )
     })

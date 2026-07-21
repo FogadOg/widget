@@ -107,6 +107,11 @@
       script.getAttribute("data-instance") ||
       script.getAttribute("data-key");
     const startOpen = script.getAttribute("data-start-open") === "true";
+    // Theme override (data-theme="light|dark|system"): forces the widget theme
+    // from the embed, overriding the dashboard config. Invalid values are
+    // ignored. Can also be changed at runtime via setTheme().
+    var rawTheme = (script.getAttribute("data-theme") || "").trim().toLowerCase();
+    var theme = (rawTheme === 'light' || rawTheme === 'dark' || rawTheme === 'system') ? rawTheme : null;
 
     // Optional signed user JWT from the host app. When present the widget
     // re-authenticates with verified user claims and restores the user's
@@ -357,6 +362,7 @@
           loaderVersion: WIDGET_VERSION,
         });
         setIdentityParams(params);
+        if (theme) params.set('theme', theme);
 
         iframe.src = `${baseUrl}/embed/docs?${params.toString()}`;
         iframe.style.cssText = `
@@ -814,6 +820,20 @@
             } catch (err) {
               logError('Failed to update docs widget config', { error: err.message });
             }
+          },
+          setTheme: (theme) => {
+            try {
+              const next = (typeof theme === 'string' ? theme : '').trim().toLowerCase();
+              if (next !== 'light' && next !== 'dark' && next !== 'system') {
+                logError("setTheme() requires 'light', 'dark', or 'system'", { theme });
+                return docsWidgetApi;
+              }
+              postToIframe({ type: 'HOST_MESSAGE', data: { action: 'setTheme', theme: next } });
+              emitEvent('theme.change', { theme: next }, { rawType: 'HOST_SET_THEME' });
+            } catch (err) {
+              logError('Failed to set docs widget theme', { error: err && err.message });
+            }
+            return docsWidgetApi;
           },
           reset: () => {
             try {

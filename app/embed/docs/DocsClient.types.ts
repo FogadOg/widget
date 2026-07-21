@@ -11,6 +11,9 @@ export type Props = {
   loaderVersion?: string;
   /** Base64-encoded JSON widget config for preview mode. When set, auth and API calls are skipped. */
   previewConfig?: string;
+  /** Theme forced by the embed (data-theme attribute). Overrides the dashboard
+   *  WidgetConfig.theme. The host can change it at runtime via setTheme(). */
+  themeOverride?: 'light' | 'dark' | 'system';
 };
 
 /**

@@ -24,11 +24,14 @@ export type EmbedClientProps = {
   showFeedbackDialogOverride?: boolean;
   /** Base64-encoded JSON widget config for preview mode. When set, auth and API calls are skipped. */
   previewConfig?: string;
+  /** Theme forced by the embed (data-theme attribute). Overrides the dashboard
+   *  WidgetConfig.theme. The host can change it at runtime via setTheme(). */
+  themeOverride?: 'light' | 'dark' | 'system';
 };
 
 export type HostWidgetAction =
   | 'open' | 'close' | 'toggle' | 'reset'
-  | 'identify' | 'prefill' | 'context';
+  | 'identify' | 'prefill' | 'context' | 'setTheme';
 
 export type ParsedHostMessageCommand =
   | { kind: 'action'; action: HostWidgetAction; data?: unknown }
