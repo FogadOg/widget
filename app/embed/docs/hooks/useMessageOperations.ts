@@ -1,6 +1,7 @@
 import React, { useCallback, useRef } from 'react'
 import { API } from '../../../../lib/api'
 import { t as translate } from '../../../../lib/i18n'
+import { logError } from '../../../../lib/logger'
 import { getPageContext as helpersGetPageContext } from '../helpers'
 import { fetchWithTimeout } from '../resilientFetch'
 import {
@@ -161,7 +162,7 @@ export function useMessageOperations({
   // offline-queue entry so a failure can be retried with the text preserved.
   const sendMessageToAPI = useCallback(async (content: string, queueId?: string) => {
     if (!sessionId || !authToken) {
-      console.error('No sessionId or authToken available');
+      logError('No sessionId or authToken available');
       return;
     }
 
@@ -198,7 +199,7 @@ export function useMessageOperations({
       if (retryable) {
         // Transient: keep the text in the queue so the user (or the online
         // listener) can retry it later.
-        console.error('Error sending message:', err);
+        logError('Error sending message', { error: err });
         try {
           await queueMessage({ id: qid, text: content, seq: Date.now(), timestamp: Date.now(), attempts: 0, source: QUEUE_SOURCE, sessionId });
         } catch { /* noop */ }
@@ -206,7 +207,7 @@ export function useMessageOperations({
         markFailed(qid, isTimeout ? 'messageSendTimeout' : 'networkError');
       } else {
         // Permanent client error — no point retrying.
-        console.error('Failed to send message:', err);
+        logError('Failed to send message', { error: err });
         markFailed(qid, 'failedToSendMessage');
       }
     }
@@ -299,14 +300,14 @@ export function useMessageOperations({
         // Show success toast if available
       } else {
         const errorText = await response.text();
-        console.error('Failed to submit message feedback:', {
+        logError('Failed to submit message feedback', {
           status: response.status,
           statusText: response.statusText,
           body: errorText
         });
       }
     } catch (error) {
-      console.error('Error submitting message feedback:', error);
+      logError('Error submitting message feedback', { error });
     }
   }, [authToken, initialParentOrigin]);
 
@@ -314,7 +315,7 @@ export function useMessageOperations({
     async (content: string) => {
 
       if (!sessionId || !authToken) {
-        console.error('Cannot send message: missing sessionId or authToken', { sessionId, authToken: !!authToken });
+        logError('Cannot send message: missing sessionId or authToken', { sessionId, authToken: !!authToken });
         setError(translate(activeLocale, 'sessionOrAuthError'));
         return;
       }

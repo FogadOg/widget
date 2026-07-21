@@ -313,7 +313,7 @@ function CopyButton({ text }: { text: string }) {
     <button
       onClick={handleCopy}
       aria-label={translations.copyCodeSnippet as string}
-      className="px-3 py-1 text-xs font-medium rounded-md bg-zinc-700 text-zinc-200 hover:bg-zinc-600 transition-colors shrink-0"
+      className="px-3 py-1 text-xs font-medium rounded-md bg-muted text-foreground hover:bg-accent transition-colors shrink-0"
     >
       {copied ? translations.copied as string : translations.copy as string}
     </button>
@@ -331,7 +331,7 @@ function HighlightedCode({ code, language }: { code: string; language: string })
         const result = await codeToHtml(code, {
           lang: language,
           themes: {
-            light: 'one-dark-pro',
+            light: 'github-light',
             dark: 'one-dark-pro',
           },
         });
@@ -350,7 +350,7 @@ function HighlightedCode({ code, language }: { code: string; language: string })
   }, [code, language]);
   if (!html) {
     return (
-      <pre className="overflow-x-auto p-5 text-sm text-zinc-100 font-mono leading-relaxed">
+      <pre className="overflow-x-auto p-5 text-sm text-foreground font-mono leading-relaxed">
         <code>{code}</code>
       </pre>
     );
@@ -375,9 +375,9 @@ export default function FrameworkTabs({ snippets, widgetSrc, integrityAttr }: Fr
   const snippet = merged[active];
   const language = LANGUAGES[active];
   return (
-    <div className="rounded-lg bg-zinc-900 dark:bg-zinc-800 overflow-hidden">
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
       {/* Tab bar */}
-      <div className="flex items-center justify-between border-b border-zinc-700 px-4">
+      <div className="flex items-center justify-between border-b border-border px-4">
         <div className="flex gap-1 overflow-x-auto">
           {TABS.map((tab) => (
             <button
@@ -385,8 +385,8 @@ export default function FrameworkTabs({ snippets, widgetSrc, integrityAttr }: Fr
               onClick={() => setActive(tab)}
               className={`px-3 py-2.5 text-xs font-medium whitespace-nowrap transition-colors ${
                 active === tab
-                  ? 'text-zinc-100 border-b-2 border-zinc-100'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'text-foreground border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {tab}

@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react'
 import { API } from '../../../../lib/api'
 import { TIMEOUTS } from '../../../../lib/constants'
+import { logError, logWarn } from '../../../../lib/logger'
 import { validateConfig } from '../../../../lib/validateConfig'
 import { getVisitorId as helpersGetVisitorId } from '../helpers'
 import { fetchWithTimeout } from '../resilientFetch'
@@ -85,12 +86,12 @@ export function useWidgetConfig({
           ? `Rate limited. Please wait ${waitSec}s and try again.`
           : 'Widget is temporarily rate limited. Please try again shortly.';
         setError(msg);
-        console.warn('Widget config fetch rate-limited', { waitSec, configId });
+        logWarn('Widget config fetch rate-limited', { waitSec, configId });
       } else {
-        console.error('Failed to fetch widget config:', data);
+        logError('Failed to fetch widget config', { data });
       }
     } catch (err) {
-      console.error('Error fetching widget config:', err);
+      logError('Error fetching widget config', { error: err });
     }
     return undefined;
   }, [clientId, initialParentOrigin]);

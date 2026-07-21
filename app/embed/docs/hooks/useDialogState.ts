@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { API } from '../../../../lib/api'
 import { validateConfig } from '../../../../lib/validateConfig'
+import { logError, logWarn } from '../../../../lib/logger'
 import { enableDebug, disableDebug, simulateOffline, restoreOnline } from '../../../../src/components/DevOverlay'
 import { setLogLevel, enableLogStream, disableLogStream } from '../../../../lib/logger'
 import {
@@ -134,18 +135,18 @@ export function useDialogState({
         } else {
           const message = authError || 'Failed to authenticate';
           if (authError) {
-            console.error('Auth error:', authError);
+            logError('Auth error', { authError });
           } else {
-            console.error('Auth token request returned null');
+            logError('Auth token request returned null');
           }
           setError(message);
         }
       }).catch(err => {
-        console.error('Error getting auth token:', err);
+        logError('Error getting auth token', { error: err });
         setError('Failed to authenticate');
       });
     } else {
-      console.warn('Missing clientId or agentId');
+      logWarn('Missing clientId or agentId');
     }
   }, [open, clientId, agentId, configId, createSession, validateAndRestoreSession, fetchWidgetConfig, getAuthToken, initialPreviewConfig, resolveParentOrigin, authError]);
 

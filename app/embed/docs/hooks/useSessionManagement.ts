@@ -1,6 +1,7 @@
 import React, { useCallback, useRef } from 'react'
 import { API } from '../../../../lib/api'
 import { TIMEOUTS } from '../../../../lib/constants'
+import { logError, logWarn } from '../../../../lib/logger'
 import { t as translate } from '../../../../lib/i18n'
 import {
   getSessionStorageKey,
@@ -66,7 +67,7 @@ export function useSessionManagement({
   // Load session messages
   async function loadSessionMessages(sessionId: string, token: string, isNewSession = false) {
     if (!sessionId) {
-      console.error('Skipping loadSessionMessages: missing sessionId');
+      logError('Skipping loadSessionMessages: missing sessionId');
       return;
     }
     const cooldownMessage = ensureNotCoolingDown();
@@ -118,7 +119,7 @@ export function useSessionManagement({
         setError(msg);
       }
     } catch (err) {
-      console.error('Error loading messages:', err);
+      logError('Error loading messages', { error: err });
     }
   }
 
@@ -169,20 +170,20 @@ export function useSessionManagement({
         const msg = waitSec > 0
           ? translate(activeLocale, 'rateLimitWait', { vars: { count: waitSec } })
           : translate(activeLocale, 'sessionRateLimitGeneric');
-        console.warn('Session creation rate-limited', { waitSec });
+        logWarn('Session creation rate-limited', { waitSec });
         setError(msg);
       } else {
         // Server-provided `detail` (rate limits, config issues) is already meant
         // to be user-facing; fall back to a localized generic when it's absent.
         const errorMsg = data.detail || translate(activeLocale, 'failedToCreateSession');
-        console.error('Session creation failed:', errorMsg);
+        logError('Session creation failed', { errorMsg });
         setError(errorMsg);
       }
     } catch (err) {
       // Network drop / timeout — show a friendly, localized message rather than
       // a raw "Network error" string. The session auto-recovers on the next
       // open or when connectivity returns (useDocsConnectivity).
-      console.error('Session creation error:', err);
+      logError('Session creation error', { error: err });
       setError(translate(activeLocale, 'networkErrorConnect'));
     }
   }, [agentId, activeLocale, clientId, initialParentOrigin, ensureNotCoolingDown]);
@@ -190,7 +191,7 @@ export function useSessionManagement({
   // Validate and restore existing session
   const validateAndRestoreSession = useCallback(async (sessionId: string, token: string) => {
     if (!sessionId) {
-      console.error('validateAndRestoreSession called with empty sessionId');
+      logError('validateAndRestoreSession called with empty sessionId');
       return;
     }
     const cooldownMessage = ensureNotCoolingDown();
@@ -251,7 +252,7 @@ export function useSessionManagement({
         createSession(token);
       }
     } catch (err) {
-      console.error('Session validation error:', err);
+      logError('Session validation error', { error: err });
       localStorage.removeItem(getSessionStorageKey(clientId, agentId));
       createSession(token);
     }
