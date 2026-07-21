@@ -33,6 +33,7 @@ jest.mock('../lib/i18n', () => ({
     gettingStartedCredentialAgentIdDesc: 'from dashboard',
     gettingStartedCredentialConfigId: 'Config ID',
     gettingStartedCredentialConfigIdDesc: 'from dashboard',
+    gettingStartedCredentialAlt: 'Prefer a single value? Use {code} instead.',
     gettingStartedStep1Title: 'Step 1',
     gettingStartedStep1Customize: 'Customize',
     gettingStartedStep1Datasources: 'Datasources',

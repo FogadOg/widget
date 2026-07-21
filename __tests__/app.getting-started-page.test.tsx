@@ -33,6 +33,7 @@ jest.mock('../lib/i18n', () => ({
     gettingStartedCredentialAgentIdDesc: 'from dashboard',
     gettingStartedCredentialConfigId: 'Config ID',
     gettingStartedCredentialConfigIdDesc: 'from dashboard',
+    gettingStartedCredentialAlt: 'Prefer a single value? Use {code} instead.',
     gettingStartedStep1Title: 'Step 1',
     gettingStartedStep1Customize: 'Customize',
     gettingStartedStep1Datasources: 'Datasources',
@@ -90,6 +91,14 @@ describe('app/[locale]/docs/getting-started/page.tsx', () => {
     expect(html).toContain('Client ID');
     expect(html).toContain('Agent ID');
     expect(html).toContain('Config ID');
+  });
+
+  it('documents the single widget-key alternative in a callout', async () => {
+    const element = await GettingStartedPage({ params: Promise.resolve({ locale: 'en' }) });
+    const html = renderToStaticMarkup(element as React.ReactElement);
+
+    expect(html).toContain('Prefer a single value?');
+    expect(html).toContain('data-widget-key');
   });
 
   it('splits step 2 desc around configId placeholder', async () => {

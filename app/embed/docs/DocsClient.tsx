@@ -239,7 +239,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     };
   }, [initialPreviewConfig]);
 
-  const { query: searchQuery, setQuery: setSearchQuery, state: searchState, clearSearch } = useInstantSearch(
+  const { query: searchQuery, setQuery: setSearchQuery, state: searchState, clearSearch, retry: retrySearch } = useInstantSearch(
     agentId,
     authToken,
     embedHeaders,
@@ -586,8 +586,12 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                       hits={searchState.status === 'success' ? searchState.hits : []}
                       query={searchState.status === 'success' ? searchState.query : searchQuery}
                       loading={searchState.status === 'loading'}
+                      error={searchState.status === 'error'}
                       noResultsLabel={translate(activeLocale, 'docsSearchNoResults')}
                       resultsLabel={translate(activeLocale, 'docsSearchResultsLabel')}
+                      errorLabel={translate(activeLocale, 'docsSearchError')}
+                      retryLabel={translate(activeLocale, 'docsSearchRetry')}
+                      onRetry={retrySearch}
                       onSelect={handleSearchSelect}
                     />
                   </div>

@@ -95,5 +95,10 @@ export function useInstantSearch(
     setState((prev) => (prev.status === 'idle' ? prev : { status: 'idle' }))
   }, [])
 
-  return { query, setQuery: updateQuery, state, clearSearch }
+  const retry = useCallback(() => {
+    const q = lastQuery.current.trim()
+    if (q.length >= MIN_QUERY_LEN) runSearch(q)
+  }, [runSearch])
+
+  return { query, setQuery: updateQuery, state, clearSearch, retry }
 }

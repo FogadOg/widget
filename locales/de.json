@@ -216,5 +216,8 @@
   "consentNoticeTitle": "Diesen Chat merken?",
   "consentNoticeBody": "Wir möchten Ihre Unterhaltung in Ihrem Browser speichern, damit sie beim Neuladen nicht verloren geht. Ohne Ihre Zustimmung wird nichts gespeichert.",
   "consentAccept": "Erlauben",
-  "consentDecline": "Nein, danke"
+  "consentDecline": "Nein, danke",
+  "docsSearchError": "Suche fehlgeschlagen. Bitte versuchen Sie es erneut.",
+  "docsSearchRetry": "Erneut versuchen",
+  "gettingStartedCredentialAlt": "Bevorzugen Sie einen einzelnen Wert? Anstelle der drei oben genannten IDs können Sie ein {code} Attribut mit Ihrem Widget-Schlüssel übergeben (kopieren Sie es aus derselben Widget-Konfiguration). Verwenden Sie, was Ihre Integration bevorzugt."
 }

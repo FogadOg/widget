@@ -216,5 +216,8 @@
   "consentNoticeTitle": "Lembrar esta conversa?",
   "consentNoticeBody": "Gostaríamos de guardar a sua conversa no seu navegador para que não se perca ao recarregar. Nada é guardado até você aceitar.",
   "consentAccept": "Permitir",
-  "consentDecline": "Não, obrigado"
+  "consentDecline": "Não, obrigado",
+  "docsSearchError": "Busca falhou. Por favor, tente novamente.",
+  "docsSearchRetry": "Repetir",
+  "gettingStartedCredentialAlt": "Prefere um único valor? Em vez dos três IDs acima, você pode passar um atributo {code} com a sua Chave de Widget (copie-a da mesma configuração do widget). Use o que a sua integração preferir."
 }

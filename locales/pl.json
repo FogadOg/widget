@@ -216,5 +216,8 @@
   "consentNoticeTitle": "Zapamiętać ten czat?",
   "consentNoticeBody": "Chcielibyśmy zapisać Twoją rozmowę w przeglądarce, aby nie zginęła po odświeżeniu strony. Nic nie jest zapisywane, dopóki nie wyrazisz zgody.",
   "consentAccept": "Zezwól",
-  "consentDecline": "Nie, dziękuję"
+  "consentDecline": "Nie, dziękuję",
+  "docsSearchError": "Wyszukiwanie nie powiodło się. Proszę spróbować ponownie.",
+  "docsSearchRetry": "Ponów próbę",
+  "gettingStartedCredentialAlt": "Preferujesz jedną wartość? Zamiast trzech identyfikatorów powyżej, możesz przekazać jeden atrybut {code} z kluczem Widget (skopiuj go z tej samej konfiguracji widgetu). Użyj tego, co preferuje Twoja integracja."
 }

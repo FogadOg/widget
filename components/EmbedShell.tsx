@@ -17,7 +17,8 @@ import type {
 import { useClickedButtons, ButtonLike } from '../hooks/useClickedButtons';
 import { useWidgetStyles } from '../hooks/useWidgetStyles';
 import { hexToRgb, getReadableTextColor, withAlpha } from '../lib/colors';
-import { COMPANY_NAME, STATUS_COLORS } from '../lib/constants';
+import { COMPANY_NAME } from '../lib/constants';
+import { UnreadBadge } from './UnreadBadge';
 import { FOCUSABLE, FOCUS_RING } from './EmbedShell.constants';
 import type { Props } from './EmbedShell.types';
 import { FocusTrap } from './components/FocusTrap';
@@ -571,28 +572,7 @@ function ClassicEmbedShell({
                     </svg>
                   )}
                   {showUnreadBadge && unreadCount > 0 && (
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: '-4px',
-                        right: '-4px',
-                        backgroundColor: STATUS_COLORS.danger,
-                        color: 'white',
-                        borderRadius: '50%',
-                        width: unreadCount > 9 ? '24px' : '20px',
-                        height: unreadCount > 9 ? '24px' : '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: unreadCount > 9 ? '11px' : '12px',
-                        fontWeight: 'bold',
-                        border: '2px solid white',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                      }}
-                      className="animate-pulse"
-                    >
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
+                    <UnreadBadge count={unreadCount} variant="prominent" />
                   )}
                 </button>
               </div>
@@ -631,28 +611,7 @@ function ClassicEmbedShell({
                     </svg>
                   )}
                   {showUnreadBadge && unreadCount > 0 && (
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: '-4px',
-                        right: '-4px',
-                        backgroundColor: STATUS_COLORS.danger,
-                        color: 'white',
-                        borderRadius: '50%',
-                        width: unreadCount > 9 ? '24px' : '20px',
-                        height: unreadCount > 9 ? '24px' : '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: unreadCount > 9 ? '11px' : '12px',
-                        fontWeight: 'bold',
-                        border: '2px solid white',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                      }}
-                      className="animate-pulse"
-                    >
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
+                    <UnreadBadge count={unreadCount} variant="prominent" />
                   )}
               </button>
             )

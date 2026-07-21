@@ -52,6 +52,11 @@ export default async function GettingStartedPage({ params }: { params: Promise<{
               {' '}{t.gettingStartedCredentialConfigIdDesc}
             </li>
           </ul>
+          <div className="rounded-lg border border-border bg-muted/50 p-4 text-sm text-muted-foreground">
+            {t.gettingStartedCredentialAlt.split('{code}')[0]}
+            <code className="font-mono text-xs bg-background px-1.5 py-0.5 rounded border border-border">data-widget-key</code>
+            {t.gettingStartedCredentialAlt.split('{code}')[1]}
+          </div>
         </section>
         {/* Step 1 */}
         <section className="flex flex-col gap-3">

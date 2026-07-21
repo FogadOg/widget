@@ -6,6 +6,7 @@ import { useWidgetTranslation } from '../../hooks/useWidgetTranslation';
 import { useWidgetStyles } from '../../hooks/useWidgetStyles';
 import type { FlowButton } from '../../types/widget';
 import type { Props } from '../EmbedShell.types';
+import { UnreadBadge } from '../UnreadBadge';
 import { FOCUS_RING } from '../EmbedShell.constants';
 import MessageBubble from '../MessageBubble';
 import InteractionButtons from '../InteractionButtons';
@@ -158,9 +159,7 @@ export default function MinimalEmbedShell(props: Props) {
           </svg>
         )}
         {showUnreadBadge && unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 rounded-full bg-red-500 text-white text-xs px-1.5 py-0.5">
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
+          <UnreadBadge count={unreadCount} variant="compact" />
         )}
       </button>
     );

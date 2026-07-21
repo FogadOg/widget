@@ -216,5 +216,8 @@
   "consentNoticeTitle": "Deze chat onthouden?",
   "consentNoticeBody": "We willen je gesprek in je browser opslaan zodat het niet verloren gaat bij herladen. Er wordt niets opgeslagen totdat je akkoord gaat.",
   "consentAccept": "Toestaan",
-  "consentDecline": "Nee, bedankt"
+  "consentDecline": "Nee, bedankt",
+  "docsSearchError": "Zoeken mislukt. Probeer het opnieuw.",
+  "docsSearchRetry": "Opnieuw proberen",
+  "gettingStartedCredentialAlt": "Geef je de voorkeur aan een enkele waarde? In plaats van de drie ID's hierboven, kun je één {code} attribuut doorgeven met je Widget Sleutel (kopieer deze uit dezelfde widgetconfiguratie). Gebruik degene die je integratie verkiest."
 }

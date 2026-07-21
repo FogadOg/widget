@@ -5,8 +5,12 @@ interface Props {
   hits: SearchHit[]
   query: string
   loading: boolean
+  error?: boolean
   noResultsLabel: string
   resultsLabel: string
+  errorLabel?: string
+  retryLabel?: string
+  onRetry?: () => void
   onSelect: (hit: SearchHit) => void
 }
 
@@ -33,7 +37,27 @@ const TYPE_ICON: Record<string, string> = {
   url: '🔗',
 }
 
-export function DocSearchResults({ hits, query, loading, noResultsLabel, resultsLabel, onSelect }: Props) {
+export function DocSearchResults({ hits, query, loading, error, noResultsLabel, resultsLabel, errorLabel, retryLabel, onRetry, onSelect }: Props) {
+  if (error) {
+    return (
+      <div
+        role="alert"
+        style={{ padding: '12px 16px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', color: 'var(--muted-foreground)', fontSize: '13px' }}
+      >
+        <span>{errorLabel}</span>
+        {onRetry && retryLabel && (
+          <button
+            type="button"
+            onClick={onRetry}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--primary)', fontSize: '13px', fontWeight: 500, textDecoration: 'underline' }}
+          >
+            {retryLabel}
+          </button>
+        )}
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div

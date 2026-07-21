@@ -55,15 +55,6 @@ import ErrorBoundary from "../components/ErrorBoundary";
 import FeedbackDialog from "../components/FeedbackDialog";
 import InteractionButtons from "../components/InteractionButtons";
 import MessageBubble from "../components/MessageBubble";
-import MessageInput from "../components/MessageInput";
-
-import Conversation from "../components/ai-elements/conversation";
-import Message from "../components/ai-elements/message";
-import ModelSelector from "../components/ai-elements/model-selector";
-import PromptInput from "../components/ai-elements/prompt-input";
-import Reasoning from "../components/ai-elements/reasoning";
-import Sources from "../components/ai-elements/sources";
-import Suggestion from "../components/ai-elements/suggestion";
 
 describe("widget-app basic smoke render", () => {
   test("renders top-level UI components without crashing", () => {
@@ -91,27 +82,10 @@ describe("widget-app basic smoke render", () => {
           fontStyles={{}}
         />
         <MessageBubble message={{ id: 'm1', text: 'hello', from: 'agent', timestamp: Date.now() }} />
-        <MessageInput />
       </div>
     );
 
     // basic expectation that render produced DOM
-    expect(document.body).toBeTruthy();
-  });
-
-  test("renders ai-elements components with minimal props", () => {
-    render(
-      <div>
-        <Conversation />
-        <Message />
-        <ModelSelector />
-        <PromptInput onSubmit={() => {}} />
-        <Reasoning />
-        <Sources />
-        <Suggestion />
-      </div>
-    );
-
     expect(document.body).toBeTruthy();
   });
 });

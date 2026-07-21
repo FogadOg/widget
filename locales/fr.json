@@ -216,5 +216,8 @@
   "consentNoticeTitle": "Mémoriser cette conversation ?",
   "consentNoticeBody": "Nous souhaitons enregistrer votre conversation dans votre navigateur afin qu'elle ne soit pas perdue en cas de rechargement. Rien n'est enregistré sans votre accord.",
   "consentAccept": "Autoriser",
-  "consentDecline": "Non merci"
+  "consentDecline": "Non merci",
+  "docsSearchError": "La recherche a échoué. Veuillez réessayer.",
+  "docsSearchRetry": "Réessayer",
+  "gettingStartedCredentialAlt": "Préférez-vous une seule valeur ? Au lieu des trois identifiants ci-dessus, vous pouvez passer un attribut {code} avec votre Widget Key (copiez-le à partir de la même configuration de widget). Utilisez celui que votre intégration préfère."
 }

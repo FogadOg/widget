@@ -216,5 +216,8 @@
   "consentNoticeTitle": "Huske denne chatten?",
   "consentNoticeBody": "Vi vil gjerne lagre samtalen din i nettleseren slik at den ikke går tapt ved omlasting. Ingenting lagres før du godtar.",
   "consentAccept": "Tillat",
-  "consentDecline": "Nei takk"
+  "consentDecline": "Nei takk",
+  "docsSearchError": "Søk mislyktes. Vennligst prøv igjen.",
+  "docsSearchRetry": "Prøv igjen",
+  "gettingStartedCredentialAlt": "Foretrekker du en enkelt verdi? I stedet for de tre ID-ene ovenfor, kan du sende én {code} attributt med din Widget Key (kopier den fra den samme widget-konfigurasjonen). Bruk det alternativet integrasjonen din foretrekker."
 }

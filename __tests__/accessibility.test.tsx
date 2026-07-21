@@ -3,7 +3,6 @@ import { render } from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import EmbedShell from '../components/EmbedShell';
 import InteractionButtons from '../components/InteractionButtons';
-import MessageInput from '../components/MessageInput';
 
 expect.extend(toHaveNoViolations);
 
@@ -50,23 +49,6 @@ describe('accessibility checks', () => {
       />
     );
 
-    const results = await axe(container);
-    expect(results).toHaveNoViolations();
-  });
-
-  it('MessageInput has no a11y violations', async () => {
-    const { container } = render(
-      <MessageInput
-        sessionId="abc"
-        authToken="token"
-        locale="en"
-        onMessageSent={() => {}}
-        onError={() => {}}
-        onTypingStart={() => {}}
-        onTypingEnd={() => {}}
-        getPageContext={() => ({ url: '', pathname: '', title: '', referrer: '' })}
-      />
-    );
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });

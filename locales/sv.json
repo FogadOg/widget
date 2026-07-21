@@ -216,5 +216,8 @@
   "consentNoticeTitle": "Kom ihåg den här chatten?",
   "consentNoticeBody": "Vi vill spara din konversation i din webbläsare så att den inte går förlorad vid omladdning. Inget sparas förrän du godkänner.",
   "consentAccept": "Tillåt",
-  "consentDecline": "Nej tack"
+  "consentDecline": "Nej tack",
+  "docsSearchError": "Sökning misslyckades. Försök igen.",
+  "docsSearchRetry": "Försök igen",
+  "gettingStartedCredentialAlt": "Föredrar du ett enda värde? Istället för de tre ID:erna ovan kan du skicka ett {code} attribut med din Widget Key (kopiera det från samma widgetkonfiguration). Använd det som din integration föredrar."
 }

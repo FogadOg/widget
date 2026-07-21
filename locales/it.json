@@ -216,5 +216,8 @@
   "consentNoticeTitle": "Ricordare questa chat?",
   "consentNoticeBody": "Vorremmo salvare la tua conversazione nel browser così non andrà persa se ricarichi la pagina. Nulla viene salvato finché non accetti.",
   "consentAccept": "Consenti",
-  "consentDecline": "No, grazie"
+  "consentDecline": "No, grazie",
+  "docsSearchError": "Ricerca fallita. Per favore riprova.",
+  "docsSearchRetry": "Riprova",
+  "gettingStartedCredentialAlt": "Preferisci un singolo valore? Invece dei tre ID sopra, puoi passare un attributo {code} con la tua Chiave Widget (copiala dalla stessa configurazione del widget). Usa quello che la tua integrazione preferisce."
 }
