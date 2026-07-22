@@ -39,20 +39,30 @@ function usePrefersDark(): boolean {
 }
 
 export function useWidgetStyles(widgetConfig?: WidgetConfig) {
-  const primaryColor = normalizeHexColor(widgetConfig?.primary_color, DEFAULT_COLORS.PRIMARY);
-  const secondaryColor = normalizeHexColor(widgetConfig?.secondary_color, DEFAULT_COLORS.SECONDARY);
-  const rawBackground = normalizeHexColor(widgetConfig?.background_color, DEFAULT_COLORS.BACKGROUND);
-  const rawText = normalizeHexColor(widgetConfig?.text_color, DEFAULT_COLORS.TEXT);
   // Resolve the effective theme. 'system' follows the visitor's OS setting.
   const prefersDark = usePrefersDark();
   const themeSetting = widgetConfig?.theme ?? 'light';
   const isDarkTheme = themeSetting === 'dark' || (themeSetting === 'system' && prefersDark);
-  // In dark mode substitute a dark surface/text only when the configured colors
-  // look light — so an admin who deliberately set dark colors is respected, and
+
+  // Per-mode palette: in dark mode prefer the admin's explicit dark_* color for
+  // each field; a blank dark field falls back to the light value (and, for
+  // background/text, to the legacy auto-derive below) so existing configs are
+  // unchanged. Each field is independent — an admin can set only dark_background
+  // and leave the rest to derive.
+  const pick = (dark: string | undefined, light: string | undefined) =>
+    isDarkTheme && dark ? dark : light;
+
+  const primaryColor = normalizeHexColor(pick(widgetConfig?.dark_primary_color, widgetConfig?.primary_color), DEFAULT_COLORS.PRIMARY);
+  const secondaryColor = normalizeHexColor(pick(widgetConfig?.dark_secondary_color, widgetConfig?.secondary_color), DEFAULT_COLORS.SECONDARY);
+  const rawBackground = normalizeHexColor(pick(widgetConfig?.dark_background_color, widgetConfig?.background_color), DEFAULT_COLORS.BACKGROUND);
+  const rawText = normalizeHexColor(pick(widgetConfig?.dark_text_color, widgetConfig?.text_color), DEFAULT_COLORS.TEXT);
+
+  // Legacy auto-derive: when dark mode is active but NO explicit dark surface/text
+  // was set, substitute the dark default only if the light color looks light — so
   // the derived neutrals below (which key off background/text) adapt for free.
-  const backgroundColor = isDarkTheme && getRelativeLuminance(rawBackground) > 0.5
+  const backgroundColor = isDarkTheme && !widgetConfig?.dark_background_color && getRelativeLuminance(rawBackground) > 0.5
     ? DARK_DEFAULTS.BACKGROUND : rawBackground;
-  const textColor = isDarkTheme && getRelativeLuminance(rawText) < 0.5
+  const textColor = isDarkTheme && !widgetConfig?.dark_text_color && getRelativeLuminance(rawText) < 0.5
     ? DARK_DEFAULTS.TEXT : rawText;
   // WCAG-contrast text color for any surface painted with primaryColor (buttons,
   // user bubbles, etc.) so a light brand color doesn't yield unreadable white. (#10)

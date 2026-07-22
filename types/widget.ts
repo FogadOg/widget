@@ -77,6 +77,12 @@ export type WidgetConfig = {
   secondary_color: string;
   background_color: string;
   text_color: string;
+  // Dark-mode palette. Blank/absent = derive a dark surface from the light
+  // palette (legacy behavior). Used by useWidgetStyles when the theme resolves dark.
+  dark_primary_color?: string;
+  dark_secondary_color?: string;
+  dark_background_color?: string;
+  dark_text_color?: string;
   border_radius: number;
   start_open: boolean;
   hide_on_mobile: boolean;
