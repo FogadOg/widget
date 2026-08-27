@@ -94,9 +94,25 @@
     const agentId = script.getAttribute("data-agent-id");
     const configId = script.getAttribute("data-config-id");
     const debugDisabled = script.getAttribute("data-disable-debug") === 'true';
+    // Read config out of the loader's own src query string — the attribute-less
+    // fallback for host platforms that inject a bare URL (Google Tag Manager's
+    // sandboxed injectScript, Webflow's registered hosted scripts). Kept
+    // identical to the chat loader so a GTM template offering chat *or* docs
+    // behaves the same either way. Attributes win when both are present, and
+    // SRI still validates because a subresource hash covers content, not URL.
+    const srcParam = (name) => {
+      try {
+        if (!script.src) return null;
+        return new URL(script.src, window.location.href).searchParams.get(name);
+      } catch (e) {
+        return null;
+      }
+    };
     const detectLocale = () => {
       const explicitLocale = script.getAttribute("data-locale");
       if (explicitLocale) return explicitLocale;
+      const localeFromSrc = srcParam('locale');
+      if (localeFromSrc) return localeFromSrc;
       const browserLocale = (navigator.languages && navigator.languages[0]) || navigator.language;
       return browserLocale || "en";
     };
@@ -110,7 +126,7 @@
     // Theme override (data-theme="light|dark|system"): forces the widget theme
     // from the embed, overriding the dashboard config. Invalid values are
     // ignored. Can also be changed at runtime via setTheme().
-    var rawTheme = (script.getAttribute("data-theme") || "").trim().toLowerCase();
+    var rawTheme = (script.getAttribute("data-theme") || srcParam('theme') || "").trim().toLowerCase();
     var theme = (rawTheme === 'light' || rawTheme === 'dark' || rawTheme === 'system') ? rawTheme : null;
 
     // Optional signed user JWT from the host app. When present the widget
@@ -124,7 +140,8 @@
     // client-id/agent-id/config-id triple server-side. Used only when the
     // explicit triple is absent, so the three-attribute form keeps working.
     // (data-key remains the instance-id alias above — do NOT reuse it here.)
-    const installKey = script.getAttribute("data-widget-key");
+    // ?key= on the loader's src is the attribute-less fallback (see srcParam).
+    const installKey = script.getAttribute("data-widget-key") || srcParam('key');
     const usingInstallKey = !!installKey && (!clientId || !agentId || !configId);
 
     // Validate required attributes

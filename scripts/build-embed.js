@@ -102,8 +102,20 @@ function buildEmbedFile(entry) {
   'use strict';
   var cur = document.currentScript;
   var host = 'https://widget.companin.tech';
+  // Carry this tag's own query string over to the versioned bundle. Host
+  // platforms that inject the loader as a bare URL cannot set attributes on it
+  // — Google Tag Manager's sandboxed injectScript() takes a URL and nothing
+  // else, and Webflow's registered hosted scripts take a URL plus an integrity
+  // hash — so ?key=/?theme=/?locale= is the only config channel they have.
+  // Dropping the query here would hand the versioned loader a tag with nothing
+  // on it to read, and the widget would report a missing install key.
+  var query = '';
   if (cur && cur.src) {
-    try { host = new URL(cur.src, window.location.href).origin; } catch (e) {}
+    try {
+      var parsed = new URL(cur.src, window.location.href);
+      host = parsed.origin;
+      query = parsed.search || '';
+    } catch (e) {}
   }
   var s = document.createElement('script');
   // Copy all data-* attributes (client-id, agent-id, etc.) to the versioned tag
@@ -116,7 +128,7 @@ function buildEmbedFile(entry) {
       }
     }
   }
-  s.src = host + ${JSON.stringify(versionedPublicPath)};
+  s.src = host + ${JSON.stringify(versionedPublicPath)} + query;
   s.async = true;
   s.crossOrigin = 'anonymous';
   (document.head || document.documentElement).appendChild(s);

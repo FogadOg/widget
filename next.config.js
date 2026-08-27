@@ -234,6 +234,26 @@ const nextConfig = {
           { key: 'Timing-Allow-Origin', value: '*' },
         ],
       },
+      // The embed manifest is a public contract, not an internal file. Host
+      // platform plugins (WordPress, Docusaurus, Webflow) fetch it server-side
+      // to learn the current bundle + SRI hash instead of hardcoding a pinned
+      // URL that would freeze every install on one version forever. Five
+      // minutes keeps a release reaching plugins quickly while still absorbing
+      // the read volume; the `{version, file, integrity}` shape is frozen —
+      // additive keys are fine, renames break every installed site.
+      //
+      // This is also why every old versioned bundle stays in public/ forever: a
+      // plugin with a stale 12h transient will keep requesting N-1 well after a
+      // release, and unlike a pasted snippet you cannot ask it to re-paste.
+      {
+        source: '/widget-embed-manifest.json',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=300' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, OPTIONS' },
+        ],
+      },
       {
         // Next.js static assets under _next may be requested cross-origin.
         // Fonts use <link rel="preload" as="font" crossorigin="anonymous">,

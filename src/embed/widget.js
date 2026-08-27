@@ -191,18 +191,33 @@
     // Kill-switch: site owners can set data-disable-debug="true" to prevent
     // any visitor from activating the DevOverlay on their production embed.
     const debugDisabled = script.getAttribute("data-disable-debug") === 'true';
+    // Read a config value out of the loader's own src query string.
+    //
+    // Two host platforms inject this script as a bare URL and cannot put any
+    // attributes on the tag: Google Tag Manager's sandboxed injectScript() takes
+    // a URL, two callbacks and a cache token — nothing else — and Webflow's
+    // registered_scripts/hosted takes a hostedLocation plus an integrityHash.
+    // On those platforms the query string is the only channel there is.
+    //
+    // SRI is unaffected: a subresource integrity hash covers the file's
+    // *content*, not its URL, so widget-0.1.4.js?key=wgt_… still validates
+    // against the manifest hash. Attributes always win when both are present,
+    // so nothing changes for a normal pasted snippet.
+    const srcParam = (name) => {
+      try {
+        if (!script.src) return null;
+        return new URL(script.src, window.location.href).searchParams.get(name);
+      } catch (e) {
+        return null;
+      }
+    };
     const detectLocale = () => {
       const explicitLocale = script.getAttribute("data-locale");
       if (explicitLocale) return explicitLocale;
 
       // Fallback: allow host to pass locale in script src query
-      try {
-        if (script.src) {
-          const parsed = new URL(script.src, window.location.href);
-          const localeFromSrc = parsed.searchParams.get('locale');
-          if (localeFromSrc) return localeFromSrc;
-        }
-      } catch (e) {}
+      const localeFromSrc = srcParam('locale');
+      if (localeFromSrc) return localeFromSrc;
 
       const browserLocale = (navigator.languages && navigator.languages[0]) || navigator.language;
       return browserLocale || "en";
@@ -218,7 +233,7 @@
     // from the embed, overriding the dashboard WidgetConfig.theme. Lets a host
     // page sync the widget to its own theme. Invalid values are ignored (the
     // dashboard config is used). Can also be changed at runtime via setTheme().
-    var rawTheme = (script.getAttribute("data-theme") || "").trim().toLowerCase();
+    var rawTheme = (script.getAttribute("data-theme") || srcParam('theme') || "").trim().toLowerCase();
     var theme = (rawTheme === 'light' || rawTheme === 'dark' || rawTheme === 'system') ? rawTheme : null;
     // Proactive open triggers
     const autoOpenDelay = parseInt(script.getAttribute("data-auto-open-delay") || '0', 10) || 0;
@@ -234,7 +249,11 @@
     // it server-side. We only use it when the explicit triple is absent, so the
     // three-attribute form keeps working unchanged for multi-instance setups.
     // (Note: data-key remains the instance-id alias above — do NOT reuse it here.)
-    const installKey = script.getAttribute("data-widget-key");
+    //
+    // ?key= on the loader's own src is the attribute-less fallback for GTM and
+    // Webflow (see srcParam above). It is the *only* way those two platforms can
+    // carry an install key, so without it a plugin there cannot work at all.
+    const installKey = script.getAttribute("data-widget-key") || srcParam('key');
     const usingInstallKey = !!installKey && (!clientId || !agentId || !configId);
     // Signed user JWT from the host app — proves the currently-logged-in user.
     // Short-lived (≤15 min); forwarded to the iframe via postMessage after WIDGET_READY.
