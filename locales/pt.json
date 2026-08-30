@@ -80,6 +80,7 @@
   "uploadFiles": "Carregar arquivos",
   "submitMessage": "Enviar",
   "removeAttachment": "Remover anexo",
+  "removeAttachmentNamed": "Remover {filename}",
   "offlineBannerTitle": "Você está offline — as mensagens serão enfileiradas",
   "offlineBannerDesc": "As mensagens são armazenadas localmente e serão enviadas quando a conexão for restaurada.",
   "onlineStatus": "Online",

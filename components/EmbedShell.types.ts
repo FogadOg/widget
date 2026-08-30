@@ -23,6 +23,8 @@ export type Props = {
   onCloseUnsureModal?: () => void;
   onDismissHandoff?: () => void;
   error?: string | null;
+  /** Re-sends the message that just failed. Drives the error banner's Retry. */
+  onRetrySend?: () => void;
   title?: string;
   agentName?: string;
   /** Display name of the identified user — personalizes the greeting (e.g. "Hi Alice!"). */

@@ -80,6 +80,7 @@
   "uploadFiles": "Last opp filer",
   "submitMessage": "Send inn",
   "removeAttachment": "Fjern vedlegg",
+  "removeAttachmentNamed": "Fjern {filename}",
   "offlineBannerTitle": "Du er frakoblet — meldinger vil bli køet",
   "offlineBannerDesc": "Meldinger lagres lokalt og vil bli sendt når forbindelsen er gjenopprettet.",
   "onlineStatus": "På nett",

@@ -87,6 +87,7 @@
   "uploadFiles": "Unggah berkas",
   "submitMessage": "Kirim",
   "removeAttachment": "Hapus lampiran",
+  "removeAttachmentNamed": "Hapus {filename}",
   "offlineBannerTitle": "Anda sedang offline — pesan akan antre",
   "offlineBannerDesc": "Pesan disimpan secara lokal dan akan dikirim saat koneksi dipulihkan.",
   "onlineStatus": "Daring online",

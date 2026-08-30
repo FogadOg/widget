@@ -80,6 +80,7 @@
   "uploadFiles": "Ladda upp filer",
   "submitMessage": "Skicka in",
   "removeAttachment": "Ta bort bilaga",
+  "removeAttachmentNamed": "Ta bort {filename}",
   "offlineBannerTitle": "Du är offline — meddelanden kommer att köas.",
   "offlineBannerDesc": "Meddelanden lagras lokalt och kommer att skickas när anslutningen återställs.",
   "onlineStatus": "Online",

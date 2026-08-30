@@ -87,6 +87,7 @@
   "uploadFiles": "Загрузить файлы",
   "submitMessage": "Отправить",
   "removeAttachment": "Удалить вложение",
+  "removeAttachmentNamed": "Удалить {filename}",
   "offlineBannerTitle": "Вы в оффлайне — сообщения будут поставлены в очередь.",
   "offlineBannerDesc": "Сообщения хранятся локально и будут отправлены, когда соединение будет восстановлено.",
   "onlineStatus": "Онлайн",

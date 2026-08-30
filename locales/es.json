@@ -80,6 +80,7 @@
   "uploadFiles": "Subir archivos",
   "submitMessage": "Enviar",
   "removeAttachment": "Eliminar archivo adjunto",
+  "removeAttachmentNamed": "Quitar {filename}",
   "offlineBannerTitle": "Estás desconectado — los mensajes se pondrán en cola",
   "offlineBannerDesc": "Los mensajes se almacenan localmente y se enviarán cuando se restablezca la conexión.",
   "onlineStatus": "En línea",

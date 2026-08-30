@@ -2161,6 +2161,18 @@ export function useEmbedController(props: EmbedClientProps) {
     }
   }, [initialAgentId, initialClientId, embedHeaders, handleSubmit, parentSensitiveOrigin]);
 
+  // Retry the send that just failed. The failure path already restores the
+  // visitor's text into the composer, so re-submitting the current input is the
+  // same message — this just saves them hunting for the send button after an
+  // error, which was previously their only recourse.
+  const retryLastSend = useCallback(() => {
+    if (!input.trim()) return;
+    setError(null);
+    void Promise.resolve(
+      handleSubmit({ preventDefault: () => {} } as React.FormEvent)
+    ).catch(() => {});
+  }, [input, handleSubmit]);
+
   const handleInteractionButtonClick = async (button: ButtonLike) => {
     const b = button as FlowButton;
 
@@ -2746,6 +2758,7 @@ export function useEmbedController(props: EmbedClientProps) {
     handlePickFiles,
     handleRemoveAttachment,
     handleSubmit,
+    retryLastSend,
     handleFollowUpButtonClick,
     handleInteractionButtonClick,
     handleRichAction,

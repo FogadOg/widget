@@ -87,6 +87,7 @@
   "uploadFiles": "Prześlij pliki",
   "submitMessage": "Prześlij",
   "removeAttachment": "Usuń załącznik",
+  "removeAttachmentNamed": "Usuń {filename}",
   "offlineBannerTitle": "Jesteś offline — wiadomości będą w kolejce.",
   "offlineBannerDesc": "Wiadomości są przechowywane lokalnie i zostaną wysłane, gdy połączenie zostanie przywrócone.",
   "onlineStatus": "Online",

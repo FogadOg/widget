@@ -3,8 +3,10 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { Composer } from '../Composer';
 
 function renderComposer(over: Partial<React.ComponentProps<typeof Composer>> = {}) {
-  const inputRef = React.createRef<HTMLInputElement>();
-  const props: React.ComponentProps<typeof Composer> = {
+  const inputRef = React.createRef<HTMLTextAreaElement>();
+  // `over` is Partial, so spreading it widens required props to `| undefined`;
+  // the cast keeps the defaults above authoritative for anything not overridden.
+  const props = {
     input: '',
     setInput: jest.fn(),
     onSubmit: jest.fn(),
@@ -21,9 +23,11 @@ function renderComposer(over: Partial<React.ComponentProps<typeof Composer>> = {
     ariaLabel: 'Message',
     sendLabel: 'Send',
     stopLabel: 'Stop',
+    attachLabel: 'Attach file',
+    removeAttachmentLabel: 'Remove {filename}',
     inputRef,
     ...over,
-  };
+  } as React.ComponentProps<typeof Composer>;
   const utils = render(<Composer {...props} />);
   return { ...utils, props };
 }

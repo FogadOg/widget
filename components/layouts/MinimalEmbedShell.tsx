@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useMemo, useRef } from 'react';
+import React from 'react';
 import { t as translate } from '../../lib/i18n';
 import { useWidgetTranslation } from '../../hooks/useWidgetTranslation';
 import { useWidgetStyles } from '../../hooks/useWidgetStyles';
+import { useShellChrome } from '../../hooks/useShellChrome';
 import type { FlowButton } from '../../types/widget';
 import type { Props } from '../EmbedShell.types';
 import { UnreadBadge } from '../UnreadBadge';
@@ -16,6 +17,10 @@ import { TypingIndicator } from '../components/TypingIndicator';
 import { Composer } from '../components/Composer';
 import { LanguageMenu } from '../components/LanguageMenu';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
+import { StatusBanners } from '../components/StatusBanners';
+import { ConsentBanner } from '../components/ConsentBanner';
+import { JumpToLatest } from '../components/JumpToLatest';
+import { FocusTrap } from '../components/FocusTrap';
 
 export default function MinimalEmbedShell(props: Props) {
   const {
@@ -51,11 +56,46 @@ export default function MinimalEmbedShell(props: Props) {
     onSubmitMessageFeedback,
     onRichAction,
     leadCaptureCard,
+    error,
+    onRetrySend,
+    isOffline,
+    sessionExpiredBanner,
+    onDismissSessionExpiredBanner,
+    showConsentPrompt,
+    onConsentAccept,
+    onConsentDecline,
+    hideCloseButton,
+    unsureModal,
+    onCloseUnsureModal,
+    handoffModal,
+    onDismissHandoff,
+    showFeedbackDialog,
+    feedbackDialog,
   } = props;
 
   const { locale: hookLocale } = useWidgetTranslation();
   const locale = localeProp || hookLocale;
-  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-scroll, jump-to-latest, Escape-to-close and composer focus. Shared with
+  // the classic shell so this layout can't silently drift out of parity again.
+  const {
+    scrollContainerRef,
+    inputRef,
+    showJumpButton,
+    handleScroll,
+    scrollToBottom,
+  } = useShellChrome({
+    isCollapsed,
+    toggleCollapsed,
+    hideCloseButton,
+    scrollDeps: [messages, flowResponses, isTyping, streamingMessage],
+    unsureModal,
+    onCloseUnsureModal,
+    handoffModal,
+    onDismissHandoff,
+    showFeedbackDialog,
+    feedbackDialog,
+  });
 
   const {
     primaryColor,
@@ -221,19 +261,59 @@ export default function MinimalEmbedShell(props: Props) {
               />
             )}
             {languageMenu}
+            {/* Minimize, not close — the label used to say "close" while the
+                handler collapsed, and the glyph was a bare "-" text character. */}
             <button
               type="button"
               onClick={toggleCollapsed}
-              className={`w-7 h-7 rounded border ${FOCUS_RING}`}
+              className={`w-7 h-7 rounded border flex items-center justify-center ${FOCUS_RING}`}
               style={{ borderColor: subtleBorderColor, color: textColor }}
-              aria-label={translate(locale, 'chatControl', { context: 'close' })}
+              aria-label={translate(locale, 'chatControl', { context: 'minimize' })}
+              title={translate(locale, 'chatControl', { context: 'minimize' })}
             >
-              -
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M5 12h14" />
+              </svg>
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto" style={{ padding: spacingValues.padding }}>
+        <StatusBanners
+          error={error}
+          onRetry={onRetrySend}
+          retryLabel={translate(locale, 'retry')}
+          isOffline={isOffline}
+          sessionExpired={sessionExpiredBanner}
+          onDismissSessionExpired={onDismissSessionExpiredBanner}
+          offlineTitle={translate(locale, 'offlineBannerTitle')}
+          offlineDesc={translate(locale, 'offlineBannerDesc')}
+          sessionExpiredTitle={translate(locale, 'sessionExpiredTitle')}
+          sessionExpiredBody={translate(locale, 'sessionExpiredBody')}
+          sessionExpiredDismiss={translate(locale, 'sessionExpiredDismiss')}
+        />
+        {showConsentPrompt && onConsentAccept && onConsentDecline && (
+          <ConsentBanner
+            title={translate(locale, 'consentNoticeTitle')}
+            body={translate(locale, 'consentNoticeBody')}
+            acceptLabel={translate(locale, 'consentAccept')}
+            declineLabel={translate(locale, 'consentDecline')}
+            onAccept={onConsentAccept}
+            onDecline={onConsentDecline}
+          />
+        )}
+
+        <div className="relative flex-1 min-h-0 flex flex-col">
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto overscroll-contain"
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions text"
+          aria-atomic="false"
+          aria-label={translate(locale, 'chatMessages')}
+          style={{ padding: spacingValues.padding }}
+        >
           {!(showGreeting && greetingText) && !showSuggestions && mergedContent.length === 0 && !isTyping && !streamingMessage && (
             <EmptyStatePrompt
               label={translate(locale, 'emptyStatePrompt')}
@@ -307,7 +387,7 @@ export default function MinimalEmbedShell(props: Props) {
                     showTimestamps={false}
                   />
                 )}
-                {item.data.buttons.map((button: FlowButton) => (
+                {item.data.buttons.filter((button: FlowButton) => !!getText(button.label)).map((button: FlowButton) => (
                   <button
                     key={button.id}
                     type="button"
@@ -315,7 +395,7 @@ export default function MinimalEmbedShell(props: Props) {
                     className={`px-3 py-2 text-sm rounded ${FOCUS_RING}`}
                     style={{ backgroundColor: primaryColor, color: readableOnPrimary, borderRadius: `${buttonBorderRadius}px` }}
                   >
-                    {getText(button.label) || 'Button'}
+                    {getText(button.label)}
                   </button>
                 ))}
               </div>
@@ -351,6 +431,16 @@ export default function MinimalEmbedShell(props: Props) {
               message that triggered it: the offer stays visible if the visitor
               keeps typing, instead of scrolling out of view. */}
           {leadCaptureCard}
+          {/* Inside the scroll container: the pill is `position: sticky`, so it
+              only pins correctly against the element that actually scrolls. */}
+          {showJumpButton && (
+            <JumpToLatest
+              onClick={scrollToBottom}
+              label={translate(locale, 'jumpToLatest')}
+              primaryColor={primaryColor}
+            />
+          )}
+        </div>
         </div>
 
         <Composer
@@ -378,8 +468,35 @@ export default function MinimalEmbedShell(props: Props) {
           onPickFiles={onPickFiles}
           onRemoveAttachment={onRemoveAttachment}
           attachLabel={translate(locale, 'uploadFiles')}
+          removeAttachmentLabel={translate(locale, 'removeAttachmentNamed')}
         />
       </div>
+
+      {/* This shell rendered none of these before: the handoff modal, the
+          feedback dialog and the unsure-messages modal were all wired up in the
+          controller but had nowhere to appear, so on `minimal` the escalation
+          flow silently dead-ended. */}
+      {showFeedbackDialog && feedbackDialog && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <FocusTrap>
+            <div className="max-w-md w-full">{feedbackDialog}</div>
+          </FocusTrap>
+        </div>
+      )}
+      {unsureModal && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <FocusTrap onEscape={onCloseUnsureModal}>
+            <div className="max-w-md w-full">{unsureModal}</div>
+          </FocusTrap>
+        </div>
+      )}
+      {handoffModal && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <FocusTrap onEscape={onDismissHandoff}>
+            <div className="max-w-md w-full">{handoffModal}</div>
+          </FocusTrap>
+        </div>
+      )}
     </div>
   );
 }

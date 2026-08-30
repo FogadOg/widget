@@ -4,9 +4,18 @@ import React from 'react';
 import { withAlpha, getReadableTextColor } from '../../lib/colors';
 import { FOCUS_RING } from '../EmbedShell.constants';
 
-// Shared message composer: a single-line text input with Enter-to-send and a
-// 16px font size to avoid iOS focus zoom.
+// Shared message composer: an auto-growing textarea with Enter-to-send,
+// Shift+Enter for a newline, and a 16px font size to avoid iOS focus zoom.
+//
+// This was a single-line <input> until 2026-08-29. Visitors pasting an order
+// number, an address or an error message could see ~30 characters at a time in
+// a 350px panel and couldn't review what they'd typed before sending — and the
+// Shift+Enter branch below was dead, because an <input> can't hold a newline.
 type ComposerAttachment = { id: string; filename: string };
+
+// Grows with the content up to ~5 rows, then scrolls. Measured off scrollHeight
+// rather than counting newlines so wrapped long lines expand too.
+const MAX_COMPOSER_ROWS = 5;
 
 export function Composer({
   input,
@@ -32,7 +41,8 @@ export function Composer({
   uploadingFiles = 0,
   onPickFiles,
   onRemoveAttachment,
-  attachLabel = 'Attach file',
+  attachLabel,
+  removeAttachmentLabel,
 }: {
   input: string;
   setInput: (v: string) => void;
@@ -51,13 +61,16 @@ export function Composer({
   ariaLabel: string;
   sendLabel: string;
   stopLabel: string;
-  inputRef: React.RefObject<HTMLInputElement | null>;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
   fileUploadEnabled?: boolean;
   pendingAttachments?: ComposerAttachment[];
   uploadingFiles?: number;
   onPickFiles?: (files: FileList) => void;
   onRemoveAttachment?: (id: string) => void;
-  attachLabel?: string;
+  /** Localized "Attach file". */
+  attachLabel: string;
+  /** Localized "Remove {filename}" template — `{filename}` is substituted. */
+  removeAttachmentLabel: string;
 }) {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   // Unique class so the placeholder color (a pseudo-element that inline styles
@@ -66,7 +79,25 @@ export function Composer({
   const inputClass = `aw-composer-input-${inputId}`;
   // Allow typing even while the agent is responding; only block submission.
   const canSend = !!input.trim() && !isTyping;
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+
+  // Reset to `auto` first so the box shrinks again when text is deleted —
+  // scrollHeight never reports smaller than the current height.
+  const resize = React.useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20;
+    const maxHeight = lineHeight * MAX_COMPOSER_ROWS;
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+    el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden';
+  }, [inputRef]);
+
+  React.useLayoutEffect(() => {
+    resize();
+  }, [input, resize]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter sends; Shift+Enter falls through to the textarea's own newline.
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (canSend) onSubmit(e as unknown as React.FormEvent);
@@ -94,7 +125,7 @@ export function Composer({
                 <button
                   type="button"
                   onClick={() => onRemoveAttachment(att.id)}
-                  aria-label={`Remove ${att.filename}`}
+                  aria-label={removeAttachmentLabel.replace('{filename}', att.filename)}
                   className="opacity-60 hover:opacity-100"
                 >
                   ×
@@ -110,7 +141,9 @@ export function Composer({
         </div>
       )}
       <style>{`.${inputClass}::placeholder{color:${mutedTextColor};opacity:1;}`}</style>
-      <div className="flex items-stretch space-x-2">
+      {/* items-end so the attach/send buttons stay level with the composer's
+          last row as the textarea grows, rather than stretching with it. */}
+      <div className="flex items-end space-x-2">
         {fileUploadEnabled && (
           <>
             <input
@@ -144,15 +177,15 @@ export function Composer({
             </button>
           </>
         )}
-        <input
+        <textarea
           ref={inputRef}
-          type="text"
+          rows={1}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           aria-label={ariaLabel}
-          className={`${inputClass} flex-1 min-w-0 px-3 py-2 border transition-shadow focus:outline-none focus-visible:ring-2`}
+          className={`${inputClass} flex-1 min-w-0 resize-none px-3 py-2 border transition-shadow focus:outline-none focus-visible:ring-2`}
           style={{
             borderRadius: `${buttonBorderRadius}px`,
             borderColor: subtleBorderColor,
@@ -160,7 +193,11 @@ export function Composer({
             color: textColor,
             ['--tw-ring-color' as string]: withAlpha(primaryColor, 0.6),
             ...fontStyles,
+            // 16px keeps iOS from zooming the host page on focus.
             fontSize: '16px',
+            lineHeight: '20px',
+            // Starts at one row; `resize()` grows it up to MAX_COMPOSER_ROWS.
+            overflowY: 'hidden',
           }}
         />
         {isTyping && onStop ? (

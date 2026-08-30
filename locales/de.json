@@ -79,6 +79,7 @@
   "uploadFiles": "Dateien hochladen",
   "submitMessage": "Einreichen",
   "removeAttachment": "Entfernen Sie den Anhang.",
+  "removeAttachmentNamed": "{filename} entfernen",
   "offlineBannerTitle": "Du bist offline — Nachrichten werden in der Warteschlange gespeichert.",
   "offlineBannerDesc": "Nachrichten werden lokal gespeichert und gesendet, wenn die Verbindung wiederhergestellt ist.",
   "onlineStatus": "Online",

@@ -87,6 +87,7 @@
   "uploadFiles": "파일 업로드",
   "submitMessage": "제출하다",
   "removeAttachment": "첨부 파일 제거",
+  "removeAttachmentNamed": "{filename} 제거",
   "offlineBannerTitle": "오프라인입니다 — 메시지가 대기열에 추가됩니다",
   "offlineBannerDesc": "메시지는 로컬에 저장되며 연결이 복원되면 전송됩니다.",
   "onlineStatus": "온라인",

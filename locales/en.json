@@ -88,6 +88,7 @@
   "uploadFiles": "Upload files",
   "submitMessage": "Submit",
   "removeAttachment": "Remove attachment",
+  "removeAttachmentNamed": "Remove {filename}",
   "offlineBannerTitle": "You're offline — messages will be queued",
   "offlineBannerDesc": "Messages are stored locally and will be sent when connection is restored.",
   "onlineStatus": "Online",

@@ -51,6 +51,7 @@ export function useClassicShell(props: Props) {
   setInput,
   handleSubmit,
   error,
+  onRetrySend,
   title,
   agentName,
   identifiedUserName,
@@ -121,7 +122,7 @@ export function useClassicShell(props: Props) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Ref for input (for focus management)
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   // Ref for the collapsed launcher button, so focus returns to it on close. (#15)
   const launcherRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
@@ -441,6 +442,7 @@ export function useClassicShell(props: Props) {
   const botAvatarSrc = widgetConfig?.bot_avatar;
   const botAvatarAlt = (agentName || getText(widgetConfig?.title) || 'agent') + ' avatar';
   const bannerLabels = {
+    retryLabel: translate(locale, 'retry'),
     offlineTitle: translate(locale, 'offlineBannerTitle'),
     offlineDesc: translate(locale, 'offlineBannerDesc'),
     sessionExpiredTitle: translate(locale, 'sessionExpiredTitle'),
@@ -472,6 +474,7 @@ export function useClassicShell(props: Props) {
     setInput,
     handleSubmit,
     error,
+    onRetrySend,
     title,
     agentName,
     identifiedUserName,

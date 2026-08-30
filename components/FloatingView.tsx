@@ -51,6 +51,7 @@ export function FloatingView({ vm }: { vm: ClassicShellVM }) {
     input,
     setInput,
     error,
+    onRetrySend,
     title,
     agentName,
     widgetConfig,
@@ -247,6 +248,7 @@ export function FloatingView({ vm }: { vm: ClassicShellVM }) {
   
                   <StatusBanners
                     error={error}
+                    onRetry={onRetrySend}
                     isOffline={isOffline}
                     sessionExpired={sessionExpiredBanner}
                     onDismissSessionExpired={onDismissSessionExpiredBanner}
@@ -367,7 +369,12 @@ export function FloatingView({ vm }: { vm: ClassicShellVM }) {
                             )}
                             {flowResponse.buttons.length > 0 && (
                               <div className="flex flex-col gap-2" style={{ marginInlineStart: widgetConfig?.bot_avatar ? '40px' : '0' }}>
-                                {flowResponse.buttons.map((button: FlowButton) => {
+                                {flowResponse.buttons
+                                  // Drop only genuinely unlabelled buttons. These views
+                                  // also render an icon, which counts as a label — the
+                                  // old code showed the literal word "Button" for both.
+                                  .filter((button: FlowButton) => !!getText(button.label) || !!button.icon)
+                                  .map((button: FlowButton) => {
                                   const buttonId = getButtonId(button);
                                   const isClicked = clickedButtons.has(buttonId);
                                   return (
@@ -394,7 +401,7 @@ export function FloatingView({ vm }: { vm: ClassicShellVM }) {
                                           <DynamicIcon name={name} className="w-4 h-4" fallback={<span>{button.icon}</span>} />
                                         );
                                       })()}
-                                      {getText(button.label) || 'Button'}
+                                      {getText(button.label)}
                                     </button>
                                   );
                                 })}
@@ -498,6 +505,7 @@ export function FloatingView({ vm }: { vm: ClassicShellVM }) {
                     onPickFiles={onPickFiles}
                     onRemoveAttachment={onRemoveAttachment}
                     attachLabel={translate(locale, 'uploadFiles')}
+                    removeAttachmentLabel={translate(locale, 'removeAttachmentNamed')}
                   />
                   {!widgetConfig?.hide_branding && (
                   <div className="p-2 text-center text-xs flex items-center justify-center gap-2 flex-wrap" style={{ color: mutedTextColor }}>

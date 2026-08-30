@@ -7,6 +7,8 @@ import { STATUS_COLORS } from '../../lib/constants';
 // sourced from the semantic STATUS_COLORS palette (color = meaning only).
 export function StatusBanners({
   error,
+  onRetry,
+  retryLabel,
   isOffline,
   sessionExpired,
   onDismissSessionExpired,
@@ -17,6 +19,9 @@ export function StatusBanners({
   sessionExpiredDismiss,
 }: {
   error?: string | null;
+  /** Retries the action that failed. Omit to render the error as text only. */
+  onRetry?: () => void;
+  retryLabel?: string;
   isOffline?: boolean;
   sessionExpired?: boolean;
   onDismissSessionExpired?: () => void;
@@ -35,6 +40,22 @@ export function StatusBanners({
           style={{ backgroundColor: STATUS_COLORS.error.bg, borderColor: STATUS_COLORS.error.border, color: STATUS_COLORS.error.text }}
         >
           <p className="text-sm">{error}</p>
+          {/* A failed send used to leave the visitor with a red box and nothing
+              to click — their only recourse was retyping the message. */}
+          {onRetry && retryLabel && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-2 px-2.5 py-1 rounded text-xs font-medium cursor-pointer"
+              style={{
+                background: 'transparent',
+                color: STATUS_COLORS.error.text,
+                border: `1px solid ${STATUS_COLORS.error.border}`,
+              }}
+            >
+              {retryLabel}
+            </button>
+          )}
         </div>
       )}
 

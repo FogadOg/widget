@@ -673,7 +673,7 @@ describe('EmbedShell - logo and avatar', () => {
       expect(onFollow).toHaveBeenCalledWith(flowResponses[0].buttons[0]);
     });
 
-    it('renders embedded flow with button icon and fallback label', () => {
+    it('renders an embedded flow button with only an icon and no label text', () => {
       // Reset mock to default
       widgetStylesMock.mockReturnValue(defaultStyles);
 
@@ -725,7 +725,10 @@ describe('EmbedShell - logo and avatar', () => {
       expect(btn).toBeDefined();
       expect(btn).toBeInTheDocument();
       expect(btn!.textContent).toContain('⚡');
-      expect(btn!.textContent).toContain('Button'); // fallback text
+      // The icon carries the button, so it still renders — but it no longer
+      // pads itself out with the literal English word "Button", which leaked
+      // untranslated copy into every locale.
+      expect(btn!.textContent).not.toContain('Button');
     });
 
     it('disables embedded flow button after click', () => {

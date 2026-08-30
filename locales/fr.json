@@ -80,6 +80,7 @@
   "uploadFiles": "Télécharger des fichiers",
   "submitMessage": "Soumettre",
   "removeAttachment": "Supprimer la pièce jointe",
+  "removeAttachmentNamed": "Supprimer {filename}",
   "offlineBannerTitle": "Vous êtes hors ligne - les messages seront mis en file d'attente.",
   "offlineBannerDesc": "Les messages sont stockés localement et seront envoyés lorsque la connexion sera rétablie.",
   "onlineStatus": "En ligne",

@@ -107,7 +107,7 @@ describe('MinimalEmbedShell — collapsed', () => {
 });
 
 describe('MinimalEmbedShell — expanded', () => {
-  it('renders the title, subtitle and close button', () => {
+  it('renders the title, subtitle and minimize button', () => {
     const toggleCollapsed = jest.fn();
     renderShell({
       toggleCollapsed,
@@ -115,8 +115,9 @@ describe('MinimalEmbedShell — expanded', () => {
     });
     expect(screen.getByText('Support')).toBeInTheDocument();
     expect(screen.getByText('We reply fast')).toBeInTheDocument();
-    // The header close button toggles collapsed.
-    fireEvent.click(screen.getByText('-'));
+    // The control collapses the panel, so it's labelled "minimize" — it used to
+    // be a bare "-" text glyph whose aria-label claimed it closed the chat.
+    fireEvent.click(screen.getByRole('button', { name: 'Minimize chat' }));
     expect(toggleCollapsed).toHaveBeenCalledTimes(1);
   });
 
@@ -204,11 +205,13 @@ describe('MinimalEmbedShell — expanded', () => {
     expect(onFollowUpButtonClick).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to "Button" for a flow button with an empty label', () => {
+  it('omits a flow button with an empty label rather than labelling it "Button"', () => {
     renderShell({
       flowResponses: [{ text: '', timestamp: 1, buttons: [{ id: 'f1', label: { en: '' } }] }],
     });
-    expect(screen.getByText('Button')).toBeInTheDocument();
+    // Rendering the literal English word "Button" leaked untranslated copy into
+    // every locale; an unlabelled control is not worth showing at all.
+    expect(screen.queryByText('Button')).not.toBeInTheDocument();
   });
 
   it('renders the streaming message when present', () => {

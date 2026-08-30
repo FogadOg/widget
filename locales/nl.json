@@ -80,6 +80,7 @@
   "uploadFiles": "Bestanden uploaden",
   "submitMessage": "Indienen",
   "removeAttachment": "Verwijder bijlage",
+  "removeAttachmentNamed": "{filename} verwijderen",
   "offlineBannerTitle": "Je bent offline — berichten worden in de wachtrij gezet",
   "offlineBannerDesc": "Berichten worden lokaal opgeslagen en worden verzonden wanneer de verbinding is hersteld.",
   "onlineStatus": "Online",

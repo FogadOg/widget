@@ -87,6 +87,7 @@
   "uploadFiles": "Dosya yükle",
   "submitMessage": "Gönder",
   "removeAttachment": "Eklemeyi kaldır.",
+  "removeAttachmentNamed": "{filename} dosyasını kaldır",
   "offlineBannerTitle": "Çevrimdışı olduğunuz için mesajlar sıraya alınacak.",
   "offlineBannerDesc": "Mesajlar yerel olarak saklanır ve bağlantı geri sağlandığında gönderilecektir.",
   "onlineStatus": "Çevrimiçi",

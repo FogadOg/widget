@@ -32,6 +32,17 @@ type LanguageMenuProps = {
   borderRadius: number;
 };
 
+// Only codes with an actual SVG in `widget/public/flags/`. This map used to
+// promise 26 flags against 22 assets — Japanese, Chinese, Arabic, Danish,
+// Finnish, Czech, Slovak, Romanian, Hungarian, Greek and Ukrainian all resolved
+// to files that don't exist, so those visitors got a broken-image icon. Adding a
+// language here without shipping the asset reintroduces that, so keep the two in
+// step (the globe fallback below is the safe default, not a bug).
+const AVAILABLE_FLAGS = new Set([
+  'at', 'au', 'be', 'br', 'ca', 'ch', 'de', 'es', 'fr', 'gb', 'id',
+  'it', 'kr', 'mx', 'nl', 'no', 'pl', 'pt', 'ru', 'se', 'tr', 'us',
+]);
+
 const LOCALE_TO_FLAG: Record<string, string> = {
   en: 'gb',
   de: 'de',
@@ -42,36 +53,32 @@ const LOCALE_TO_FLAG: Record<string, string> = {
   nl: 'nl',
   nb: 'no',
   no: 'no',
-  da: 'dk',
-  fi: 'fi',
   it: 'it',
   pl: 'pl',
   id: 'id',
-  cs: 'cz',
-  sk: 'sk',
-  ro: 'ro',
-  hu: 'hu',
   tr: 'tr',
-  el: 'gr',
-  uk: 'ua',
   ru: 'ru',
-  ja: 'jp',
   ko: 'kr',
-  zh: 'cn',
-  ar: 'sa',
 };
 
 const localeFlagCode = (locale: string): string | null => {
   const parts = locale.split('-');
   const explicitRegion = parts.length > 1 ? parts[1] : '';
-  if (explicitRegion && /^[A-Za-z]{2}$/.test(explicitRegion)) return explicitRegion.toLowerCase();
-  const base = parts[0].toLowerCase();
-  return LOCALE_TO_FLAG[base] ?? null;
+  const candidate =
+    explicitRegion && /^[A-Za-z]{2}$/.test(explicitRegion)
+      ? explicitRegion.toLowerCase()
+      : LOCALE_TO_FLAG[parts[0].toLowerCase()] ?? null;
+  // An explicit region can be any subtag at all (`en-NZ`), so verify against
+  // what we ship rather than trusting the tag.
+  return candidate && AVAILABLE_FLAGS.has(candidate) ? candidate : null;
 };
 
 const nativeName = (locale: string) => {
   const base = locale.split('-')[0];
-  if (base in LOCALE_LABELS) return LOCALE_LABELS[base as SupportedLocale];
+  // LOCALE_LABELS is guarded rather than indexed directly: this now runs on every
+  // render (the trigger shows the endonym, not just the open menu), so a partial
+  // or missing i18n bundle would throw here and take the whole widget down.
+  if (LOCALE_LABELS && base in LOCALE_LABELS) return LOCALE_LABELS[base as SupportedLocale];
   // Runtime-translated locales aren't in LOCALE_LABELS; show the language's
   // own endonym (e.g. "ja" → "日本語") so the visitor recognizes it.
   try {
@@ -82,6 +89,43 @@ const nativeName = (locale: string) => {
   }
   return locale.toUpperCase();
 };
+
+/**
+ * Purely decorative flag, or a globe when we don't ship one for this language.
+ * `onError` swaps to the globe if an asset ever goes missing, so a 404 can't
+ * render as a broken image next to the language name.
+ *
+ * A flag is a country, not a language — most English speakers aren't British and
+ * most Portuguese speakers are Brazilian — so the name beside it is what
+ * actually identifies the choice. This never carries the accessible name.
+ */
+function LanguageGlyph({ locale }: { locale: string }) {
+  const flag = localeFlagCode(locale);
+  const [failed, setFailed] = useState(false);
+  const style: React.CSSProperties = {
+    width: '16px',
+    height: '16px',
+    objectFit: 'cover',
+    borderRadius: '9999px',
+    flexShrink: 0,
+  };
+  if (!flag || failed) {
+    return (
+      <span aria-hidden="true" style={{ fontSize: '14px', lineHeight: 1, flexShrink: 0 }}>
+        🌐
+      </span>
+    );
+  }
+  return (
+    <img
+      src={`/flags/${flag}.svg`}
+      alt=""
+      aria-hidden="true"
+      onError={() => setFailed(true)}
+      style={style}
+    />
+  );
+}
 
 // A custom button+menu dropdown rather than a native <select>. Native select
 // popups are unreliable inside the sandboxed cross-origin iframe that hosts the
@@ -216,7 +260,6 @@ export function LanguageMenu({
           >
             {locales.map((code) => {
               const active = code === locale;
-              const flag = localeFlagCode(code);
               return (
                 <button
                   key={code}
@@ -244,16 +287,7 @@ export function LanguageMenu({
                   className="hover:opacity-80"
                 >
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                    {flag ? (
-                      <img
-                        src={`/flags/${flag}.svg`}
-                        alt=""
-                        aria-hidden="true"
-                        style={{ width: '16px', height: '16px', objectFit: 'cover', borderRadius: '9999px', flexShrink: 0 }}
-                      />
-                    ) : (
-                      <span aria-hidden="true" style={{ fontSize: '14px', lineHeight: 1, flexShrink: 0 }}>🌐</span>
-                    )}
+                    <LanguageGlyph locale={code} />
                     <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nativeName(code)}</span>
                   </span>
                 </button>
@@ -284,19 +318,22 @@ export function LanguageMenu({
         }}
         className={`px-2 py-1 flex items-center gap-1.5 hover:opacity-90 ${FOCUS_RING}`}
       >
-        {(() => {
-          const flag = localeFlagCode(locale);
-          return flag ? (
-            <img
-              src={`/flags/${flag}.svg`}
-              alt=""
-              aria-hidden="true"
-              style={{ width: '16px', height: '16px', objectFit: 'cover', borderRadius: '9999px', flexShrink: 0 }}
-            />
-          ) : (
-            <span aria-hidden="true" style={{ fontSize: '14px', lineHeight: 1, flexShrink: 0 }}>🌐</span>
-          );
-        })()}
+        <LanguageGlyph locale={locale} />
+        {/* The endonym, not just a flag. The trigger used to render the flag
+            alone with alt="" and aria-hidden, so a screen-reader user got
+            nothing from it and anyone whose language had no flag asset saw a
+            broken image. Capped so a long name ("Bahasa Indonesia") can't push
+            the theme and minimize controls off a 350px header. */}
+        <span
+          style={{
+            maxWidth: '9ch',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {nativeName(locale)}
+        </span>
         <svg
           width="12"
           height="12"
