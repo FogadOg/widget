@@ -181,6 +181,7 @@
   "contextOutput": "Bitte geben Sie den zu übersetzenden Text an.",
   "contextReasoning": "Begründung",
   "thinking": "Denken...",
+  "aiWillAnswerLive": "Der Agent beantwortet dies live.",
   "thoughtForFewSeconds": "Dachte für ein paar Sekunden nach",
   "thoughtForSeconds": "Gedacht für {duration} Sekunden",
   "totalCost": "Gesamtkosten",

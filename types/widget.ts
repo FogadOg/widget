@@ -93,6 +93,19 @@ export type Message = {
   pending?: boolean;
 };
 
+/**
+ * How a clicked button (or a triggered flow) produces its reply.
+ *
+ * `manual` — the merchant authored the reply text; the widget renders it
+ * client-side without touching the backend. This is the default and the only
+ * behaviour that existed before AI answers; a missing field means `manual`.
+ *
+ * `ai` — the merchant authored nothing but the label. On click the widget sends
+ * the label (or `ai_prompt`) through the normal message endpoint so the agent
+ * answers live from the knowledge base.
+ */
+export type AnswerMode = 'manual' | 'ai';
+
 export type FlowButton = {
   id: string;
   label: Record<string, string>;
@@ -100,6 +113,9 @@ export type FlowButton = {
   icon?: string;
   // Optional language whitelist. Undefined/empty means visible in all locales.
   languages?: string[];
+  answer_mode?: AnswerMode;
+  /** Sent to the agent instead of the label. Empty means "use the label". */
+  ai_prompt?: string;
   response?: {
     text?: Record<string, string>;
     buttons?: FlowButton[];
@@ -117,6 +133,9 @@ export type Flow = {
   trigger: string;
   // Optional language whitelist. Undefined/empty means visible in all locales.
   languages?: string[];
+  answer_mode?: AnswerMode;
+  /** Sent to the agent instead of the triggering button's label. */
+  ai_prompt?: string;
   responses: Array<{
     text?: Record<string, string>;
     buttons?: FlowButton[];

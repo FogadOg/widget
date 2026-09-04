@@ -183,6 +183,7 @@
   "uncertaintyLogAgent": "Agen:",
   "close": "Tutup",
   "thinking": "Berpikir...",
+  "aiWillAnswerLive": "Agen akan menjawab ini secara langsung.",
   "thoughtForFewSeconds": "Berpikir selama beberapa detik",
   "thoughtForSeconds": "Berpikir selama {duration} detik",
   "totalCost": "Total biaya",

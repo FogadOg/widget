@@ -1314,20 +1314,29 @@ export function useEmbedController(props: EmbedClientProps) {
     return values.length > 0 ? values[0] : '';
   };
 
-  const processWidgetFlow = (action: string | undefined): boolean => {
-    if (!action || action === 'text') {
-      return false;
-    }
-
-    // Only consider flows whose `languages` whitelist includes the visitor's
-    // locale (legacy flows with no `languages` are visible in all locales).
+  // Resolve the flow a button's action triggers, if any. Only considers flows
+  // whose `languages` whitelist includes the visitor's locale (legacy flows with
+  // no `languages` are visible in all locales).
+  const findFlowForAction = (action: string | undefined): Flow | null => {
+    if (!action || action === 'text') return null;
     const flows = (widgetConfig?.greeting_message?.flows || []).filter((candidate: Flow) => {
       const langs = candidate.languages;
       return !langs || langs.length === 0 || langs.includes(activeLocale);
     });
-    const flow = flows.find((candidate: Flow) => candidate.trigger === action);
+    return flows.find((candidate: Flow) => candidate.trigger === action) || null;
+  };
+
+  const processWidgetFlow = (action: string | undefined): boolean => {
+    const flow = findFlowForAction(action);
 
     if (!flow) {
+      return false;
+    }
+
+    // An AI flow has no authored text to render — its reply comes from the agent
+    // via the normal message path. Returning false here keeps this function's
+    // contract ("did I render a static reply?") honest for both call sites.
+    if (flow.answer_mode === 'ai') {
       return false;
     }
 
@@ -1348,6 +1357,28 @@ export function useEmbedController(props: EmbedClientProps) {
     });
 
     return true;
+  };
+
+  /**
+   * Decide whether a clicked button should be answered by the agent, and with
+   * what text.
+   *
+   * AI mode can be set on the button itself or on the flow its action triggers —
+   * either is enough, so a merchant can flip one shared flow to AI without
+   * editing every button that points at it. Returns the prompt to send, or null
+   * when this click is the ordinary merchant-authored kind.
+   *
+   * Prompt precedence: the button's own `ai_prompt`, then the flow's, then the
+   * visitor-visible label. Falling back to the label is what makes the whole
+   * feature work with zero authoring — and it is already localized, so a
+   * Norwegian visitor sends a Norwegian question without the merchant writing
+   * a prompt per language.
+   */
+  const resolveAiPrompt = (button: FlowButton, labelText: string): string | null => {
+    const flow = findFlowForAction(button.action);
+    if (button.answer_mode !== 'ai' && flow?.answer_mode !== 'ai') return null;
+    const prompt = button.ai_prompt?.trim() || flow?.ai_prompt?.trim() || labelText.trim();
+    return prompt || null;
   };
 
   // Sends a single interceptor round-trip to the parent page and returns the
@@ -2015,13 +2046,64 @@ export function useEmbedController(props: EmbedClientProps) {
     runInterceptors,
   ]);
 
-  const handleFollowUpButtonClick = (button: ButtonLike) => {
+  /**
+   * Answer a clicked button with the agent instead of merchant-authored text.
+   *
+   * The visitor's bubble is already on screen (the caller added it), so this
+   * only sends `prompt` down the ordinary message path with
+   * `skipAddingUserMessage` — which buys the RAG grounding, locale-aware reply,
+   * streaming, quota metering and history persistence a typed question gets,
+   * for free. That is the whole point of AI mode: no second code path.
+   */
+  const sendAiAnswer = async (prompt: string): Promise<void> => {
+    // The dashboard preview has no session behind it — handleSubmit bails out
+    // there — so render a note rather than leaving the click looking broken.
+    if (initialPreviewConfig) {
+      setFlowResponses((prev: FlowResponse[]) => [...prev, {
+        text: String(t.aiWillAnswerLive),
+        buttons: [],
+        timestamp: Date.now(),
+      }]);
+      return;
+    }
+    // Unlike a static flow reply, an AI answer costs a real message against the
+    // org's quota. handleSubmit deliberately exempts button sends from the
+    // client throttle (their text is app-controlled), so apply it here instead —
+    // otherwise a visitor holding down a button bills the merchant for it.
+    const sid = sessionIdRef.current || sessionId;
+    if (sid) {
+      const rl = checkAndConsume(sid);
+      if (!rl.allowed) {
+        const waitSec = rl.retryAfterMs ? Math.ceil(rl.retryAfterMs / 1000) : 0;
+        setError(
+          waitSec > 0
+            ? tFn(activeLocale, 'rateLimitWait', { count: waitSec })
+            : String(t.rateLimitGeneric),
+        );
+        return;
+      }
+    }
+    await handleSubmit({ preventDefault: () => {} } as React.FormEvent, prompt, true);
+  };
+
+  const handleFollowUpButtonClick = async (button: ButtonLike) => {
     const b = button as FlowButton;
 
     const maybeText = getLocalizedText(b.response?.text);
     const maybeButtons = b.response?.buttons || [];
     const hasLocalResponse = Boolean(maybeText) || maybeButtons.length > 0;
     const labelText = getLocalizedText(b.label) || (typeof b.label === 'string' ? b.label : (b.label?.en || ''));
+
+    // AI mode wins over any authored text still sitting on this button, and is
+    // checked before it so a merchant who switches an old button to AI doesn't
+    // get both replies. (A follow-up with neither text nor flow already fell
+    // through to the agent below; AI mode makes that explicit and adds
+    // `ai_prompt`, so it also applies to buttons that *do* have authored text.)
+    const aiPrompt = resolveAiPrompt(b, labelText);
+    // Resolved BEFORE the bubble so a re-entrant AI click can bail out cleanly:
+    // see handleInteractionButtonClick for why the clickedButtons guard isn't
+    // enough on its own.
+    if (aiPrompt && isSubmittingRef.current) return;
 
     trackEvent('button_clicked', initialAgentId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
 
@@ -2033,6 +2115,11 @@ export function useEmbedController(props: EmbedClientProps) {
       timestamp: Date.now(),
     };
     setMessages(prev => [...prev, userMsg]);
+
+    if (aiPrompt) {
+      await sendAiAnswer(aiPrompt);
+      return;
+    }
 
     // Add response as a grouped flow response
     if (maybeText || maybeButtons.length > 0) {
@@ -2188,14 +2275,37 @@ export function useEmbedController(props: EmbedClientProps) {
       from: 'user',
       timestamp: Date.now(),
     };
+    // AI mode short-circuits everything below: the agent writes the reply, so
+    // there is no authored text to render and no flow to fire. Checked before
+    // processWidgetFlow so an AI-mode button never also renders stale text left
+    // over from when it was hand-authored.
+    const aiPrompt = resolveAiPrompt(b, labelText);
+
+    // Re-entrancy guard for the AI path only.
+    //
+    // useClickedButtons already refuses a second click on the same button, but
+    // its `clickedButtons` Set is stale for any click landing in the same React
+    // batch as the first — so a genuine double-click gets through. For a manual
+    // button that just re-renders the same local reply; for an AI button it
+    // added a SECOND user bubble and burned a client rate-limit token, while
+    // handleSubmit's own guard silently dropped the send — leaving a bubble
+    // with no answer and no error. Bail before either side effect happens.
+    if (aiPrompt && isSubmittingRef.current) return;
+
     // Add user bubble — always solid, never ghost
     setMessages(prev => [...prev, userMsg]);
+
+    // track interaction click
+    trackEvent('button_clicked', initialAgentId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
+
+    if (aiPrompt) {
+      await sendAiAnswer(aiPrompt);
+      return;
+    }
 
     // Render any keyword-flow reply triggered by this button's action. The flow's
     // reply is added by processWidgetFlow itself.
     const flowFired = processWidgetFlow(b.action);
-    // track interaction click
-    trackEvent('button_clicked', initialAgentId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
 
     // A button can define its OWN local response (response.text and/or follow-up
     // buttons) and/or trigger a keyword flow via its action. The button's *label*

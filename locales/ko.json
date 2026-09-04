@@ -183,6 +183,7 @@
   "uncertaintyLogAgent": "대리인:",
   "close": "닫기",
   "thinking": "생각 중...",
+  "aiWillAnswerLive": "상담원이 실시간으로 답변합니다.",
   "thoughtForFewSeconds": "몇 초 동안 생각했다.",
   "thoughtForSeconds": "{duration} 초 동안 생각함",
   "totalCost": "총 비용",

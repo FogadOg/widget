@@ -181,6 +181,7 @@
   "contextOutput": "Vennligst gi teksten du ønsker å få oversatt.",
   "contextReasoning": "Resonnement",
   "thinking": "Tenker...",
+  "aiWillAnswerLive": "Agenten svarer på dette direkte.",
   "thoughtForFewSeconds": "Tenkte i noen sekunder",
   "thoughtForSeconds": "Tankefull i {duration} sekunder",
   "totalCost": "Totale kostnad",

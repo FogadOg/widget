@@ -183,6 +183,7 @@
   "uncertaintyLogAgent": "Агент:",
   "close": "Закрыть",
   "thinking": "Думаю...",
+  "aiWillAnswerLive": "Агент ответит на это в реальном времени.",
   "thoughtForFewSeconds": "Подумал несколько секунд",
   "thoughtForSeconds": "Думал {duration} секунд",
   "totalCost": "Общая стоимость",

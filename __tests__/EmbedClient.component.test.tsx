@@ -215,6 +215,53 @@ jest.mock('../components/EmbedShell', () => {
         >
           Follow Undefined
         </button>
+        {/* AI-answer mode: the merchant authored a label and nothing else. */}
+        <button
+          data-testid="interaction-ai-btn"
+          onClick={() => props.onInteractionButtonClick && props.onInteractionButtonClick({
+            action: 'text',
+            answer_mode: 'ai',
+            response: { text: undefined },
+            label: { en: 'What are your shipping times?' }
+          })}
+        >
+          Interaction AI
+        </button>
+        {/* Same, but with a hidden prompt that differs from the visible label. */}
+        <button
+          data-testid="interaction-ai-prompt-btn"
+          onClick={() => props.onInteractionButtonClick && props.onInteractionButtonClick({
+            action: 'text',
+            answer_mode: 'ai',
+            ai_prompt: 'Explain shipping times and costs in detail',
+            response: { text: { en: 'Stale authored text' } },
+            label: { en: 'Shipping' }
+          })}
+        >
+          Interaction AI Prompt
+        </button>
+        {/* Manual button pointing at a flow that is itself in AI mode. */}
+        <button
+          data-testid="interaction-ai-flow-btn"
+          onClick={() => props.onInteractionButtonClick && props.onInteractionButtonClick({
+            action: 'ai-flow-action',
+            response: { text: undefined },
+            label: { en: 'Ask about returns' }
+          })}
+        >
+          Interaction AI Flow
+        </button>
+        <button
+          data-testid="followup-ai-btn"
+          onClick={() => props.onFollowUpButtonClick && props.onFollowUpButtonClick({
+            action: 'text',
+            answer_mode: 'ai',
+            response: { text: { en: 'Stale authored text' }, buttons: [] },
+            label: { en: 'Tell me more' }
+          })}
+        >
+          Follow AI
+        </button>
         <button data-testid="open-unsure-modal" onClick={() => props.onShowUnsureModal && props.onShowUnsureModal()}>Open Unsure Modal</button>
         {/* Render feedbackDialog and unsureModal nodes passed from EmbedClient */}
         {props.feedbackDialog}
@@ -4548,6 +4595,166 @@ describe('EmbedClient Component', () => {
       );
       jest.useRealTimers();
     });
+
+    // -- AI answer mode ----------------------------------------------------
+    //
+    // An AI button authors no reply text. Instead of rendering something
+    // client-side, the click has to travel the ordinary message path so the
+    // agent answers from the knowledge base — that POST is the whole feature,
+    // so these assert on it directly.
+    describe('AI answer mode', () => {
+      const aiConfigFetch = () => (url: string) => {
+        if (url.includes('/widget-config/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              status: 'success',
+              data: {
+                greeting_message: {
+                  flows: [
+                    {
+                      trigger: 'flow-action',
+                      responses: [{ text: 'Flow response', buttons: [] }],
+                    },
+                    {
+                      trigger: 'ai-flow-action',
+                      answer_mode: 'ai',
+                      responses: [{ text: 'Should never render', buttons: [] }],
+                    },
+                  ],
+                },
+                default_language: 'en',
+              },
+            }),
+          });
+        }
+        if (url.includes('/agents/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: 'success', data: { name: 'Test' } }),
+          });
+        }
+        if (url.includes('/sessions')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: 'success', data: { session_id: 'sess-1' } }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ status: 'success', data: {} }),
+        });
+      };
+
+      const renderAndSettle = async () => {
+        render(<EmbedClient {...defaultProps} startOpen={true} />);
+        await waitFor(() => {
+          expect(screen.getByTestId('embed-shell')).toBeInTheDocument();
+        });
+        // handleSubmit bails out until the session exists, so wait for it.
+        await waitFor(() => {
+          expect(mockFetch).toHaveBeenCalledWith(
+            expect.stringContaining('/sessions'),
+            expect.objectContaining({ method: 'POST' })
+          );
+        });
+      };
+
+      // Only outbound sends. The widget also GETs /messages to load history on
+      // mount, and counting that as a send made every assertion here off by one.
+      const sentMessageBodies = () =>
+        mockFetch.mock.calls
+          .filter(([url, init]: [string, any]) =>
+            typeof url === 'string' && url.includes('/messages') && init?.method === 'POST' && init?.body)
+          .map(([, init]: [string, any]) => JSON.parse(init.body));
+
+      const clickAndSettle = async (testId: string) => {
+        fireEvent.click(screen.getByTestId(testId));
+        await act(async () => {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        });
+      };
+
+      test('sends the button label to the agent when no prompt is set', async () => {
+        mockFetch.mockImplementation(aiConfigFetch());
+        await renderAndSettle();
+        await clickAndSettle('interaction-ai-btn');
+
+        const bodies = sentMessageBodies();
+        expect(bodies).toHaveLength(1);
+        expect(bodies[0].content).toBe('What are your shipping times?');
+        // Not a skip_ai_response write — the point is to get a real answer.
+        expect(bodies[0].skip_ai_response).toBeUndefined();
+      });
+
+      test('sends ai_prompt instead of the label when one is set', async () => {
+        mockFetch.mockImplementation(aiConfigFetch());
+        await renderAndSettle();
+        await clickAndSettle('interaction-ai-prompt-btn');
+
+        const bodies = sentMessageBodies();
+        expect(bodies).toHaveLength(1);
+        expect(bodies[0].content).toBe('Explain shipping times and costs in detail');
+        // Authored text left over from before the switch to AI must not render.
+        expect(screen.queryByTestId('flow-responses')).not.toBeInTheDocument();
+      });
+
+      test('a manual button pointing at an AI flow asks the agent, not the flow', async () => {
+        mockFetch.mockImplementation(aiConfigFetch());
+        await renderAndSettle();
+        await clickAndSettle('interaction-ai-flow-btn');
+
+        const bodies = sentMessageBodies();
+        expect(bodies).toHaveLength(1);
+        expect(bodies[0].content).toBe('Ask about returns');
+        // The AI flow's own text must never be rendered client-side.
+        expect(screen.queryByTestId('flow-responses')).not.toBeInTheDocument();
+      });
+
+      test('an AI follow-up button asks the agent instead of echoing its text', async () => {
+        mockFetch.mockImplementation(aiConfigFetch());
+        await renderAndSettle();
+        await clickAndSettle('followup-ai-btn');
+
+        const bodies = sentMessageBodies();
+        expect(bodies).toHaveLength(1);
+        expect(bodies[0].content).toBe('Tell me more');
+        expect(screen.queryByTestId('flow-responses')).not.toBeInTheDocument();
+      });
+
+      test('a double-click sends once and does not add a second bubble', async () => {
+        mockFetch.mockImplementation(aiConfigFetch());
+        await renderAndSettle();
+
+        const before = Number(screen.getByTestId('messages').textContent?.split(' ')[0] ?? 0);
+
+        // Two clicks in the same frame: useClickedButtons' Set is still stale
+        // for the second, so it reaches the handler. Only one send may result,
+        // and only one bubble.
+        const btn = screen.getByTestId('interaction-ai-btn');
+        fireEvent.click(btn);
+        fireEvent.click(btn);
+        await act(async () => {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        });
+
+        expect(sentMessageBodies()).toHaveLength(1);
+        const after = Number(screen.getByTestId('messages').textContent?.split(' ')[0] ?? 0);
+        expect(after - before).toBe(1);
+      });
+
+      test('regression: a manual flow button still renders its authored reply', async () => {
+        mockFetch.mockImplementation(aiConfigFetch());
+        await renderAndSettle();
+        await clickAndSettle('interaction-flow-label-only-btn');
+
+        // Rendered client-side by processWidgetFlow — no agent round-trip.
+        expect(screen.getByTestId('flow-responses')).toBeInTheDocument();
+        expect(screen.getByTestId('flow-text-0')).toHaveTextContent('Flow response');
+        expect(sentMessageBodies()).toHaveLength(0);
+      });
+    });
+
     test('handleInteractionButtonClick adds flow response after timeout', async () => {
       jest.useFakeTimers();
       mockFetch.mockImplementation((url: string) => {

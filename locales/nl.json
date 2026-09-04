@@ -181,6 +181,7 @@
   "contextOutput": "Vertaal de volgende tekst van het Engels naar het Nederlands (ISO 639-1-codes). Geef alleen de vertaalde tekst terug, zonder commentaar of citaten.",
   "contextReasoning": "Redenering",
   "thinking": "Denken...",
+  "aiWillAnswerLive": "De agent beantwoordt dit live.",
   "thoughtForFewSeconds": "Dacht een paar seconden na",
   "thoughtForSeconds": "Gedacht voor {duur} seconden",
   "totalCost": "Totale kosten",

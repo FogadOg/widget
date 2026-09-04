@@ -183,6 +183,7 @@
   "uncertaintyLogAgent": "Ajan:",
   "close": "Kapat",
   "thinking": "Düşünüyorum...",
+  "aiWillAnswerLive": "Temsilci bunu anlık olarak yanıtlayacak.",
   "thoughtForFewSeconds": "Birkaç saniye düşündü.",
   "thoughtForSeconds": "{duration} saniye düşündü",
   "totalCost": "Toplam maliyet",

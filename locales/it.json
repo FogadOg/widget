@@ -181,6 +181,7 @@
   "contextOutput": "Please provide the text you would like to have translated.",
   "contextReasoning": "Ragionamento",
   "thinking": "Pensando...",
+  "aiWillAnswerLive": "L'agente risponderà in tempo reale.",
   "thoughtForFewSeconds": "Pensato per alcuni secondi",
   "thoughtForSeconds": "Pensato per {duration} secondi",
   "totalCost": "Costo totale",

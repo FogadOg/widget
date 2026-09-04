@@ -184,6 +184,7 @@
   "uncertaintyLogAgent": "Agent:",
   "close": "Close",
   "thinking": "Thinking...",
+  "aiWillAnswerLive": "The agent will answer this live.",
   "thoughtForFewSeconds": "Thought for a few seconds",
   "thoughtForSeconds": "Thought for {duration} seconds",
   "totalCost": "Total cost",

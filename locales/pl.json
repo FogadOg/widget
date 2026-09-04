@@ -181,6 +181,7 @@
   "contextOutput": "Proszę podać tekst do przetłumaczenia.",
   "contextReasoning": "Rozumowanie",
   "thinking": "Myślenie...",
+  "aiWillAnswerLive": "Agent odpowie na to na żywo.",
   "thoughtForFewSeconds": "Myślałem przez kilka sekund",
   "thoughtForSeconds": "Myśl przez {duration} sekund",
   "totalCost": "Całkowity koszt",
