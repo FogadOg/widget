@@ -90,7 +90,7 @@ export function useSessionManagement({
   const ensureNotCoolingDown = useCallback((): string | null => {
     if (Date.now() >= rateLimitUntilRef.current) return null;
     const waitSec = Math.max(1, Math.ceil((rateLimitUntilRef.current - Date.now()) / 1000));
-    return translate(activeLocale, 'rateLimitWait', { vars: { count: waitSec } });
+    return translate(activeLocale, 'rateLimitWait', { count: waitSec });
   }, [activeLocale]);
 
   // Load session messages
@@ -144,7 +144,7 @@ export function useSessionManagement({
         );
         const waitSec = getRetryAfterSeconds(response.headers.get('Retry-After'));
         const msg = waitSec > 0
-          ? translate(activeLocale, 'rateLimitWait', { vars: { count: waitSec } })
+          ? translate(activeLocale, 'rateLimitWait', { count: waitSec })
           : translate(activeLocale, 'sessionRateLimitGeneric');
         setError(msg);
       }
@@ -198,7 +198,7 @@ export function useSessionManagement({
         );
         const waitSec = getRetryAfterSeconds(response.headers.get('Retry-After'));
         const msg = waitSec > 0
-          ? translate(activeLocale, 'rateLimitWait', { vars: { count: waitSec } })
+          ? translate(activeLocale, 'rateLimitWait', { count: waitSec })
           : translate(activeLocale, 'sessionRateLimitGeneric');
         logWarn('Session creation rate-limited', { waitSec });
         setError(msg);
@@ -276,7 +276,7 @@ export function useSessionManagement({
         );
         const waitSec = getRetryAfterSeconds(response.headers.get('Retry-After'));
         const msg = waitSec > 0
-          ? translate(activeLocale, 'rateLimitWait', { vars: { count: waitSec } })
+          ? translate(activeLocale, 'rateLimitWait', { count: waitSec })
           : translate(activeLocale, 'sessionRateLimitGeneric');
         setError(msg);
       } else {

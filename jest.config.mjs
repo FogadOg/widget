@@ -33,8 +33,11 @@ const config = {
   // Ignore specific files from coverage reports
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/',
-    // Type-only files have 0% runtime coverage by design — types are erased at compile time
+    // Type-only files have 0% runtime coverage by design — types are erased at compile time.
+    // Both spellings: `foo.types.ts` and a bare `types.ts` barrel (e.g.
+    // components/blocks/types.ts, which exports nothing but `type` aliases).
     '\\.types\\.ts$',
+    '(^|/)types\\.ts$',
   ],
   // Collect coverage from all source files so files not imported by tests
   // still appear in the report (and will be measured against thresholds).
@@ -83,26 +86,34 @@ const config = {
       lines: 85,
       statements: 85,
     },
-    // EmbedClient is a large orchestration component; per-file threshold set below aggregate.
-    // Raise these as dedicated unit tests are added for the extracted hooks/utils.
+    // Per-file floors. Every file below now clears 80% statements AND lines —
+    // these entries exist only because each sits under a folder threshold that
+    // is stricter still (./app/ and ./hooks/ want 90 lines, ./components/ 85).
+    // Branch/function floors are set just under the measured value so the gate
+    // is real without being brittle; raise them as coverage rises rather than
+    // letting them drift down.
+    //
+    // EmbedClient is a large orchestration component whose functions are mostly
+    // inline callbacks reached through integration tests, hence the low fn floor.
     './app/embed/session/EmbedClient.tsx': {
-      branches: 75,
-      functions: 0,
+      branches: 80,
+      functions: 35,
       lines: 80,
       statements: 80,
     },
-    // Extracted hooks — tested via EmbedClient integration tests, raise when unit tests added
-    './app/embed/session/hooks/useBootstrap.ts': { branches: 75, functions: 0, lines: 80, statements: 80 },
-    './app/embed/session/hooks/useQueuedMessageManagement.ts': { branches: 65, functions: 0, lines: 75, statements: 75 },
-    './app/embed/session/hooks/useSessionManagement.ts': { branches: 65, functions: 0, lines: 75, statements: 75 },
-    // Extracted sub-components — tested via parent integration tests, raise when unit tests added
-    './components/components/Composer.tsx': { branches: 35, functions: 0, lines: 75, statements: 75 },
-    './components/components/FocusTrap.tsx': { branches: 0, functions: 0, lines: 15, statements: 15 },
-    './components/components/JumpToLatest.tsx': { branches: 0, functions: 0, lines: 20, statements: 20 },
-    './components/components/Suggestions.tsx': { branches: 0, functions: 0, lines: 15, statements: 15 },
-    './components/components/TypingIndicator.tsx': { branches: 0, functions: 0, lines: 15, statements: 15 },
-    './app/embed/docs/hooks/useMessageOperations.ts': { branches: 70, functions: 0, lines: 80, statements: 80 },
-    './app/embed/docs/components/MessageFeedbackButtons.tsx': { branches: 60, functions: 0, lines: 75, statements: 75 },
+    './app/embed/session/hooks/useBootstrap.ts': { branches: 85, functions: 95, lines: 90, statements: 90 },
+    './app/embed/session/hooks/useQueuedMessageManagement.ts': { branches: 70, functions: 80, lines: 85, statements: 85 },
+    // Branch floors differ between the two same-named hooks: the session one
+    // measures 77% branches, the docs one 90%. Keep them straight.
+    './app/embed/session/hooks/useSessionManagement.ts': { branches: 75, functions: 95, lines: 90, statements: 90 },
+    './components/components/Composer.tsx': { branches: 80, functions: 80, lines: 95, statements: 95 },
+    './components/components/FocusTrap.tsx': { branches: 90, functions: 95, lines: 95, statements: 95 },
+    './components/components/JumpToLatest.tsx': { branches: 90, functions: 90, lines: 95, statements: 95 },
+    './components/components/Suggestions.tsx': { branches: 90, functions: 45, lines: 95, statements: 95 },
+    './components/components/TypingIndicator.tsx': { branches: 90, functions: 90, lines: 95, statements: 95 },
+    './app/embed/docs/hooks/useMessageOperations.ts': { branches: 80, functions: 75, lines: 85, statements: 85 },
+    './app/embed/docs/hooks/useSessionManagement.ts': { branches: 85, functions: 95, lines: 90, statements: 90 },
+    './app/embed/docs/components/MessageFeedbackButtons.tsx': { branches: 60, functions: 60, lines: 85, statements: 85 },
   },
 }
 
