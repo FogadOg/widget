@@ -1,40 +1,25 @@
+import {
+  STORAGE_PREFIX,
+  WIDGET_SCRIPT_ID,
+  COMPANY_NAME,
+  BASE_WIDGET_HOST,
+  WIDGET_HOST_SUFFIXES,
+  isTrustedWidgetOrigin,
+  sanitizeInstanceId,
+  createRegistryAccessor,
+  createErrorLog,
+} from './_shared.js';
 (function () {
-  // Local constants to mirror centralized app constants
-  const STORAGE_PREFIX = 'companin-';
-  const WIDGET_SCRIPT_ID = 'companin-widget';
   const DOCS_WIDGET_SCRIPT_ID = 'companin-docs-widget';
-  const COMPANY_NAME = 'Companin';
   let POWERED_BY_TEXT = (typeof window !== 'undefined' && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`] && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`].poweredBy) || 'Powered by ';
-  const BASE_WIDGET_HOST = 'https://widget.companin.tech';
   const WIDGET_VERSION = '__WIDGET_VERSION__';
   try { window.__COMPANIN_WIDGET_VERSION__ = WIDGET_VERSION; } catch (e) {}
 
   // Strict origin parser: substring matching on 'companin.tech' would also accept
   // hosts like evil-companin.tech.attacker.com, so we require either an exact host
   // match or a trailing .companin.tech suffix.
-  const WIDGET_HOST_SUFFIXES = ['companin.tech'];
-  const isTrustedWidgetOrigin = function (origin, allowInsecure) {
-    if (!origin || typeof origin !== 'string') return false;
-    try {
-      const u = new URL(origin);
-      if (!u.host) return false;
-      if (!allowInsecure && u.protocol !== 'https:') return false;
-      const host = u.host.toLowerCase();
-      for (let i = 0; i < WIDGET_HOST_SUFFIXES.length; i++) {
-        const s = WIDGET_HOST_SUFFIXES[i];
-        if (host === s || host.endsWith('.' + s)) return true;
-      }
-      return false;
-    } catch (e) { return false; }
-  };
   const DOCS_REGISTRY_KEY = `__${COMPANY_NAME.toUpperCase()}_DOCS_WIDGET_INSTANCES__`;
-  const sanitizeInstanceId = (value) => String(value || 'default').replace(/[^a-zA-Z0-9_-]/g, '-');
-  const getOrCreateRegistry = () => {
-    if (!window[DOCS_REGISTRY_KEY] || typeof window[DOCS_REGISTRY_KEY] !== 'object') {
-      window[DOCS_REGISTRY_KEY] = {};
-    }
-    return window[DOCS_REGISTRY_KEY];
-  };
+  const getOrCreateRegistry = createRegistryAccessor(DOCS_REGISTRY_KEY);
 
   // Capture any commands queued before this script executed (async/defer).
   const _preInitQueue = (function () {
@@ -46,19 +31,17 @@
     return null;
   })();
 
-    try {
+  // Error tracking.
+  //
+  // These MUST stay outside the big try/catch below. `const` is block-scoped,
+  // so declaring them inside `try { ... }` leaves them invisible to the paired
+  // `catch`, and the critical-error handler at the bottom of this file — which
+  // calls logError — then threw "logError is not defined", replacing the real
+  // failure with a bogus one and skipping the user-facing error UI entirely.
+  // widget.js has always declared these at IIFE scope; this file drifted.
+  const { errors, logError } = createErrorLog('Docs Widget Error');
 
-    // Error tracking
-  const errors = [];
-  const logError = (message, context) => {
-    const error = {
-      timestamp: new Date().toISOString(),
-      message,
-      context,
-    };
-    errors.push(error);
-    console.error(COMPANY_NAME + ' Docs Widget Error:', message, context);
-  };
+  try {
 
   // Locate the embed <script> element that loaded this file. Prefer
   // `document.currentScript` when available, otherwise attempt known ids

@@ -76,6 +76,11 @@ export {
 import type { EmbedClientProps } from './EmbedClient.types';
 import { UnsureMessagesModal } from './components/UnsureMessagesModal';
 import { WidgetNotAuthorized } from '../../../components/WidgetNotAuthorized';
+import { useCaptureFlow } from './hooks/useCaptureFlow';
+import { useTeaserTelemetry } from './hooks/useTeaserTelemetry';
+import * as flowLib from './lib/flows';
+import { useHostBridge } from './hooks/useHostBridge';
+import { useAttachments } from './hooks/useAttachments';
 import { useStreamingMessage } from './hooks/useStreamingMessage';
 import { useUnreadTracking } from './hooks/useUnreadTracking';
 import { useWidgetResize } from './hooks/useWidgetResize';
@@ -205,13 +210,6 @@ export function useEmbedController(props: EmbedClientProps) {
   const lastReadStorageKey = helpers.lastReadStorageKey(initialClientId, initialAgentId);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  // File-upload composer state: files the visitor has uploaded (server-side)
-  // and will attach to their next message. Populated by handlePickFiles, drained
-  // on send. `uploadingFiles` counts in-flight uploads for the composer spinner.
-  const [pendingAttachments, setPendingAttachments] = useState<import('../../../types/widget').MessageAttachment[]>([]);
-  const [uploadingFiles, setUploadingFiles] = useState(0);
-  const pendingAttachmentsRef = useRef<import('../../../types/widget').MessageAttachment[]>([]);
-  useEffect(() => { pendingAttachmentsRef.current = pendingAttachments; }, [pendingAttachments]);
   // Streaming state: holds the partial agent message being streamed
   const {
     streamingMessage,
@@ -448,21 +446,15 @@ export function useEmbedController(props: EmbedClientProps) {
   // agent judged the visitor wanted a human. Separate from the handoff modal:
   // available on every plan, asks only what the agent was configured to ask, and
   // never blocks the conversation. Missing/unknown flags are treated as disabled.
-  const leadCaptureEnabled = widgetConfig?.lead_capture_enabled === true;
-  const captureFields = widgetConfig?.lead_capture_fields;
-  const [captureOffer, setCaptureOffer] = useState<{
-    /** Why the card appeared — it changes the wording, not the fields. */
-    reason: 'unanswered' | 'intent';
-    /** What the ticket says: the visitor's own question, or the agent's summary of what they want. */
-    question: string;
-    unansweredQuestionId: string | null;
-    conversationId: string | null;
-    timestamp: number;
-  } | null>(null);
-  // One offer per session — set by both submit and dismiss, so a visitor who
-  // said no once is not asked again on the next unanswered question, and the
-  // agent volunteering the card cannot turn into repeated asking.
-  const [captureResolved, setCaptureResolved] = useState(false);
+  const {
+    leadCaptureEnabled,
+    captureFields,
+    captureOffer,
+    setCaptureOffer,
+    captureResolved,
+    handleCaptureSubmit,
+    handleCaptureDismiss,
+  } = useCaptureFlow({ widgetConfig, authToken, sessionId, embedHeaders });
   const postedShowUnreadBadge = useRef<boolean | undefined>(undefined);
   const postedEdgeOffset = useRef<number | undefined>(undefined);
   const {
@@ -486,28 +478,10 @@ export function useEmbedController(props: EmbedClientProps) {
   // parentOrigin via the widget loader, so this only nulls out for malformed
   // embeds — in which case we deliberately suppress postMessage instead of
   // broadcasting via '*'.
-  const parentTargetOrigin = useMemo(
-    () => targetOrigin(resolveParentTargetOrigin(initialParentOrigin, undefined, isStrictOrigin) ?? undefined),
-    [initialParentOrigin, isStrictOrigin]
-  );
-  const parentSensitiveOrigin = useMemo(
-    () => sensitiveOrigin(resolveParentTargetOrigin(initialParentOrigin, undefined, isStrictOrigin) ?? undefined),
-    [initialParentOrigin, isStrictOrigin]
-  );
-  // Helper for non-sensitive `WIDGET_RESIZE` / `WIDGET_SHOW` messages — silently
-  // drops the call when no target origin is available. The host loader will
-  // still apply its origin allowlist on the receiving side.
-  const safePostToParent = useCallback(
-    (payload: unknown) => {
-      if (!parentTargetOrigin) return;
-      try {
-        window.parent.postMessage(payload, parentTargetOrigin);
-      } catch {
-        // host page may be navigating; nothing actionable.
-      }
-    },
-    [parentTargetOrigin],
-  );
+  const { parentTargetOrigin, parentSensitiveOrigin, safePostToParent } = useHostBridge({
+    initialParentOrigin,
+    isStrictOrigin,
+  });
 
   // Emit WIDGET_READY once after the bootstrap phase completes.
   useEffect(() => {
@@ -578,40 +552,6 @@ export function useEmbedController(props: EmbedClientProps) {
     safePostToParent({ type: EMBED_EVENTS.CONSENT_CHANGED, data: { granted: false } });
   }, [safePostToParent]);
 
-  // Submit the inline capture. Deliberately lets errors propagate: the card
-  // catches them to show its inline error state and keeps the typed email, so a
-  // transient network failure doesn't silently discard the lead.
-  const handleCaptureSubmit = useCallback(async (values: Record<string, string>) => {
-    if (!leadCaptureEnabled || !captureOffer) return;
-    // `name` and `email` have their own columns server-side; everything else the
-    // agent asked for travels in `fields`, where it is re-checked against that
-    // agent's configuration before anything is stored.
-    const { email = '', name = '', ...rest } = values;
-    await createSupportTicket(
-      authToken ?? '',
-      {
-        name,
-        email,
-        // What the operator needs in order to reply: the question the agent
-        // couldn't answer, or its one-line summary of what the visitor wants.
-        message: captureOffer.question,
-        source: captureOffer.reason === 'intent' ? 'intent' : 'unanswered',
-        unanswered_question_id: captureOffer.unansweredQuestionId ?? undefined,
-        conversation_id: captureOffer.conversationId ?? undefined,
-        session_id: sessionId ?? undefined,
-        fields: Object.keys(rest).length > 0 ? rest : undefined,
-      },
-      embedHeaders,
-    );
-    // Only mark resolved after a confirmed write, so a failed attempt can be
-    // retried from the same card.
-    setCaptureResolved(true);
-  }, [leadCaptureEnabled, captureOffer, authToken, sessionId, embedHeaders]);
-
-  const handleCaptureDismiss = useCallback(() => {
-    setCaptureOffer(null);
-    setCaptureResolved(true);
-  }, []);
 
   // Allow the host page to toggle debug mode via postMessage. Works in
   // production so integrators can debug a live embed (chat.enableDebug()).
@@ -1208,55 +1148,24 @@ export function useEmbedController(props: EmbedClientProps) {
     exitIntentFired,
   });
 
-  // Impression telemetry. Reported once per rendered nudge, carrying the rule
-  // it came from so open-rate per rule is a group-by rather than a guess. The
-  // ref keys on the rule so a later navigation that resolves a different rule
-  // can still report, while re-renders of the same one can't double-count
-  // (the ingest view would drop those as duplicates anyway).
-  const reportedTeaserRef = useRef<string | null>(null);
-  // Read by toggleCollapsed, which is defined further down and deliberately
-  // kept out of this state's dependency list — it is passed to many children,
-  // so re-creating it on every teaser tick would churn the whole tree.
-  const teaserVisibleRef = useRef(false);
-  const teaserRuleRef = useRef<string | null>(null);
-  useEffect(() => {
-    teaserVisibleRef.current = showTeaser;
-    teaserRuleRef.current = activeRuleId;
-  }, [showTeaser, activeRuleId]);
-  const teaserAttribution = useCallback(
-    () => ({
-      rule_id: activeRuleId,
-      page_path: hostPagePath,
-      trigger: exitIntentFired && activeRuleId ? 'exit_intent' : 'dwell',
-    }),
-    [activeRuleId, hostPagePath, exitIntentFired],
-  );
-
-  useEffect(() => {
-    if (!showTeaser) return;
-    const key = `${activeRuleId ?? '__default__'}:${hostPagePath ?? ''}`;
-    if (reportedTeaserRef.current === key) return;
-    reportedTeaserRef.current = key;
-    trackEvent('teaser_shown', initialAgentId, teaserAttribution(), initialClientId, undefined, embedHeaders)
-      .catch(() => {});
-  }, [showTeaser, activeRuleId, hostPagePath, initialAgentId, initialClientId, embedHeaders, teaserAttribution]);
-
-  // Wraps the hook's dismiss so an explicit "no thanks" is measurable — the
-  // difference between a nudge that is ignored and one that is refused.
-  const handleDismissTeaser = useCallback(() => {
-    trackEvent('teaser_dismissed', initialAgentId, teaserAttribution(), initialClientId, undefined, embedHeaders)
-      .catch(() => {});
-    dismissTeaser();
-  }, [dismissTeaser, initialAgentId, initialClientId, embedHeaders, teaserAttribution]);
-
-  // Rendered footprint of the teaser bubble, reported by EmbedShell so the
-  // iframe is sized to the actual message instead of the bubble's max-width.
-  const [teaserSize, setTeaserSize] = useState<{ width: number; height: number } | null>(null);
-  const handleTeaserMeasure = useCallback((size: { width: number; height: number }) => {
-    setTeaserSize((prev) =>
-      prev && prev.width === size.width && prev.height === size.height ? prev : size
-    );
-  }, []);
+  // Teaser impression/dismissal telemetry and the measured bubble footprint.
+  const {
+    teaserVisibleRef,
+    teaserRuleRef,
+    handleDismissTeaser,
+    teaserSize,
+    setTeaserSize,
+    handleTeaserMeasure,
+  } = useTeaserTelemetry({
+    showTeaser,
+    activeRuleId,
+    hostPagePath,
+    exitIntentFired,
+    dismissTeaser,
+    initialAgentId,
+    initialClientId,
+    embedHeaders,
+  });
 
   // Unread tracking is handled by useUnreadTracking hook above
   // Widget resize is handled by useWidgetResize hook
@@ -1290,96 +1199,27 @@ export function useEmbedController(props: EmbedClientProps) {
     return () => window.removeEventListener('storage', onStorage);
   }, [sessionStorageKey, authToken, loadSessionMessages]);
 
-  const getLocalizedText = (textObj: { [lang: string]: string } | string | undefined): string => {
-    if (textObj == null) return '';
-    if (typeof textObj === 'string') return textObj;
+  // Flow/localization logic lives in ./lib/flows as pure functions; these thin
+  // wrappers bind it to the current locale, config and flow-response state.
+  const getLocalizedText = (textObj: { [lang: string]: string } | string | undefined): string =>
+    flowLib.getLocalizedText(textObj, activeLocale, widgetConfig?.default_language || 'en');
 
-    // Priority: user's locale -> base locale -> widget's default language -> English -> first available
-    const userLocale = activeLocale || 'en';
-    const baseLocale = userLocale.split('-')[0];
-    const defaultLang = widgetConfig?.default_language || 'en';
+  const findFlowForAction = (action: string | undefined): Flow | null =>
+    flowLib.findFlowForAction(action, widgetConfig?.greeting_message?.flows || [], activeLocale);
 
-    // Try user's locale first (e.g. 'nb-NO'), then base code (e.g. 'nb')
-    if (textObj[userLocale]) return textObj[userLocale];
-    if (baseLocale !== userLocale && textObj[baseLocale]) return textObj[baseLocale];
-
-    // Fall back to widget's default language
-    if (textObj[defaultLang]) return textObj[defaultLang];
-
-    // Fall back to English
-    if (textObj['en']) return textObj['en'];
-
-    // Return first available translation
-    const values = Object.values(textObj);
-    return values.length > 0 ? values[0] : '';
-  };
-
-  // Resolve the flow a button's action triggers, if any. Only considers flows
-  // whose `languages` whitelist includes the visitor's locale (legacy flows with
-  // no `languages` are visible in all locales).
-  const findFlowForAction = (action: string | undefined): Flow | null => {
-    if (!action || action === 'text') return null;
-    const flows = (widgetConfig?.greeting_message?.flows || []).filter((candidate: Flow) => {
-      const langs = candidate.languages;
-      return !langs || langs.length === 0 || langs.includes(activeLocale);
-    });
-    return flows.find((candidate: Flow) => candidate.trigger === action) || null;
-  };
-
+  // Contract: returns true only when a STATIC reply was rendered. An AI flow
+  // returns false because its reply arrives via the normal message path.
   const processWidgetFlow = (action: string | undefined): boolean => {
-    const flow = findFlowForAction(action);
-
-    if (!flow) {
-      return false;
+    const appended = flowLib.collectFlowResponses(findFlowForAction(action), getLocalizedText);
+    if (appended === null) return false;
+    if (appended.length > 0) {
+      setFlowResponses((prev: FlowResponse[]) => [...prev, ...appended]);
     }
-
-    // An AI flow has no authored text to render — its reply comes from the agent
-    // via the normal message path. Returning false here keeps this function's
-    // contract ("did I render a static reply?") honest for both call sites.
-    if (flow.answer_mode === 'ai') {
-      return false;
-    }
-
-    const responses: (Flow['responses'] extends Array<infer R> ? R : never)[] = flow.responses || [];
-    type RawFlowResp = (Flow['responses'] extends Array<infer R> ? R : never);
-
-    responses.forEach((response: RawFlowResp) => {
-      const responseText = getLocalizedText(response.text as unknown as { [k: string]: string } | string | undefined);
-
-      if (responseText || (response.buttons && response.buttons.length > 0)) {
-        // Add flow response as a grouped object with text and buttons
-        setFlowResponses((prev: FlowResponse[]) => [...prev, {
-          text: responseText || '',
-          buttons: response.buttons || [],
-          timestamp: Date.now()
-        }]);
-      }
-    });
-
     return true;
   };
 
-  /**
-   * Decide whether a clicked button should be answered by the agent, and with
-   * what text.
-   *
-   * AI mode can be set on the button itself or on the flow its action triggers —
-   * either is enough, so a merchant can flip one shared flow to AI without
-   * editing every button that points at it. Returns the prompt to send, or null
-   * when this click is the ordinary merchant-authored kind.
-   *
-   * Prompt precedence: the button's own `ai_prompt`, then the flow's, then the
-   * visitor-visible label. Falling back to the label is what makes the whole
-   * feature work with zero authoring — and it is already localized, so a
-   * Norwegian visitor sends a Norwegian question without the merchant writing
-   * a prompt per language.
-   */
-  const resolveAiPrompt = (button: FlowButton, labelText: string): string | null => {
-    const flow = findFlowForAction(button.action);
-    if (button.answer_mode !== 'ai' && flow?.answer_mode !== 'ai') return null;
-    const prompt = button.ai_prompt?.trim() || flow?.ai_prompt?.trim() || labelText.trim();
-    return prompt || null;
-  };
+  const resolveAiPrompt = (button: FlowButton, labelText: string): string | null =>
+    flowLib.resolveAiPrompt(button, findFlowForAction(button.action), labelText);
 
   // Sends a single interceptor round-trip to the parent page and returns the
   // (possibly modified) content. Falls back to the original after 500 ms so a
@@ -1413,45 +1253,25 @@ export function useEmbedController(props: EmbedClientProps) {
     [parentSensitiveOrigin],
   );
 
-  // Upload picked files to the session, appending each to pendingAttachments and
-  // emitting WIDGET_FILE_UPLOADED so the host page can react. Best-effort per file:
-  // one failure surfaces an error but doesn't block the others.
-  const handlePickFiles = useCallback(async (files: FileList | File[]) => {
-    const list = Array.from(files || []);
-    if (list.length === 0) return;
-    const sid = sessionIdRef.current || sessionId;
-    const token = authTokenRef.current || authToken;
-    if (!sid || !token) {
-      setError(String(t.sessionOrAuthError) || 'Session or authentication error');
-      return;
-    }
-    for (const file of list) {
-      setUploadingFiles((n) => n + 1);
-      try {
-        const attachment = await helpers.uploadSessionFile(sid, file, token);
-        setPendingAttachments((prev) => [...prev, attachment]);
-        if (parentSensitiveOrigin) {
-          try {
-            window.parent.postMessage(
-              { type: EMBED_EVENTS.FILE_UPLOADED, data: attachment },
-              parentSensitiveOrigin,
-            );
-          } catch {
-            // host may be navigating — non-fatal
-          }
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(t.failedToSendMessage));
-        logError(err instanceof Error ? err : new Error(String(err)), { action: 'uploadSessionFile' });
-      } finally {
-        setUploadingFiles((n) => Math.max(0, n - 1));
-      }
-    }
-  }, [sessionId, authToken, parentSensitiveOrigin, t]);
-
-  const handleRemoveAttachment = useCallback((id: string) => {
-    setPendingAttachments((prev) => prev.filter((a) => a.id !== id));
-  }, []);
+  // File-upload composer state and the pick/remove handlers. Uploads run on pick
+  // and land in pendingAttachments; the send path drains them.
+  const {
+    pendingAttachments,
+    setPendingAttachments,
+    uploadingFiles,
+    setUploadingFiles,
+    pendingAttachmentsRef,
+    handlePickFiles,
+    handleRemoveAttachment,
+  } = useAttachments({
+    sessionId,
+    sessionIdRef,
+    authToken,
+    authTokenRef,
+    parentSensitiveOrigin,
+    t,
+    setError,
+  });
 
   const handleSubmit = useCallback(async (e: React.FormEvent, messageText?: string, skipAddingUserMessage?: boolean) => {
     e.preventDefault();

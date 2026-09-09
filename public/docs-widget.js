@@ -1,11 +1,11 @@
 // =============================================================================
 // AUTO-GENERATED FILE — DO NOT EDIT DIRECTLY
 // Source: src/embed/docs-widget.js
-// Version: 0.1.5
+// Version: 0.1.6
 // Regenerate: npm run build:embed
 // =============================================================================
 // Stable-channel loader: pins to the versioned release built alongside this file.
-// Customers on this URL stay on v0.1.5 until this stub is redeployed.
+// Customers on this URL stay on v0.1.6 until this stub is redeployed.
 // To advance the stable channel, bump the version in package.json and redeploy.
 (function () {
   'use strict';
@@ -37,7 +37,7 @@
       }
     }
   }
-  s.src = host + "/docs-widget-0.1.5.js" + query;
+  s.src = host + "/docs-widget-0.1.6.js" + query;
   s.async = true;
   s.crossOrigin = 'anonymous';
   (document.head || document.documentElement).appendChild(s);

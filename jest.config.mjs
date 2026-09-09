@@ -101,6 +101,8 @@ const config = {
       lines: 80,
       statements: 80,
     },
+    // Fully covered on extraction from EmbedClient.controller; hold it there.
+    './app/embed/session/hooks/useAttachments.ts': { branches: 95, functions: 100, lines: 100, statements: 100 },
     './app/embed/session/hooks/useBootstrap.ts': { branches: 85, functions: 95, lines: 90, statements: 90 },
     './app/embed/session/hooks/useQueuedMessageManagement.ts': { branches: 70, functions: 80, lines: 85, statements: 85 },
     // Branch floors differ between the two same-named hooks: the session one

@@ -51,15 +51,27 @@ function sha384(buf) {
 // SRI is computed over the minified output below, so the hash always matches what
 // is served. Falls back to the unminified source if esbuild is unavailable so the
 // build never hard-fails on a missing optional tool. (#9)
-function minifyEmbed(code, label) {
+// `bundle: true` (rather than a bare transform) is what lets the loaders share
+// code: widget.js and docs-widget.js can `import` from src/embed/_shared.js and
+// still ship as one self-contained file, which the SRI contract requires.
+//
+// Input is passed via stdin with resolveDir set to the entry's own directory so
+// the header-strip and __WIDGET_VERSION__ substitution above still apply to the
+// entry text, while relative imports resolve normally. Keep version constants in
+// the entry files — that substitution is textual and does not reach imports.
+function minifyEmbed(code, label, resolveDir) {
   try {
     const esbuild = require('esbuild');
-    const result = esbuild.transformSync(code, {
+    const result = esbuild.buildSync({
+      stdin: { contents: code, resolveDir, loader: 'js', sourcefile: label },
+      bundle: true,
       minify: true,
       target: 'es2018',
       legalComments: 'none',
+      format: 'iife',
+      write: false,
     });
-    return result.code;
+    return result.outputFiles[0].text;
   } catch (err) {
     console.warn(`build:embed  esbuild unavailable; shipping ${label} unminified (${err.message})`);
     return code;
@@ -84,7 +96,7 @@ function buildEmbedFile(entry) {
   let stripped = HEADER_RE.test(source) ? source.replace(HEADER_RE, '') : source;
   stripped = stripped.replace(/['"]__WIDGET_VERSION__['"]/g, JSON.stringify(VERSION));
 
-  const output = header + minifyEmbed(stripped, entry.src);
+  const output = header + minifyEmbed(stripped, entry.src, path.dirname(srcPath));
 
   // The versioned file (e.g. widget-0.1.0.js) is the real bundle — immutable.
   fs.writeFileSync(versionedDstPath, output, 'utf8');

@@ -1,4 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import {
+  STORAGE_PREFIX,
+  WIDGET_SCRIPT_ID,
+  COMPANY_NAME,
+  BASE_WIDGET_HOST,
+  WIDGET_HOST_SUFFIXES,
+  isTrustedWidgetOrigin,
+  sanitizeInstanceId,
+  createRegistryAccessor,
+  createErrorLog,
+} from './_shared.js';
 (function () {
   // Capture any commands queued before this script finished loading.
   // Enables async/deferred script loading: callers can do
@@ -13,12 +24,7 @@
     return null;
   })();
 
-  // Local constants to mirror centralized app constants (keeps single-place edits easy)
-  const STORAGE_PREFIX = 'companin-';
-  const WIDGET_SCRIPT_ID = 'companin-widget';
-  const COMPANY_NAME = 'Companin';
   let POWERED_BY_TEXT = (typeof window !== 'undefined' && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`] && window[`__${COMPANY_NAME.toUpperCase()}_WIDGET_LOCALES__`].poweredBy) || 'Powered by ';
-  const BASE_WIDGET_HOST = 'https://widget.companin.tech';
   // The WIDGET_VERSION constant below is replaced at build time by
   // scripts/build-embed.js using package.json's version. The quoted literal
   // is the build-time sentinel.
@@ -30,32 +36,9 @@
   // Parse an origin string and decide if it belongs to the widget host (companin.tech
   // or a subdomain). Substring matching would accept e.g. evil-companin.tech.attacker.com,
   // so we must compare hostnames after URL parsing.
-  const WIDGET_HOST_SUFFIXES = ['companin.tech'];
-  const isTrustedWidgetOrigin = function (origin, allowInsecure) {
-    if (!origin || typeof origin !== 'string') return false;
-    try {
-      const u = new URL(origin);
-      if (!u.host) return false;
-      if (!allowInsecure && u.protocol !== 'https:') return false;
-      const host = u.host.toLowerCase();
-      for (let i = 0; i < WIDGET_HOST_SUFFIXES.length; i++) {
-        const suffix = WIDGET_HOST_SUFFIXES[i];
-        if (host === suffix || host.endsWith('.' + suffix)) return true;
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  };
 
   const REGISTRY_KEY = `__${COMPANY_NAME.toUpperCase()}_WIDGET_INSTANCES__`;
-  const sanitizeInstanceId = (value) => String(value || 'default').replace(/[^a-zA-Z0-9_-]/g, '-');
-  const getOrCreateRegistry = () => {
-    if (!window[REGISTRY_KEY] || typeof window[REGISTRY_KEY] !== 'object') {
-      window[REGISTRY_KEY] = {};
-    }
-    return window[REGISTRY_KEY];
-  };
+  const getOrCreateRegistry = createRegistryAccessor(REGISTRY_KEY);
 
   // Loader-wide dev/debug gate. When false (the default in production) the
   // widget must fail INVISIBLY: a chat widget crashing on a customer's site
@@ -80,16 +63,7 @@
   })();
 
   // Error tracking
-  const errors = [];
-  const logError = (message, context) => {
-    const error = {
-      timestamp: new Date().toISOString(),
-      message,
-      context,
-    };
-    errors.push(error);
-    console.error(COMPANY_NAME + ' Widget Error:', message, context);
-  };
+  const { errors, logError } = createErrorLog('Widget Error');
 
   // Where the visitor is, as page-targeting rules see it.
   //
