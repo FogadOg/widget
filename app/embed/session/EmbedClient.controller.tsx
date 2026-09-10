@@ -27,6 +27,7 @@ import {
   WidgetErrorCode,
 } from '../../../lib/errorHandling';
 import { API } from '../../../lib/api';
+import { TIMEOUTS } from '../../../lib/constants';
 import { EMBED_EVENTS, targetOrigin, sensitiveOrigin } from '../../../lib/embedConstants';
 
 import * as helpers from './helpers';
@@ -1554,11 +1555,33 @@ export function useEmbedController(props: EmbedClientProps) {
               let finalData: any = null;
               setStreamingMessage('');
               let streamDone = false;
+              // Re-arm a deadline for the streaming phase. The 30s timer above
+              // was cleared the moment response headers arrived — and the server
+              // flushes headers immediately (it opens with a 2 KB pad) — so from
+              // that point nothing bounded this read at all. A connection that
+              // goes quiet mid-answer (proxy idle-drop, network change, worker
+              // killed) left `reader.read()` pending forever, and the visitor sat
+              // on a typing indicator with no error, no retry and no way out but
+              // a reload.
+              //
+              // This watchdog fires on *silence*, not on elapsed time: every
+              // chunk pushes it back, including the server's `: ping` heartbeat
+              // comments, so a legitimately long answer is never cut off. Firing
+              // aborts the shared controller, which surfaces below as an
+              // AbortError and takes the existing timeout path — message,
+              // telemetry and retry included.
+              let stallTimer: ReturnType<typeof setTimeout> | null = null;
+              const bumpStallTimer = () => {
+                if (stallTimer !== null) clearTimeout(stallTimer);
+                stallTimer = setTimeout(() => controller.abort(), TIMEOUTS.STREAM_STALL);
+              };
+              bumpStallTimer();
               // Always cancel + release the reader so a server-sent error event, an
               // interrupted stream, or a timeout doesn't leak the locked body. (#5)
               try {
                 while (!streamDone) {
                   const { value, done: dr } = await reader.read();
+                  bumpStallTimer();
                   streamDone = dr;
                   if (!value) continue;
                   buffer += decoder.decode(value, { stream: true });
@@ -1587,6 +1610,7 @@ export function useEmbedController(props: EmbedClientProps) {
                   }
                 }
               } finally {
+                if (stallTimer !== null) clearTimeout(stallTimer);
                 try { await reader.cancel(); } catch { /* already closed */ }
                 try { reader.releaseLock(); } catch { /* already released */ }
               }

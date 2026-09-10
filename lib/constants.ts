@@ -22,6 +22,13 @@ export const TIMEOUTS = {
   AUTH_REQUEST: 10000,           // 10 seconds
   SESSION_CREATE: 15000,         // 15 seconds
   MESSAGE_SEND: 30000,           // 30 seconds
+  // Bounds the *streaming* phase, which MESSAGE_SEND does not: that timer is
+  // cleared once response headers arrive, and the server flushes headers
+  // immediately, so without this a stream that goes quiet mid-answer left the
+  // reader pending forever. This fires only on silence — every chunk, including
+  // the server's SSE heartbeat comments, pushes it back — so it must simply be
+  // longer than the heartbeat interval, not longer than a whole answer.
+  STREAM_STALL: 45000,           // 45 seconds with no bytes at all
   WIDGET_LOAD: 15000,            // 15 seconds
   FEEDBACK_INACTIVITY: 30000,    // 30 seconds
   SESSION_EXPIRY_CHECK: 60000,   // 60 seconds

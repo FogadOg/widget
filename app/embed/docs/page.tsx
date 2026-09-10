@@ -1,4 +1,5 @@
 import DocsClient from './DocsClient';
+import ErrorBoundary from '../../../components/ErrorBoundary';
 import { getTranslations } from '../../../lib/i18n';
 import {
   getEmbedTokenSecretsFromEnv,
@@ -214,17 +215,24 @@ export default async function DocsPage({ searchParams }: Props) {
     }
   }
 
+  // Same guard the chat embed has had: a render-time crash inside the widget
+  // must not paint a broken frame over the customer's docs, and must still be
+  // reported. Without this the docs embed failed to a blank iframe with nothing
+  // sent to monitoring — the boundary renders null in production and reports via
+  // componentDidCatch.
   return (
-    <DocsClient
-      clientId={resolvedClientId}
-      agentId={agentId}
-      configId={configId}
-      locale={locale}
-      startOpen={startOpen === 'true'}
-      pagePath={pagePath}
-      parentOrigin={parentOrigin}
-      loaderVersion={loaderVersion}
-      themeOverride={themeOverride}
-    />
+    <ErrorBoundary>
+      <DocsClient
+        clientId={resolvedClientId}
+        agentId={agentId}
+        configId={configId}
+        locale={locale}
+        startOpen={startOpen === 'true'}
+        pagePath={pagePath}
+        parentOrigin={parentOrigin}
+        loaderVersion={loaderVersion}
+        themeOverride={themeOverride}
+      />
+    </ErrorBoundary>
   );
 }

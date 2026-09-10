@@ -93,13 +93,19 @@ export const CodeBlock = ({
   const mounted = useRef(false);
 
   useEffect(() => {
-    highlightCode(code, language, showLineNumbers).then(([light, dark]) => {
-      if (!mounted.current) {
-        setHtml(light);
-        setDarkHtml(dark);
-        mounted.current = true;
-      }
-    });
+    highlightCode(code, language, showLineNumbers)
+      .then(([light, dark]) => {
+        if (!mounted.current) {
+          setHtml(light);
+          setDarkHtml(dark);
+          mounted.current = true;
+        }
+      })
+      .catch(() => {
+        // Highlighting is decoration. An unknown language or a failed grammar
+        // load must not surface as an unhandled rejection — fall through to the
+        // plain <pre> the component already renders when `html` is empty.
+      });
 
     return () => {
       mounted.current = false;
