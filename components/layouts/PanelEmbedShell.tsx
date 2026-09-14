@@ -17,6 +17,7 @@ import { StatusBanners } from '../components/StatusBanners';
 import { ConsentBanner } from '../components/ConsentBanner';
 import { JumpToLatest } from '../components/JumpToLatest';
 import { FocusTrap } from '../components/FocusTrap';
+import { PoweredByFooter } from '../components/PoweredByFooter';
 
 export default function PanelEmbedShell(props: Props) {
   const {
@@ -374,6 +375,13 @@ export default function PanelEmbedShell(props: Props) {
             attachLabel={translate(locale, 'uploadFiles')}
             removeAttachmentLabel={translate(locale, 'removeAttachmentNamed')}
           />
+          {!widgetConfig?.hide_branding && (
+            <PoweredByFooter
+              locale={locale}
+              textColor={textColor}
+              mutedTextColor={mutedTextColor}
+            />
+          )}
         </div>
       </div>
 
