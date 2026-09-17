@@ -10,7 +10,9 @@ export type ResolvedInstallKey = {
 /**
  * `not_found` is definitive (bad key, 4xx, malformed resolver response): the
  * install is misconfigured and the caller should render the permanent
- * missing-params card. `unavailable` is transient (network failure, timeout,
+ * invalid-key card. `disabled` (403) means the key is real but the widget is
+ * switched off — typically by the plan's agent limit — which needs a different
+ * fix, so it gets its own card. `unavailable` is transient (network failure, timeout,
  * 5xx/408/429): the backend couldn't answer right now, so the caller must NOT
  * present it as a configuration error — render the retryable
  * `resolver_unavailable` card instead so the loader reloads the embed.
@@ -18,6 +20,7 @@ export type ResolvedInstallKey = {
 export type ResolveInstallKeyResult =
   | ({ status: 'resolved' } & ResolvedInstallKey)
   | { status: 'not_found' }
+  | { status: 'disabled' }
   // `reason` is a short human-readable cause ("HTTP 502", "fetch failed:
   // ECONNREFUSED"). It exists purely so the error card can say WHY the resolver
   // was unreachable — without it the only signal is a generic card, and
@@ -63,9 +66,10 @@ async function attemptResolve(key: string): Promise<ResolveInstallKeyResult> {
   try {
     const res = await fetch(API.embedResolveServer(key), { cache: 'no-store', signal: controller.signal });
     if (!res.ok) {
-      return isTransientHttpStatus(res.status)
-        ? { status: 'unavailable', reason: `HTTP ${res.status}` }
-        : { status: 'not_found' };
+      if (isTransientHttpStatus(res.status)) {
+        return { status: 'unavailable', reason: `HTTP ${res.status}` };
+      }
+      return res.status === 403 ? { status: 'disabled' } : { status: 'not_found' };
     }
     const json = await res.json();
     const data = json?.data;

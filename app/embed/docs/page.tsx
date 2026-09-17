@@ -80,6 +80,10 @@ export default async function DocsPage({ searchParams }: Props) {
   // the explicit IDs weren't supplied. The explicit form always wins.
   let resolverUnavailable = false;
   let resolverFailureReason: string | undefined;
+  // Set when the resolver definitively refused the key. Without this the page
+  // fell through to the missing-params card, which tells the installer to add a
+  // data-widget-key they already have.
+  let resolverRejected: 'not_found' | 'disabled' | null = null;
   if ((!clientId || !agentId || !configId) && key) {
     const resolved = await resolveInstallKeyServer(key);
     if (resolved.status === 'resolved') {
@@ -90,6 +94,8 @@ export default async function DocsPage({ searchParams }: Props) {
     } else if (resolved.status === 'unavailable') {
       resolverUnavailable = true;
       resolverFailureReason = resolved.reason;
+    } else {
+      resolverRejected = resolved.status;
     }
   }
 
@@ -111,6 +117,23 @@ export default async function DocsPage({ searchParams }: Props) {
           errorType: 'resolver_unavailable',
           logMessage: `Install key resolver was unreachable after retries (${resolverFailureReason || 'unknown cause'}); the loader will retry the docs embed.`,
           context: { locale, transient: true, reason: resolverFailureReason },
+        }
+      );
+    }
+    if (resolverRejected) {
+      const disabled = resolverRejected === 'disabled';
+      return renderDocsEmbedErrorCard(
+        locale,
+        (disabled ? t.embedWidgetDisabledTitle : t.embedInvalidKeyTitle) as string,
+        <p style={{ color: 'var(--muted-foreground, #6b7280)', fontSize: '14px', lineHeight: '1.6' }}>
+          {(disabled ? t.embedWidgetDisabledMessage : t.embedInvalidKeyMessage) as string}
+        </p>,
+        {
+          errorType: disabled ? 'widget_disabled' : 'invalid_key',
+          logMessage: disabled
+            ? "The install key belongs to a widget that is disabled (for example by the plan's agent limit)."
+            : 'The install key was not recognised by the resolver (unknown, deleted or unconfigured widget).',
+          context: { locale },
         }
       );
     }

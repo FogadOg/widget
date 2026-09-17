@@ -385,7 +385,7 @@ describe('Embed session page', () => {
     expect(props.configId).toBe('cfg-resolved');
     expect(props.locale).toBe('fr');
   });
-  test('falls back to the error card when the key cannot be resolved', async () => {
+  const mockSessionPageDeps = () => {
     const embedClientPath = require.resolve('../app/embed/session/EmbedClient');
     const errorBoundaryPath = require.resolve('../components/ErrorBoundary');
     const i18nPath = require.resolve('../lib/i18n');
@@ -403,13 +403,44 @@ describe('Embed session page', () => {
         widgetConfigError: 'Widget Configuration Error',
         widgetConfigMissingParams: 'Missing required parameters.',
         widgetConfigOurDocumentation: 'our documentation',
+        embedInvalidKeyTitle: "This assistant can't load",
+        embedInvalidKeyMessage: "The widget key on this page wasn't recognised.",
+        embedWidgetDisabledTitle: 'This assistant is turned off',
+        embedWidgetDisabledMessage: 'Turn this widget back on in your Companin dashboard.',
       }),
     }));
-    (global as any).fetch = jest.fn().mockResolvedValue({ ok: false, json: async () => ({}) });
+  };
+  test('renders the invalid-key card (not missing-params) when the key is unknown', async () => {
+    mockSessionPageDeps();
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({}) });
+    (global as any).fetch = fetchMock;
     const page = require('../app/embed/session/page').default;
     const element = await page({ searchParams: Promise.resolve({ key: 'wgt_bad' }) });
     const html = renderToStaticMarkup(element as any);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(html).toContain('This assistant can&#x27;t load');
+    expect(html).toContain('invalid_key');
+    // The key IS present, so never tell the installer to add one.
+    expect(html).not.toContain('Widget Configuration Error');
+    expect(html).not.toContain('data-client-id');
+  });
+  test('renders the disabled card when the resolver refuses the key with 403', async () => {
+    mockSessionPageDeps();
+    (global as any).fetch = jest.fn().mockResolvedValue({ ok: false, status: 403, json: async () => ({}) });
+    const page = require('../app/embed/session/page').default;
+    const element = await page({ searchParams: Promise.resolve({ key: 'wgt_disabled' }) });
+    const html = renderToStaticMarkup(element as any);
+    expect(html).toContain('This assistant is turned off');
+    expect(html).toContain('widget_disabled');
+    expect(html).not.toContain('Widget Configuration Error');
+  });
+  test('still renders the missing-params card when no key or IDs are given', async () => {
+    mockSessionPageDeps();
+    const page = require('../app/embed/session/page').default;
+    const element = await page({ searchParams: Promise.resolve({}) });
+    const html = renderToStaticMarkup(element as any);
     expect(html).toContain('Widget Configuration Error');
+    expect(html).not.toContain('invalid_key');
   });
   test('renders the transient unavailable card (not missing-params) when the resolver is down', async () => {
     const embedClientPath = require.resolve('../app/embed/session/EmbedClient');

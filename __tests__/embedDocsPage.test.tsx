@@ -34,6 +34,10 @@ jest.mock('../lib/i18n', () => ({
     embedTokenInvalidOrExpired: 'The embed token is invalid or expired. Please regenerate your widget snippet.',
     embedTemporarilyUnavailableTitle: 'Assistant temporarily unavailable',
     embedTemporarilyUnavailableMessage: 'We couldn\'t load the assistant right now. It will retry automatically — please check back in a moment.',
+    embedInvalidKeyTitle: "This assistant can't load",
+    embedInvalidKeyMessage: "The widget key on this page wasn't recognised.",
+    embedWidgetDisabledTitle: 'This assistant is turned off',
+    embedWidgetDisabledMessage: 'Turn this widget back on in your Companin dashboard.',
   })),
 }));
 import DocsPage from '../app/embed/docs/page';
@@ -236,7 +240,7 @@ describe('Docs page server component', () => {
     expect(html).not.toContain('data-client-id');
     consoleErrorSpy.mockRestore();
   });
-  test('renders the missing-params card without retrying when the resolver rejects the key', async () => {
+  test('renders the invalid-key card without retrying when the resolver rejects the key', async () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({}) });
     (global as any).fetch = fetchMock;
@@ -244,8 +248,23 @@ describe('Docs page server component', () => {
     const html = renderToStaticMarkup(element as any);
     // a definitive 4xx answer is not retried
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(html).toContain('Docs Agent Configuration Error');
+    expect(html).toContain('This assistant can&#x27;t load');
+    expect(html).toContain('invalid_key');
+    // the key is present — never tell the installer to add one
+    expect(html).not.toContain('Docs Agent Configuration Error');
     expect(html).not.toContain('resolver_unavailable');
+    consoleErrorSpy.mockRestore();
+  });
+  test('renders the disabled card when the resolver refuses the key with 403', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 403, json: async () => ({}) });
+    (global as any).fetch = fetchMock;
+    const element = await (DocsPage as any)({ searchParams: Promise.resolve({ key: 'wgt_disabled' }) });
+    const html = renderToStaticMarkup(element as any);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(html).toContain('This assistant is turned off');
+    expect(html).toContain('widget_disabled');
+    expect(html).not.toContain('Docs Agent Configuration Error');
     consoleErrorSpy.mockRestore();
   });
   test('recovers and renders DocsClient when the resolver succeeds on a retry', async () => {

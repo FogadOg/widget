@@ -1,9 +1,9 @@
 {
   "de.json": {
-    "total_keys": 228,
+    "total_keys": 237,
     "empty_values_count": 0,
     "empty_values_sample": [],
-    "untranslated_count": 8,
+    "untranslated_count": 9,
     "untranslated_sample": [
       {
         "key": "feedbackNeutral",
@@ -19,7 +19,11 @@
       },
       {
         "key": "leadCaptureNameLabel",
-        "value": "Name (optional)"
+        "value": "Name"
+      },
+      {
+        "key": "leadCaptureOptional",
+        "value": "(optional)"
       },
       {
         "key": "uncertaintyLogAgent",
@@ -54,7 +58,7 @@
     ]
   },
   "es.json": {
-    "total_keys": 228,
+    "total_keys": 237,
     "empty_values_count": 0,
     "empty_values_sample": [],
     "untranslated_count": 2,
@@ -84,7 +88,7 @@
     ]
   },
   "fr.json": {
-    "total_keys": 228,
+    "total_keys": 237,
     "empty_values_count": 0,
     "empty_values_sample": [],
     "untranslated_count": 6,
@@ -130,7 +134,7 @@
     ]
   },
   "id.json": {
-    "total_keys": 228,
+    "total_keys": 237,
     "empty_values_count": 0,
     "empty_values_sample": [],
     "untranslated_count": 6,
@@ -176,7 +180,7 @@
     ]
   },
   "it.json": {
-    "total_keys": 228,
+    "total_keys": 237,
     "empty_values_count": 0,
     "empty_values_sample": [],
     "untranslated_count": 8,
@@ -230,7 +234,7 @@
     ]
   },
   "ko.json": {
-    "total_keys": 228,
+    "total_keys": 237,
     "empty_values_count": 0,
     "empty_values_sample": [],
     "untranslated_count": 0,
@@ -241,7 +245,7 @@
     "placeholder_mismatches_sample": []
   },
   "nb.json": {
-    "total_keys": 228,
+    "total_keys": 237,
     "empty_values_count": 0,
     "empty_values_sample": [],
     "untranslated_count": 6,
@@ -296,7 +300,7 @@
     ]
   },
   "nl.json": {
-    "total_keys": 228,
+    "total_keys": 237,
     "empty_values_count": 0,
     "empty_values_sample": [],
     "untranslated_count": 12,
@@ -385,7 +389,7 @@
     ]
   },
   "pl.json": {
-    "total_keys": 228,
+    "total_keys": 237,
     "empty_values_count": 0,
     "empty_values_sample": [],
     "untranslated_count": 5,
@@ -427,7 +431,7 @@
     ]
   },
   "pt.json": {
-    "total_keys": 228,
+    "total_keys": 237,
     "empty_values_count": 0,
     "empty_values_sample": [],
     "untranslated_count": 6,
@@ -482,7 +486,7 @@
     ]
   },
   "ru.json": {
-    "total_keys": 228,
+    "total_keys": 237,
     "empty_values_count": 0,
     "empty_values_sample": [],
     "untranslated_count": 0,
@@ -503,7 +507,7 @@
     ]
   },
   "sv.json": {
-    "total_keys": 228,
+    "total_keys": 237,
     "empty_values_count": 0,
     "empty_values_sample": [],
     "untranslated_count": 5,
@@ -554,7 +558,7 @@
     ]
   },
   "tr.json": {
-    "total_keys": 228,
+    "total_keys": 237,
     "empty_values_count": 0,
     "empty_values_sample": [],
     "untranslated_count": 1,
