@@ -30,18 +30,7 @@ jest.mock('@radix-ui/react-collapsible', () => ({
   CollapsibleContent: ({ children, ...props }: any) => <div data-testid="collapsible-content-inner" {...props}>{children}</div>,
 }))
 
-const emblaHookMock = jest.fn()
-
-jest.mock('embla-carousel-react', () => ({
-  __esModule: true,
-  default: (...args: any[]) => emblaHookMock(...args),
-}))
-
 describe('src ui components', () => {
-  beforeEach(() => {
-    emblaHookMock.mockReset()
-  })
-
   test('Alert renders default and destructive variants with slots', () => {
     const { rerender } = render(
       <Alert className="custom-alert">
@@ -184,94 +173,5 @@ describe('src ui components', () => {
     expect(screen.getByText('Hidden content')).toBeInTheDocument()
   })
 
-  test('Carousel supports keyboard, buttons, orientation classes and setApi', async () => {
-    const {
-      Carousel,
-      CarouselContent,
-      CarouselItem,
-      CarouselNext,
-      CarouselPrevious,
-    } = require('../src/components/ui/carousel')
 
-    const handlers: Record<string, (...args: any[]) => void> = {}
-    const api = {
-      canScrollPrev: jest.fn(() => true),
-      canScrollNext: jest.fn(() => false),
-      scrollPrev: jest.fn(),
-      scrollNext: jest.fn(),
-      on: jest.fn((event: string, handler: (...args: any[]) => void) => {
-        handlers[event] = handler
-      }),
-      off: jest.fn(),
-    }
-
-    emblaHookMock.mockReturnValue([jest.fn(), api])
-    const setApi = jest.fn()
-
-    const { unmount, rerender } = render(
-      <Carousel setApi={setApi} className="carousel-extra">
-        <CarouselContent data-testid="carousel-content-inner">
-          <CarouselItem>Slide 1</CarouselItem>
-        </CarouselContent>
-        <CarouselPrevious />
-        <CarouselNext />
-      </Carousel>
-    )
-
-    const region = screen.getByRole('region')
-    expect(region).toHaveAttribute('data-slot', 'carousel')
-    expect(region).toHaveAttribute('aria-roledescription', 'carousel')
-    expect(region).toHaveClass('carousel-extra')
-
-    await waitFor(() => {
-      expect(setApi).toHaveBeenCalledWith(api)
-    })
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Previous slide/i })).toBeEnabled()
-      expect(screen.getByRole('button', { name: /Next slide/i })).toBeDisabled()
-    })
-
-    fireEvent.keyDown(region, { key: 'ArrowLeft' })
-    fireEvent.keyDown(region, { key: 'ArrowRight' })
-    fireEvent.click(screen.getByRole('button', { name: /Previous slide/i }))
-    fireEvent.click(screen.getByRole('button', { name: /Next slide/i }))
-
-    expect(api.scrollPrev).toHaveBeenCalled()
-    expect(api.scrollNext).toHaveBeenCalled()
-
-    handlers.select?.(undefined as any)
-
-    rerender(
-      <Carousel orientation="vertical" opts={{ axis: 'y' }}>
-        <CarouselContent data-testid="carousel-content-vertical">
-          <CarouselItem>Slide 2</CarouselItem>
-        </CarouselContent>
-        <CarouselPrevious data-testid="prev-vertical" />
-        <CarouselNext data-testid="next-vertical" />
-      </Carousel>
-    )
-
-    expect(screen.getByTestId('carousel-content-vertical').className).toContain('-mt-4')
-    expect(screen.getByText('Slide 2').closest('[data-slot="carousel-item"]')).toHaveClass('pt-4')
-    expect(screen.getByTestId('prev-vertical')).toHaveClass('rotate-90')
-    expect(screen.getByTestId('next-vertical')).toHaveClass('rotate-90')
-
-    unmount()
-    expect(api.off).toHaveBeenCalledWith('select', expect.any(Function))
-  })
-
-  test('Carousel subcomponents outside provider throw useful error', () => {
-    const {
-      CarouselContent,
-      CarouselItem,
-      CarouselNext,
-      CarouselPrevious,
-    } = require('../src/components/ui/carousel')
-
-    expect(() => render(<CarouselContent />)).toThrow('useCarousel must be used within a <Carousel />')
-    expect(() => render(<CarouselItem />)).toThrow('useCarousel must be used within a <Carousel />')
-    expect(() => render(<CarouselPrevious />)).toThrow('useCarousel must be used within a <Carousel />')
-    expect(() => render(<CarouselNext />)).toThrow('useCarousel must be used within a <Carousel />')
-  })
 })

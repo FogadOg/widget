@@ -40,3 +40,8 @@ jobs:
 
       - name: Run size-limit
         run: npm run size-limit
+
+      # The whole-app ceiling above cannot tell you whether the widget itself
+      # regressed. This checks the per-route payload a visitor downloads.
+      - name: Check embed route bundle budgets
+        run: npm run check-embed-size

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 
 const resolveCjsEsm = (mod: any) => mod?.default ?? mod;
 const ReactMarkdown: any =
@@ -16,7 +16,6 @@ type Props = {
 };
 
 export default function Markdown({ content, sources }: Props) {
-  const [rehypePlugins, setRehypePlugins] = useState<any[]>([]);
 
   /**
    * Pre-process [n] citation tokens into markdown links.
@@ -81,36 +80,6 @@ export default function Markdown({ content, sources }: Props) {
     }
   }, [content, sources]);
 
-  const hasMath = useMemo(() => /(^|\s)\${1,2}[^\n]+\${1,2}($|\s)/.test(content), [content]);
-
-  useEffect(() => {
-    let mounted = true;
-
-    // Dynamically load KaTeX/rehype-katex only when math is present.
-    if (hasMath) {
-      // Use an indirect dynamic import to avoid build-time static resolution
-      // (webpack may try to resolve literal imports during build).
-      const pkgName = "rehype-katex";
-      try {
-        const dynamicImport = new Function("pkg", "return import(pkg)");
-
-        dynamicImport(pkgName)
-          .then((mod: any) => {
-            if (!mounted) return;
-            setRehypePlugins((p) => [...p, mod.default || mod]);
-          })
-          .catch(() => {
-            /* ignore missing plugin at runtime */
-          });
-      } catch (err) {
-        // If dynamic import creation fails, ignore and proceed without math rendering.
-      }
-    }
-
-    return () => {
-      mounted = false;
-    };
-  }, [hasMath]);
 
   /**
    * Custom `a` renderer: a link whose text is a bare number is a citation token.
@@ -180,7 +149,7 @@ export default function Markdown({ content, sources }: Props) {
 
   return (
     <div className="prose max-w-full overflow-visible whitespace-pre-wrap">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={components}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {processed}
       </ReactMarkdown>
     </div>

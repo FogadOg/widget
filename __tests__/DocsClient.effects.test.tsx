@@ -119,29 +119,10 @@ jest.mock('@/components/ai-elements/prompt-input', () => ({
   PromptInputTextarea: (props: any) => React.createElement('textarea', props),
   PromptInputTools: ({ children }: any) => React.createElement('div', null, children),
 }))
-jest.mock('@/components/ai-elements/model-selector', () => ({
-  ModelSelector: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorContent: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorEmpty: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorGroup: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorInput: (props: any) => React.createElement('input', props),
-  ModelSelectorItem: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorList: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorLogo: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorLogoGroup: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorName: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorTrigger: ({ children }: any) => React.createElement('button', null, children),
-}))
 jest.mock('@/components/ai-elements/reasoning', () => ({
   Reasoning: ({ children }: any) => React.createElement('div', null, children),
   ReasoningContent: ({ children }: any) => React.createElement('div', null, children),
   ReasoningTrigger: () => React.createElement('button', null),
-}))
-jest.mock('@/components/ai-elements/sources', () => ({
-  Source: ({ title }: any) => React.createElement('div', null, title),
-  Sources: ({ children }: any) => React.createElement('div', null, children),
-  SourcesContent: ({ children }: any) => React.createElement('div', null, children),
-  SourcesTrigger: () => React.createElement('button', null),
 }))
 jest.mock('@/components/ai-elements/suggestion', () => ({
   Suggestion: ({ onClick, suggestion }: any) => React.createElement('button', { onClick }, suggestion),
@@ -184,29 +165,10 @@ jest.mock('../src/components/ai-elements/prompt-input', () => ({
   PromptInputTextarea: (props: any) => React.createElement('textarea', props),
   PromptInputTools: ({ children }: any) => React.createElement('div', null, children),
 }))
-jest.mock('../src/components/ai-elements/model-selector', () => ({
-  ModelSelector: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorContent: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorEmpty: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorGroup: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorInput: (props: any) => React.createElement('input', props),
-  ModelSelectorItem: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorList: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorLogo: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorLogoGroup: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorName: ({ children }: any) => React.createElement('div', null, children),
-  ModelSelectorTrigger: ({ children }: any) => React.createElement('button', null, children),
-}))
 jest.mock('../src/components/ai-elements/reasoning', () => ({
   Reasoning: ({ children }: any) => React.createElement('div', null, children),
   ReasoningContent: ({ children }: any) => React.createElement('div', null, children),
   ReasoningTrigger: () => React.createElement('button', null),
-}))
-jest.mock('../src/components/ai-elements/sources', () => ({
-  Source: ({ title }: any) => React.createElement('div', null, title),
-  Sources: ({ children }: any) => React.createElement('div', null, children),
-  SourcesContent: ({ children }: any) => React.createElement('div', null, children),
-  SourcesTrigger: () => React.createElement('button', null),
 }))
 jest.mock('../src/components/ai-elements/suggestion', () => ({
   Suggestion: ({ onClick, suggestion }: any) => React.createElement('button', { onClick }, suggestion),

@@ -169,9 +169,7 @@ describe.skip('DocsClient component (coverage)', () => {
         PromptInput: simple('PromptInput'),
       }));
       // Model selector, reasoning, sources, suggestions - simple wrappers
-      jest.doMock('../components/ai-elements/model-selector', () => ({ ModelSelector: simple('ModelSelector'), ModelSelectorTrigger: simple('ModelSelectorTrigger') }));
       jest.doMock('../components/ai-elements/reasoning', () => ({ Reasoning: simple('Reasoning'), ReasoningContent: simple('ReasoningContent'), ReasoningTrigger: simple('ReasoningTrigger') }));
-      jest.doMock('../components/ai-elements/sources', () => ({ Sources: simple('Sources'), SourcesContent: simple('SourcesContent'), SourcesTrigger: simple('SourcesTrigger'), Source: (p: any) => React.createElement('a', { href: p.href }, p.title) }));
       jest.doMock('../components/ai-elements/suggestion', () => ({ Suggestion: ({ onClick, suggestion }: any) => React.createElement('button', { 'data-testid': `suggestion-${suggestion}`, onClick: () => onClick(suggestion) }, suggestion), Suggestions: simple('Suggestions') }));
       // nanoid and toast
       jest.doMock('nanoid', () => ({ nanoid: () => 'nid' }));

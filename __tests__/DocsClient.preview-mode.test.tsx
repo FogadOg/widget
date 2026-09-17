@@ -109,30 +109,10 @@ jest.mock('@/components/ai-elements/reasoning', () => ({
   ReasoningContent: ({ children }: any) => require('react').createElement('div', null, children),
   ReasoningTrigger: () => require('react').createElement('button', null),
 }))
-jest.mock('@/components/ai-elements/sources', () => ({
-  Source: ({ title }: any) => require('react').createElement('div', null, title),
-  Sources: ({ children }: any) => require('react').createElement('div', null, children),
-  SourcesContent: ({ children }: any) => require('react').createElement('div', null, children),
-  SourcesTrigger: () => require('react').createElement('button', null),
-}))
 jest.mock('@/components/ai-elements/suggestion', () => ({
   Suggestion: ({ onClick, suggestion }: any) => require('react').createElement('button', { onClick }, suggestion),
   Suggestions: ({ children }: any) => require('react').createElement('div', null, children),
 }))
-jest.mock('@/components/ai-elements/model-selector', () => ({
-  ModelSelector: ({ children }: any) => require('react').createElement('div', null, children),
-  ModelSelectorContent: ({ children }: any) => require('react').createElement('div', null, children),
-  ModelSelectorEmpty: ({ children }: any) => require('react').createElement('div', null, children),
-  ModelSelectorGroup: ({ children }: any) => require('react').createElement('div', null, children),
-  ModelSelectorInput: (props: any) => require('react').createElement('input', props),
-  ModelSelectorItem: ({ children }: any) => require('react').createElement('div', null, children),
-  ModelSelectorList: ({ children }: any) => require('react').createElement('div', null, children),
-  ModelSelectorLogo: ({ children }: any) => require('react').createElement('div', null, children),
-  ModelSelectorLogoGroup: ({ children }: any) => require('react').createElement('div', null, children),
-  ModelSelectorName: ({ children }: any) => require('react').createElement('div', null, children),
-  ModelSelectorTrigger: ({ children }: any) => require('react').createElement('button', null, children),
-}))
-
 // AI element components — ../src/ path (same mocks, different resolution path)
 jest.mock('../src/components/ai-elements/conversation', () => ({
   Conversation: ({ children }: any) => require('react').createElement('div', null, children),
@@ -173,12 +153,6 @@ jest.mock('../src/components/ai-elements/reasoning', () => ({
   Reasoning: ({ children }: any) => require('react').createElement('div', null, children),
   ReasoningContent: ({ children }: any) => require('react').createElement('div', null, children),
   ReasoningTrigger: () => require('react').createElement('button', null),
-}))
-jest.mock('../src/components/ai-elements/sources', () => ({
-  Source: ({ title }: any) => require('react').createElement('div', null, title),
-  Sources: ({ children }: any) => require('react').createElement('div', null, children),
-  SourcesContent: ({ children }: any) => require('react').createElement('div', null, children),
-  SourcesTrigger: () => require('react').createElement('button', null),
 }))
 jest.mock('../src/components/ai-elements/suggestion', () => ({
   Suggestion: ({ onClick, suggestion }: any) => require('react').createElement('button', { onClick }, suggestion),

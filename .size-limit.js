@@ -1,15 +1,23 @@
-// Bundle size performance budgets for CI enforcement
-// Adjust limits as the project grows. Paths assume a Next.js build output.
+// Whole-app bundle ceiling.
+//
+// NOTE: this glob sums EVERY route's chunks — marketing pages, /dev, /preview,
+// the docs site and both embed routes — into one number (~2.63 MB gzipped as of
+// 2026-09-14). It is a coarse ceiling against runaway growth, not a measure of
+// what a visitor downloads.
+//
+// The number that actually matters for an embedded widget is the per-route
+// payload, and chunk filenames are content-hashed so no glob can select one
+// route's chunks. That check lives in `scripts/check-embed-size.js`, which reads
+// Next's client-reference manifest per route:
+//
+//   /embed/session   359 KB gzipped  (the chat widget)
+//   /embed/docs      412 KB gzipped  (the docs widget)
+//
+// Both run in CI via `npm run ci:size-limit`.
 module.exports = [
   {
-    // Main client chunks (gzipped)
     path: '.next/static/chunks/*.js',
-    // Increase the budget to accommodate current bundle size (measured ~2.6 MB).
-    // Set to 3 MB so CI size-limit checks pass while we optimize bundles later.
-    limit: '3 MB',
-    gzip: true
+    limit: '2.8 MB',
+    gzip: true,
   },
-  // Note: .next outputs chunks under `.next/static/chunks/`.
-  // Remove the unused `.next/static/*.js` entry (it often matches nothing),
-  // which avoids the "can't find files" warning.
 ];
