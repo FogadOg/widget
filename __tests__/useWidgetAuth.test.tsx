@@ -971,6 +971,37 @@ describe('useWidgetAuth', () => {
       );
     });
 
+    it('logs the embedding site origin, not the widget iframe host', async () => {
+      // The diagnostic used to log `window.location.origin`, which inside the
+      // embed iframe is the widget's own host and is the same for every
+      // customer — so it told admins to allowlist the wrong domain. The value
+      // the backend actually checks is the parent origin.
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ detail: 'Origin not allowed for this client_id', code: 'origin_not_allowed' }),
+      });
+
+      const { result } = renderHook(() => useWidgetAuth());
+
+      await act(async () => {
+        await result.current.getAuthToken('test-client-id', 'https://shop.example');
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[Widget] Origin auth failure:',
+        expect.objectContaining({ origin: 'https://shop.example' }),
+      );
+      const logged = consoleSpy.mock.calls.find(
+        (c) => c[0] === '[Widget] Origin auth failure:',
+      )?.[1] as Record<string, unknown>;
+      expect(logged.origin).not.toBe(window.location.origin);
+      expect(logged).toHaveProperty('widgetHost');
+
+      consoleSpy.mockRestore();
+    });
+
     it('maps missing_origin_header code to origin-specific user message', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,

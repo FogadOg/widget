@@ -124,6 +124,9 @@ interface TelemetryPayload {
   metadata?: Record<string, unknown>;
 }
 
+/** Placeholder id the dashboard preview pane mounts the widget with. */
+export const PREVIEW_SENTINEL_ID = 'preview';
+
 /**
  * Emit a telemetry event to the backend. Uses the same base URL as other
  * API calls and falls back to localhost if unset. This used to live in
@@ -139,6 +142,14 @@ export async function trackEvent(
 ): Promise<void> {
   const BASE = getApiBaseUrl();
   if (!BASE) {
+    return;
+  }
+  // The dashboard's widget preview pane mounts the real client with the
+  // sentinel ids from app/preview/page.tsx. Those aren't a real visitor
+  // session: posting them sent `agent: "preview"` (not a UUID) to the
+  // ingestion endpoint on every preview render, and would have counted
+  // designer page-views as visitor opens in the org's own analytics.
+  if (agentId === PREVIEW_SENTINEL_ID || clientId === PREVIEW_SENTINEL_ID) {
     return;
   }
   const endpoint = `${BASE.replace(/\/+$/, '')}/telemetry/events/`;

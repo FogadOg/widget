@@ -120,9 +120,18 @@ export function useWidgetAuth() {
               // a specific message and never retry.
               if (response.status === 400 && (backendCode === 'origin_not_allowed' || backendCode === 'missing_origin_header')) {
                 const originMessage = 'This website origin is not allowed for this widget. Ask your admin to add this site to allowed origins.';
+                // Report the EMBEDDING site's origin — that is what the backend
+                // checks against allowed_origins and what an admin has to add.
+                // `window.location.origin` here is the widget's own iframe host
+                // (always the same value), so logging it sent people off to
+                // allowlist the wrong domain.
                 console.error('[Widget] Origin auth failure:', {
                   code: backendCode,
-                  origin: typeof window !== 'undefined' ? window.location.origin : 'unknown',
+                  origin: parentOrigin
+                    || (typeof document !== 'undefined' && document.referrer
+                      ? new URL(document.referrer).origin
+                      : 'unknown'),
+                  widgetHost: typeof window !== 'undefined' ? window.location.origin : 'unknown',
                   clientId: normalizedClientId.slice(0, 8) + '...',
                 });
                 const err = createAuthError(errorMessage, WidgetErrorCode.ORIGIN_NOT_ALLOWED);

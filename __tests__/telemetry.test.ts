@@ -28,6 +28,25 @@ describe('telemetry helper', () => {
     expect(body.user_id).toBeDefined();
   });
 
+  // The dashboard preview pane mounts the real client with placeholder ids.
+  // Those posts sent `agent: "preview"` (not a UUID) to the ingestion endpoint
+  // on every preview render, and would have counted designer page-views as
+  // real visitor activity in the org's analytics.
+  it('does not post telemetry from the dashboard preview pane', async () => {
+    await trackEvent('widget_load', 'preview', { widget_config_id: 'preview' }, 'preview');
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not post when only the client id is the preview sentinel', async () => {
+    await trackEvent('widget_open', undefined, {}, 'preview');
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('still posts for a real agent id', async () => {
+    await trackEvent('widget_open', '3ccfdfe7-cde3-4710-b054-401977af3120', {}, 'clientA');
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
   it('includes agent and metadata', async () => {
     await trackEvent('button_clicked', 'assist-1', { button: 'ok' }, 'clientA');
     expect(global.fetch).toHaveBeenCalledWith(
