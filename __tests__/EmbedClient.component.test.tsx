@@ -783,8 +783,10 @@ describe('EmbedClient Component', () => {
         );
       });
       await waitFor(() => {
+        // Stored under the locale-suffixed key that bootstrap restore reads back
+        // (writing the bare base key meant a reload never found the session).
         expect(mockHelpers.storeSession).toHaveBeenCalledWith(
-          'session-key',
+          'session-key-en',
           'new-session-123',
           '2026-12-31T23:59:59Z'
         );

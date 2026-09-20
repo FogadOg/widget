@@ -18,6 +18,8 @@ jest.mock('../helpers', () => ({
   storeSession: jest.fn(),
   clearStoredSession: jest.fn(),
   localMessagesStorageKey: (sessionId: string) => `local-msgs-${sessionId}`,
+  // Pure function — use the real one so restore mapping is exercised as shipped.
+  restoredMessageText: jest.requireActual('../helpers').restoredMessageText,
 }));
 
 import * as helpers from '../helpers';
@@ -308,7 +310,10 @@ describe('useSessionManagement — createSession', () => {
     const postCall = fetchMock.mock.calls.find(([u, i]) => u.includes('/sessions/') && i.method === 'POST');
     const body = JSON.parse(postCall![1].body as string);
     expect(body.metadata).toEqual({ is_ab_control: true, widget_config_id: 'config-1' });
-    expect(helpers.storeSession).toHaveBeenCalledWith('base-sess-key', 'sess-new', '2099-01-01T00:00:00Z');
+    // Written under the same locale-suffixed key the bootstrap restore, the
+    // expiry check and the clears all read — see the round-trip test below.
+    expect(helpers.storeSession).toHaveBeenCalledWith('sess-key', 'sess-new', '2099-01-01T00:00:00Z');
+    expect(helpers.storeSession).not.toHaveBeenCalledWith('base-sess-key', expect.anything(), expect.anything());
   });
 
   it('tags a variant session when a variant is assigned', async () => {
@@ -511,6 +516,37 @@ describe('useSessionManagement — validateAndRestoreSession', () => {
     expect(ids).toContain('local-unique');
     expect(ids).not.toContain('local-dup');
     expect(flushQueuedMessages).toHaveBeenCalled();
+  });
+
+  // A page reload restores through this path. It used to return only
+  // {id, text, from, timestamp}, dropping metadata and sources: the shells then
+  // couldn't see the stored greeting's `is_greeting` marker (so the greeting
+  // rendered twice) and every restored answer lost its citations.
+  it('keeps metadata and sources on a raw-API restore', async () => {
+    const fetchMock = makeFetchMock([
+      { test: (u) => u.includes('/messages'), handler: () => res({ ok: true, json: {
+        status: 'success',
+        data: { messages: [
+          { id: 'g1', content: 'Hello!', sender: 'agent', created_at: new Date(0).toISOString(),
+            metadata: { is_greeting: true } },
+          { id: 'u1', content: 'Summarise the pricing tiers', sender: 'user', created_at: new Date(1000).toISOString(),
+            metadata: { display_text: 'Pricing' } },
+          { id: 'a1', content: 'Here are the tiers.', sender: 'agent', created_at: new Date(2000).toISOString(),
+            sources: [{ title: 'Pricing', url: 'https://example.com/pricing' }], metadata: { confidence_score: 0.9 } },
+        ] },
+      } }) },
+    ]);
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const { params, getMessages } = makeParams();
+    const { result } = renderHook(() => useSessionManagement(params));
+    await act(async () => {
+      await result.current.validateAndRestoreSession('sess-1', 'agent-1', 'tok', null);
+    });
+    const byId = Object.fromEntries(getMessages().map((m: any) => [m.id, m]));
+    expect(byId.g1.metadata).toEqual({ is_greeting: true });
+    expect(byId.a1.sources).toEqual([{ title: 'Pricing', url: 'https://example.com/pricing' }]);
+    // …and the visitor's AI-button turn shows the label, not the hidden prompt.
+    expect(byId.u1.text).toBe('Pricing');
   });
 
   it('creates a new session when the restore GET is not ok', async () => {

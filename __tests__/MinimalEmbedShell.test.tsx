@@ -256,3 +256,39 @@ describe('MinimalEmbedShell — expanded', () => {
     expect(screen.getByText('Preview greeting')).toBeInTheDocument();
   });
 });
+
+// This layout used to render no teaser at all while the controller still grew
+// the iframe for one — an invisible box over the host page that swallowed clicks
+// and never showed the merchant's message.
+describe('teaser bubble (collapsed)', () => {
+  const teaser = { isCollapsed: true, teaserConfigured: true, teaserExpanded: true, teaserMessage: 'Need a hand?' };
+
+  it('shows the teaser above the launcher once it is revealed', () => {
+    renderShell({ ...teaser, showTeaser: true });
+    expect(screen.getByRole('status')).toHaveTextContent('Need a hand?');
+    expect(screen.getByRole('button', { name: /open/i })).toBeInTheDocument();
+  });
+
+  it('mounts it hidden first so the iframe can be sized to it', () => {
+    const onTeaserMeasure = jest.fn();
+    renderShell({ ...teaser, showTeaser: false, onTeaserMeasure });
+    expect(screen.getByRole('status', { hidden: true })).toHaveStyle({ visibility: 'hidden' });
+    expect(onTeaserMeasure).toHaveBeenCalled();
+  });
+
+  it('dismisses without opening, and the bubble opens the chat', () => {
+    const onDismissTeaser = jest.fn();
+    const toggleCollapsed = jest.fn();
+    renderShell({ ...teaser, showTeaser: true, onDismissTeaser, toggleCollapsed });
+    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
+    expect(onDismissTeaser).toHaveBeenCalled();
+    expect(toggleCollapsed).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('status'));
+    expect(toggleCollapsed).toHaveBeenCalled();
+  });
+
+  it('renders no bubble when no teaser is configured', () => {
+    renderShell({ isCollapsed: true, teaserConfigured: false, teaserMessage: 'Need a hand?', showTeaser: true });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+});

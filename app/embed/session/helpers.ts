@@ -135,6 +135,30 @@ export function getPageContext(
   }
 }
 
+/**
+ * Text to show for a message rebuilt from the server on session restore.
+ *
+ * An AI-mode button sends the merchant's hidden `ai_prompt` as the message
+ * content (that is what the agent must answer), while the visitor only ever
+ * saw the button's label. The label is stored alongside as
+ * `metadata.display_text`, so a restored transcript shows what the visitor
+ * clicked rather than exposing the internal instruction. Only the visitor's own
+ * turns honour it — agent text always comes straight from `content`.
+ */
+export function restoredMessageText(msg: {
+  sender?: string;
+  from?: string;
+  content?: string;
+  text?: string;
+  metadata?: unknown;
+}): string {
+  const raw = msg.content ?? msg.text ?? '';
+  const role = msg.sender ?? msg.from;
+  if (role !== 'user') return raw;
+  const display = (msg.metadata as { display_text?: unknown } | null | undefined)?.display_text;
+  return typeof display === 'string' && display.trim() ? display : raw;
+}
+
 export function getStoredSession(sessionStorageKey: string) {
   return getStoredSessionByKey(sessionStorageKey);
 }
@@ -208,7 +232,7 @@ export async function loadSessionMessages(
         const m = msg as ApiMessage;
         return {
           id: m.id,
-          text: m.content,
+          text: restoredMessageText(m),
           from: m.sender === 'assistant' ? 'agent' : m.sender,
           timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
           sources: (m.sources as SourceData[]) || [],

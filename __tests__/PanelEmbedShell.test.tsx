@@ -174,3 +174,82 @@ describe('PanelEmbedShell — expanded', () => {
     expect(screen.getByText('Fallback Panel Title')).toBeInTheDocument();
   });
 });
+
+// This layout used to render neither the configured greeting nor its
+// interaction buttons, so a merchant who picked it lost the whole greeting
+// flow (AI-answered buttons included) and visitors saw the generic prompt.
+describe('PanelEmbedShell — greeting', () => {
+  const widgetConfig = {
+    greeting_message: {
+      text: { en: 'Hello! Need help?' },
+      buttons: [
+        { id: 'b1', button_id: 'ai_pricing', action: 'text', answer_mode: 'ai', label: { en: 'Pricing' } },
+        { id: 'b2', button_id: 'start', action: 'text', label: { en: 'Getting started' } },
+      ],
+    },
+  };
+
+  it('pins the greeting and its buttons instead of the empty-state prompt', () => {
+    renderShell({ widgetConfig });
+    expect(screen.getByText('Hello! Need help?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pricing' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Getting started' })).toBeInTheDocument();
+  });
+
+  it('routes a button click to onInteractionButtonClick', () => {
+    const onInteractionButtonClick = jest.fn();
+    renderShell({ widgetConfig, onInteractionButtonClick });
+    fireEvent.click(screen.getByRole('button', { name: 'Pricing' }));
+    expect(onInteractionButtonClick).toHaveBeenCalledWith(expect.objectContaining({ button_id: 'ai_pricing' }));
+  });
+
+  it('drops the server is_greeting copy so the greeting never doubles', () => {
+    renderShell({
+      widgetConfig,
+      messages: [{ id: 'srv-g', text: 'Hello! Need help?', from: 'agent', timestamp: 1, metadata: { is_greeting: true } }],
+    });
+    expect(screen.getAllByText('Hello! Need help?')).toHaveLength(1);
+  });
+
+  it('caps the content column so wide content cannot blow it out', () => {
+    const { container } = renderShell({ widgetConfig });
+    const grid = Array.from(container.querySelectorAll<HTMLElement>('div')).find((d) => d.style.gridTemplateColumns);
+    expect(grid?.style.gridTemplateColumns).toBe('44px minmax(0, 1fr)');
+  });
+});
+
+// This layout used to render no teaser at all while the controller still grew
+// the iframe for one — an invisible box over the host page that swallowed clicks
+// and never showed the merchant's message.
+describe('teaser bubble (collapsed)', () => {
+  const teaser = { isCollapsed: true, teaserConfigured: true, teaserExpanded: true, teaserMessage: 'Need a hand?' };
+
+  it('shows the teaser above the launcher once it is revealed', () => {
+    renderShell({ ...teaser, showTeaser: true });
+    expect(screen.getByRole('status')).toHaveTextContent('Need a hand?');
+    expect(screen.getByRole('button', { name: /open/i })).toBeInTheDocument();
+  });
+
+  it('mounts it hidden first so the iframe can be sized to it', () => {
+    const onTeaserMeasure = jest.fn();
+    renderShell({ ...teaser, showTeaser: false, onTeaserMeasure });
+    expect(screen.getByRole('status', { hidden: true })).toHaveStyle({ visibility: 'hidden' });
+    expect(onTeaserMeasure).toHaveBeenCalled();
+  });
+
+  it('dismisses without opening, and the bubble opens the chat', () => {
+    const onDismissTeaser = jest.fn();
+    const toggleCollapsed = jest.fn();
+    renderShell({ ...teaser, showTeaser: true, onDismissTeaser, toggleCollapsed });
+    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
+    expect(onDismissTeaser).toHaveBeenCalled();
+    expect(toggleCollapsed).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('status'));
+    expect(toggleCollapsed).toHaveBeenCalled();
+  });
+
+  it('renders no bubble when no teaser is configured', () => {
+    renderShell({ isCollapsed: true, teaserConfigured: false, teaserMessage: 'Need a hand?', showTeaser: true });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+});

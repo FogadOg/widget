@@ -54,7 +54,7 @@ import {
   injectCustomAssets,
   injectGoogleFont,
 } from './EmbedClient.utils';
-import { PREVIEW_COLLAPSED_KEY } from './EmbedClient.constants';
+import { PERSISTED_AGENT_SENDER, PREVIEW_COLLAPSED_KEY } from './EmbedClient.constants';
 import {
   parseHostMessageCommand,
   resolveParentTargetOrigin,
@@ -1274,7 +1274,11 @@ export function useEmbedController(props: EmbedClientProps) {
     setError,
   });
 
-  const handleSubmit = useCallback(async (e: React.FormEvent, messageText?: string, skipAddingUserMessage?: boolean) => {
+  // `displayText` is what the visitor actually saw when the send came from a
+  // button (its label). For an AI button `messageText` is the merchant's
+  // hidden `ai_prompt`, so the label rides along as metadata.display_text and
+  // session restore shows it instead of the prompt.
+  const handleSubmit = useCallback(async (e: React.FormEvent, messageText?: string, skipAddingUserMessage?: boolean, displayText?: string) => {
     e.preventDefault();
     const rawMessage = messageText || input;
     if (!rawMessage.trim()) return;
@@ -1473,6 +1477,9 @@ export function useEmbedController(props: EmbedClientProps) {
                   : {}),
                 ...(attachmentsToSend.length > 0
                   ? { attachment_ids: attachmentsToSend.map((a) => a.id) }
+                  : {}),
+                ...(displayText && displayText !== message
+                  ? { metadata: { display_text: displayText } }
                   : {}),
               }),
               signal: controller.signal,
@@ -1739,7 +1746,12 @@ export function useEmbedController(props: EmbedClientProps) {
           ? prev
           : prev.filter(m => m.id !== userMessage.id);
         const next = [...withoutTemp];
-        if (serverUser) {
+        // With skipAddingUserMessage the caller has already rendered the
+        // visitor's bubble (a button's label) and kept it above. Pushing the
+        // server's echo as well produced a second user turn: for an AI button
+        // with an `ai_prompt` that exposed the merchant's hidden instruction to
+        // the visitor, and without one it showed the same label twice.
+        if (serverUser && !skipAddingUserMessage) {
           next.push({
             id: serverUser.id,
             text: serverUser.content,
@@ -1769,7 +1781,8 @@ export function useEmbedController(props: EmbedClientProps) {
       const refreshedExpiresAt = (messageData as { expires_at?: string } | null)?.expires_at;
       const refreshedSessionId = (messageData as { session_id?: string } | null)?.session_id || sessionIdRef.current;
       if (refreshedExpiresAt && refreshedSessionId) {
-        helpers.storeSession(baseSessionKey, refreshedSessionId, refreshedExpiresAt);
+        // Same key the restore/expiry readers use — see useSessionManagement.
+        helpers.storeSession(sessionStorageKey, refreshedSessionId, refreshedExpiresAt);
       }
     } catch (err: unknown) {
       if (streamUserAbortedRef.current) {
@@ -1899,7 +1912,7 @@ export function useEmbedController(props: EmbedClientProps) {
    * streaming, quota metering and history persistence a typed question gets,
    * for free. That is the whole point of AI mode: no second code path.
    */
-  const sendAiAnswer = async (prompt: string): Promise<void> => {
+  const sendAiAnswer = async (prompt: string, displayText?: string): Promise<void> => {
     // The dashboard preview has no session behind it — handleSubmit bails out
     // there — so render a note rather than leaving the click looking broken.
     if (initialPreviewConfig) {
@@ -1927,7 +1940,7 @@ export function useEmbedController(props: EmbedClientProps) {
         return;
       }
     }
-    await handleSubmit({ preventDefault: () => {} } as React.FormEvent, prompt, true);
+    await handleSubmit({ preventDefault: () => {} } as React.FormEvent, prompt, true, displayText);
   };
 
   const handleFollowUpButtonClick = async (button: ButtonLike) => {
@@ -1961,7 +1974,7 @@ export function useEmbedController(props: EmbedClientProps) {
     setMessages(prev => [...prev, userMsg]);
 
     if (aiPrompt) {
-      await sendAiAnswer(aiPrompt);
+      await sendAiAnswer(aiPrompt, labelText);
       return;
     }
 
@@ -2011,7 +2024,7 @@ export function useEmbedController(props: EmbedClientProps) {
             await fetch(API.sessionMessages(sid), {
               method: 'POST',
               headers,
-              body: JSON.stringify({ content: responseText, locale: activeLocale, sender: 'assistant', skip_ai_response: true }),
+              body: JSON.stringify({ content: responseText, locale: activeLocale, sender: PERSISTED_AGENT_SENDER, skip_ai_response: true }),
             });
           } catch {
             // ignore — history persistence is best-effort
@@ -2143,7 +2156,7 @@ export function useEmbedController(props: EmbedClientProps) {
     trackEvent('button_clicked', initialAgentId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
 
     if (aiPrompt) {
-      await sendAiAnswer(aiPrompt);
+      await sendAiAnswer(aiPrompt, labelText);
       return;
     }
 
@@ -2203,7 +2216,7 @@ export function useEmbedController(props: EmbedClientProps) {
             await fetch(API.sessionMessages(sid), {
               method: 'POST',
               headers,
-              body: JSON.stringify({ content: responseText, locale: activeLocale, sender: 'assistant', skip_ai_response: true }),
+              body: JSON.stringify({ content: responseText, locale: activeLocale, sender: PERSISTED_AGENT_SENDER, skip_ai_response: true }),
             });
           } catch {
             // ignore — history persistence is best-effort

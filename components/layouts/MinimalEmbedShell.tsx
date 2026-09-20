@@ -13,6 +13,7 @@ import MessageBubble from '../MessageBubble';
 import InteractionButtons from '../InteractionButtons';
 import { Suggestions } from '../components/Suggestions';
 import { EmptyStatePrompt } from '../components/EmptyStatePrompt';
+import { TeaserBubble } from '../components/TeaserBubble';
 import { TypingIndicator } from '../components/TypingIndicator';
 import { Composer } from '../components/Composer';
 import { LanguageMenu } from '../components/LanguageMenu';
@@ -47,6 +48,12 @@ export default function MinimalEmbedShell(props: Props) {
     onLocaleChange,
     onToggleTheme,
     previewPositioning = false,
+    showTeaser = false,
+    teaserExpanded = false,
+    teaserConfigured = false,
+    teaserMessage = null,
+    onTeaserMeasure,
+    onDismissTeaser,
     isPreview = false,
     fileUploadEnabled = false,
     pendingAttachments = [],
@@ -184,6 +191,58 @@ export default function MinimalEmbedShell(props: Props) {
   const handleSubmitWrapper = (e: React.FormEvent, messageText?: string) => {
     void Promise.resolve(handleSubmit(e, messageText)).catch(() => {});
   };
+
+  // A configured teaser needs the launcher anchored to the iframe's bottom-right
+  // with the bubble stacked above it (the controller grows the iframe to fit),
+  // exactly as the classic layout does. Without this the iframe still grew for
+  // the teaser but nothing rendered in it, leaving an invisible click-blocking box.
+  if (isCollapsed && teaserConfigured && !previewPositioning) {
+    const anchoredButton = (
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        aria-label={openLabel}
+        style={{
+          position: 'relative',
+          backgroundColor: primaryColor,
+          color: readableOnPrimary,
+          borderRadius: '12px',
+          ...fontStyles,
+        }}
+        className={`${btnWidth} ${btnHeight} shadow-lg flex items-center justify-center ${FOCUS_RING}`}
+      >
+        {widgetConfig?.logo ? (
+          <img src={widgetConfig.logo} alt={(getText(widgetConfig?.title) || title || 'logo') + ' logo'} className={`${btnIcon} object-contain`} />
+        ) : (
+          <svg className={btnIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z" />
+          </svg>
+        )}
+        {showUnreadBadge && unreadCount > 0 && (
+          <UnreadBadge count={unreadCount} variant="compact" />
+        )}
+      </button>
+    );
+    return (
+      <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 999999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+        <TeaserBubble
+          teaserExpanded={teaserExpanded}
+          showTeaser={showTeaser}
+          teaserMessage={teaserMessage}
+          onTeaserMeasure={onTeaserMeasure}
+          onDismissTeaser={onDismissTeaser}
+          onOpen={toggleCollapsed}
+          locale={locale}
+          backgroundColor={backgroundColor}
+          textColor={textColor}
+          mutedTextColor={mutedTextColor}
+          subtleBorderColor={subtleBorderColor}
+          fontStyles={fontStyles}
+        />
+        {anchoredButton}
+      </div>
+    );
+  }
 
   if (isCollapsed) {
     return (

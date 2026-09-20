@@ -216,7 +216,7 @@ export function useSessionManagement({
             };
             return {
               id: m.id,
-              text: m.content,
+              text: helpers.restoredMessageText(m),
               from: (m.sender === 'assistant' ? 'agent' : m.sender) as 'user' | 'agent',
               timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
               sources: (m.sources as SourceData[]) || [],
@@ -433,12 +433,15 @@ export function useSessionManagement({
       authTokenRef.current = activeToken ?? null;
       setError(null);
 
-      // Store session data in localStorage. Use the legacy base key when
-      // calling the helpers so tests and external callers that mock the
-      // helper observe the original key. Internally we keep a locale-suffixed
-      // `sessionStorageKey` for runtime isolation.
+      // Store under the SAME locale-suffixed key every reader and clearer uses
+      // (bootstrap restore, the 60s expiry check, retry fallback, and the
+      // expiry/invalid-session clears). This used to write `baseSessionKey`
+      // while everything else read `sessionStorageKey`, and the embed URL always
+      // carries a locale — so restore never found the session: every reload
+      // started a fresh conversation, expiry clears missed the stored entry, and
+      // the near-expiry refresh never fired.
       if (sessionData.expires_at) {
-        helpers.storeSession(baseSessionKey, sessionData.session_id, sessionData.expires_at);
+        helpers.storeSession(sessionStorageKey, sessionData.session_id, sessionData.expires_at);
       }
 
       // Load messages after session creation — skip when recovering from expiry
@@ -601,15 +604,22 @@ export function useSessionManagement({
             .map((apiMsgRaw: unknown) => {
               const apiMsg = apiMsgRaw as ApiMessage & { from?: string; text?: string };
               const id = (apiMsg as any).id || ((apiMsg as any).message_id ?? '');
-              const text = (apiMsg as any).content ?? (apiMsg as any).text ?? '';
+              const text = helpers.restoredMessageText(apiMsg as any);
               const rawFrom = ((apiMsg as any).sender ?? (apiMsg as any).from ?? 'user') as string;
               const from = rawFrom === 'assistant' ? 'agent' : rawFrom;
               const timestamp = apiMsg.created_at ? new Date(apiMsg.created_at).getTime() : ((apiMsg as any).timestamp || Date.now());
+              // Keep sources + metadata, as loadSessionMessages does. This is the
+              // path a page reload takes, and dropping metadata lost the
+              // `is_greeting` marker the shells filter on (so the greeting
+              // rendered twice), plus every restored answer's source citations
+              // and rich cards.
               return {
                 id,
                 text,
                 from: from as 'user' | 'agent',
                 timestamp,
+                sources: ((apiMsg as any).sources as SourceData[]) || [],
+                metadata: (apiMsg as any).metadata,
               } as Message;
             });
 

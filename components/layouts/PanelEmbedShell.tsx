@@ -9,9 +9,11 @@ import type { FlowButton } from '../../types/widget';
 import type { Props } from '../EmbedShell.types';
 import { FOCUS_RING } from '../EmbedShell.constants';
 import MessageBubble from '../MessageBubble';
+import InteractionButtons from '../InteractionButtons';
 import { Composer } from '../components/Composer';
 import { Suggestions } from '../components/Suggestions';
 import { EmptyStatePrompt } from '../components/EmptyStatePrompt';
+import { TeaserBubble } from '../components/TeaserBubble';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
 import { StatusBanners } from '../components/StatusBanners';
 import { ConsentBanner } from '../components/ConsentBanner';
@@ -35,8 +37,15 @@ export default function PanelEmbedShell(props: Props) {
     getLocalizedText,
     flowResponses = [],
     onFollowUpButtonClick,
+    onInteractionButtonClick,
     locale: localeProp,
     previewPositioning = false,
+    showTeaser = false,
+    teaserExpanded = false,
+    teaserConfigured = false,
+    teaserMessage = null,
+    onTeaserMeasure,
+    onDismissTeaser,
     fileUploadEnabled = false,
     pendingAttachments = [],
     uploadingFiles = 0,
@@ -121,14 +130,78 @@ export default function PanelEmbedShell(props: Props) {
       ? rawSuggestions[locale] || rawSuggestions[locale.split('-')[0]] || rawSuggestions.en || []
       : [];
 
+  // Configured greeting + its interaction buttons, pinned the same way the
+  // minimal and classic layouts do. This layout used to render neither, so a
+  // merchant who picked it silently lost their whole greeting flow — including
+  // AI-answered buttons — and visitors got the generic empty-state prompt.
+  const interactionButtons = (widgetConfig?.greeting_message?.buttons || []).filter((item) => {
+    const langs = item.languages;
+    if (!langs || langs.length === 0) return true;
+    const base = locale.split('-')[0];
+    return langs.includes(locale) || langs.includes(base);
+  });
+  // The backend also persists the greeting as an is_greeting chat message once a
+  // conversation exists; drop that copy so the pinned greeting never doubles.
+  const isServerGreetingMessage = (m: { id: string; metadata?: unknown }) =>
+    m.id.startsWith('greeting-') ||
+    (m.metadata as Record<string, unknown> | undefined)?.is_greeting === true;
+  const showGreeting = !!widgetConfig?.greeting_message;
+  const greetingText = showGreeting ? getText(widgetConfig?.greeting_message?.text) : '';
+
   const mergedContent = [
-    ...messages.map((msg) => ({ type: 'message' as const, data: msg, timestamp: msg.timestamp || 0 })),
+    ...messages
+      .filter((msg) => !isServerGreetingMessage(msg))
+      .map((msg) => ({ type: 'message' as const, data: msg, timestamp: msg.timestamp || 0 })),
     ...flowResponses.map((flow) => ({ type: 'flow' as const, data: flow, timestamp: flow.timestamp || 0 })),
   ].sort((a, b) => a.timestamp - b.timestamp);
 
   const handleSubmitWrapper = (e: React.FormEvent, messageText?: string) => {
     void Promise.resolve(handleSubmit(e, messageText)).catch(() => {});
   };
+
+  // A configured teaser needs the launcher anchored to the iframe's bottom-right
+  // with the bubble stacked above it (the controller grows the iframe to fit),
+  // exactly as the classic layout does. Without this the iframe still grew for
+  // the teaser but nothing rendered in it, leaving an invisible click-blocking box.
+  if (isCollapsed && teaserConfigured && !previewPositioning) {
+    const anchoredButton = (
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        aria-label={translate(locale, 'chatControl', { context: 'open' })}
+        style={{
+          position: 'relative',
+          backgroundColor: primaryColor,
+          color: readableOnPrimary,
+          borderRadius: '10px',
+          padding: '10px 12px',
+          ...fontStyles,
+        }}
+        className={`shadow-lg ${FOCUS_RING}`}
+      >
+        {getText(widgetConfig?.title) || title || translate(locale, 'chat')}
+      </button>
+    );
+    return (
+      <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 999999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+        <TeaserBubble
+          teaserExpanded={teaserExpanded}
+          showTeaser={showTeaser}
+          teaserMessage={teaserMessage}
+          onTeaserMeasure={onTeaserMeasure}
+          onDismissTeaser={onDismissTeaser}
+          onOpen={toggleCollapsed}
+          locale={locale}
+          backgroundColor={backgroundColor}
+          textColor={textColor}
+          mutedTextColor={mutedTextColor}
+          subtleBorderColor={subtleBorderColor}
+          fontStyles={fontStyles}
+        />
+        {anchoredButton}
+      </div>
+    );
+  }
 
   if (isCollapsed) {
     return (
@@ -182,7 +255,11 @@ export default function PanelEmbedShell(props: Props) {
         backgroundColor,
       }}
     >
-      <div className="h-full grid" style={{ gridTemplateColumns: '44px 1fr', ...fontStyles }}>
+      {/* `minmax(0, 1fr)`, not `1fr`: a bare 1fr track has min-width:auto, so it
+          grows to its widest content's min-content size (long unbreakable
+          source-card titles) and blew the content column out to ~664px inside a
+          300-350px panel — clipping the header and every answer on the right. */}
+      <div className="h-full grid" style={{ gridTemplateColumns: '44px minmax(0, 1fr)', ...fontStyles }}>
         <div className="border-r flex flex-col items-center py-2 gap-2" style={{ borderColor: subtleBorderColor }}>
           {/* Minimize, not close — the handler collapses the panel, so the
               label has to say so. */}
@@ -252,13 +329,33 @@ export default function PanelEmbedShell(props: Props) {
             aria-atomic="false"
             aria-label={translate(locale, 'chatMessages')}
           >
-            {suggestionList.length === 0 && mergedContent.length === 0 && !isTyping && !streamingMessage && (
+            {!(showGreeting && greetingText) && suggestionList.length === 0 && mergedContent.length === 0 && !isTyping && !streamingMessage && (
               <EmptyStatePrompt
                 label={translate(locale, 'emptyStatePrompt')}
                 textColor={textColor}
                 mutedTextColor={mutedTextColor}
                 fontStyles={fontStyles}
               />
+            )}
+            {showGreeting && greetingText && (
+              <div className="mb-3">
+                <div className="max-w-[85%] px-3 py-2 border" style={{ borderColor: subtleBorderColor, borderRadius: `${messageBubbleRadius}px`, backgroundColor: agentBubbleBg, color: textColor }}>
+                  {greetingText}
+                </div>
+                {interactionButtons.length > 0 && (
+                  <div className="mt-2">
+                    <InteractionButtons
+                      buttons={interactionButtons}
+                      clickedButtons={new Set<string>()}
+                      onButtonClick={(button) => { if (onInteractionButtonClick) void onInteractionButtonClick(button); }}
+                      primaryColor={primaryColor}
+                      buttonBorderRadius={buttonBorderRadius}
+                      fontStyles={fontStyles}
+                      getLocalizedText={getText}
+                    />
+                  </div>
+                )}
+              </div>
             )}
             {suggestionList.length > 0 && messages.length === 0 && !isTyping && (
               <Suggestions
