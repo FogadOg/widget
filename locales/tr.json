@@ -243,5 +243,9 @@
   "emptyStatePrompt": "Bugün size nasıl yardımcı olabilirim?",
   "cardsNext": "İleri",
   "cardsPrevious": "Geri",
-  "cardsCarousel": "Kart karuseli"
+  "cardsCarousel": "Kart karuseli",
+  "messageTooLong": {
+    "one": "Mesaj çok uzun. Lütfen onu {count} karakter veya daha azına kısaltın.",
+    "other": "Mesaj çok uzun. Lütfen onu {count} karakter veya daha azına kısaltın."
+  }
 }

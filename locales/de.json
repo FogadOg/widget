@@ -243,5 +243,9 @@
   "emptyStatePrompt": "Wie kann ich Ihnen heute helfen?",
   "cardsNext": "Weiter",
   "cardsPrevious": "Zurück",
-  "cardsCarousel": "Kartenkarussell"
+  "cardsCarousel": "Kartenkarussell",
+  "messageTooLong": {
+    "one": "Die Nachricht ist zu lang. Bitte kürzen Sie sie auf {count} Zeichen oder weniger.",
+    "other": "Die Nachricht ist zu lang. Bitte kürzen Sie sie auf {count} Zeichen oder weniger."
+  }
 }

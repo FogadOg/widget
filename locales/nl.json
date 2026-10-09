@@ -243,5 +243,9 @@
   "emptyStatePrompt": "Hoe kan ik u vandaag helpen?",
   "cardsNext": "Volgende",
   "cardsPrevious": "Vorige",
-  "cardsCarousel": "Kaartencarrousel"
+  "cardsCarousel": "Kaartencarrousel",
+  "messageTooLong": {
+    "one": "Bericht is te lang. Verkort het tot {count} tekens of minder.",
+    "other": "Bericht is te lang. Verkort het tot {count} tekens of minder."
+  }
 }

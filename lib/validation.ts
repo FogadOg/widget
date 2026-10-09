@@ -9,6 +9,13 @@ import { INPUT_LIMITS } from './constants';
  */
 export function validateMessageInput(message: string): {
   isValid: boolean;
+  /** Machine-readable failure cause, so callers can show a LOCALIZED message.
+   *  `error` below is hardcoded English and must not be rendered to visitors —
+   *  the embed controller used to collapse every failure into one generic
+   *  "Please enter a valid message." string precisely because this did not
+   *  exist, which left an over-long message with no hint of the real problem
+   *  and a Retry button that could never succeed. */
+  reason?: 'empty' | 'too_long';
   error?: string;
   sanitized: string;
 } {
@@ -18,6 +25,7 @@ export function validateMessageInput(message: string): {
   if (trimmed.length < INPUT_LIMITS.MIN_MESSAGE_LENGTH) {
     return {
       isValid: false,
+      reason: 'empty',
       error: 'Message cannot be empty',
       sanitized: trimmed
     };
@@ -27,6 +35,7 @@ export function validateMessageInput(message: string): {
   if (trimmed.length > INPUT_LIMITS.MAX_MESSAGE_LENGTH) {
     return {
       isValid: false,
+      reason: 'too_long',
       error: `Message exceeds maximum length of ${INPUT_LIMITS.MAX_MESSAGE_LENGTH} characters`,
       sanitized: trimmed
     };

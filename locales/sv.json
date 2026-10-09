@@ -243,5 +243,9 @@
   "emptyStatePrompt": "Hur kan jag hjälpa dig idag?",
   "cardsNext": "Nästa",
   "cardsPrevious": "Föregående",
-  "cardsCarousel": "Kortkarusell"
+  "cardsCarousel": "Kortkarusell",
+  "messageTooLong": {
+    "one": "Meddelandet är för långt. Vänligen förkorta det till {count} tecken eller färre.",
+    "other": "Meddelandet är för långt. Vänligen förkorta det till {count} tecken eller färre."
+  }
 }

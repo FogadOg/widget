@@ -243,5 +243,9 @@
   "emptyStatePrompt": "오늘 무엇을 도와드릴까요?",
   "cardsNext": "다음",
   "cardsPrevious": "이전",
-  "cardsCarousel": "카드 캐러셀"
+  "cardsCarousel": "카드 캐러셀",
+  "messageTooLong": {
+    "one": "메시지가 너무 깁니다. {count}자 이하로 줄여주세요.",
+    "other": "메시지가 너무 깁니다. {count}자 이하로 줄여주세요."
+  }
 }

@@ -243,5 +243,9 @@
   "emptyStatePrompt": "Come posso aiutarti oggi?",
   "cardsNext": "Avanti",
   "cardsPrevious": "Indietro",
-  "cardsCarousel": "Carosello di schede"
+  "cardsCarousel": "Carosello di schede",
+  "messageTooLong": {
+    "one": "Il messaggio è troppo lungo. Si prega di accorciarlo a {count} caratteri o meno.",
+    "other": "Il messaggio è troppo lungo. Si prega di accorciarlo a {count} caratteri o meno."
+  }
 }

@@ -27,7 +27,7 @@ import {
   WidgetErrorCode,
 } from '../../../lib/errorHandling';
 import { API } from '../../../lib/api';
-import { TIMEOUTS } from '../../../lib/constants';
+import { TIMEOUTS, INPUT_LIMITS } from '../../../lib/constants';
 import { EMBED_EVENTS, targetOrigin, sensitiveOrigin } from '../../../lib/embedConstants';
 
 import * as helpers from './helpers';
@@ -1332,7 +1332,16 @@ export function useEmbedController(props: EmbedClientProps) {
     if (!skipAddingUserMessage) {
       const validation = validateMessageInput(message);
       if (!validation.isValid) {
-        setError(String(t.invalidMessage));
+        // Show WHICH rule failed. Collapsing both causes into `invalidMessage`
+        // ("Please enter a valid message.") told a visitor who had pasted a long
+        // message nothing about the length limit, and the Retry button that comes
+        // with the error re-sent the same text, so it could never succeed.
+        // `validation.error` is deliberately not used — it is hardcoded English.
+        setError(
+          validation.reason === 'too_long'
+            ? tFn(activeLocale, 'messageTooLong', { count: INPUT_LIMITS.MAX_MESSAGE_LENGTH })
+            : String(t.invalidMessage),
+        );
         isSubmittingRef.current = false;
         return;
       }

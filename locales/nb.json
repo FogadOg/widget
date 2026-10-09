@@ -243,5 +243,9 @@
   "emptyStatePrompt": "Hvordan kan jeg hjelpe deg i dag?",
   "cardsNext": "Neste",
   "cardsPrevious": "Forrige",
-  "cardsCarousel": "Kortkarusell"
+  "cardsCarousel": "Kortkarusell",
+  "messageTooLong": {
+    "one": "Meldingen er for lang. Vennligst forkort den til {count} tegn eller mindre.",
+    "other": "Meldingen er for lang. Vennligst forkort den til {count} tegn eller færre."
+  }
 }

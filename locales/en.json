@@ -172,6 +172,10 @@
   "messageSendTimeout": "Message timed out. Please try again.",
   "loadHistoryError": "Failed to load conversation history.",
   "invalidMessage": "Please enter a valid message.",
+  "messageTooLong": {
+    "one": "Message is too long. Please shorten it to {count} character or less.",
+    "other": "Message is too long. Please shorten it to {count} characters or less."
+  },
   "rateLimitWait": {
     "one": "Too many messages. Please wait {count} second before trying again.",
     "other": "Too many messages. Please wait {count} seconds before trying again."

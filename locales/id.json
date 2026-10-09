@@ -243,5 +243,9 @@
   "emptyStatePrompt": "Bagaimana saya bisa membantu Anda hari ini?",
   "cardsNext": "Berikutnya",
   "cardsPrevious": "Sebelumnya",
-  "cardsCarousel": "Korsel kartu"
+  "cardsCarousel": "Korsel kartu",
+  "messageTooLong": {
+    "one": "Pesan terlalu panjang. Silakan pendekkan menjadi {count} karakter atau kurang.",
+    "other": "Pesan terlalu panjang. Silakan pendekkan menjadi {count} karakter atau kurang."
+  }
 }
