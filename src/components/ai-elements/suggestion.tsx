@@ -19,7 +19,12 @@ export const Suggestions = ({
     <div className={cn("flex w-max flex-nowrap items-center gap-2", className)}>
       {children}
     </div>
-    <ScrollBar className="hidden" orientation="horizontal" />
+    {/* The row is wider than the panel whenever there are more than ~3 chips
+        (572px of chips in a 394px panel), and it was the only scrollable thing
+        on screen with its scrollbar explicitly hidden — so the extra chips just
+        looked sliced off at the edge with nothing to indicate they could be
+        reached. Keep it thin, but keep it visible. */}
+    <ScrollBar className="h-1.5" orientation="horizontal" />
   </ScrollArea>
 );
 

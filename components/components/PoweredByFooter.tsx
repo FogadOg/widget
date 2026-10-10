@@ -78,7 +78,11 @@ export function PoweredByFooter({
       </span>
       <span aria-hidden>·</span>
       <span>
-        {label}
+        {/* The separating space is rendered here, not carried as trailing
+            whitespace in the string. Only `en` had it ("Powered by "), so every
+            other locale ran the label into the link — "Drevet avCompanin",
+            "Alimenté parCompanin" — on every page of the merchant's site. */}
+        {label.trimEnd()}{' '}
         <a
           href="https://companin.tech"
           target="_blank"
