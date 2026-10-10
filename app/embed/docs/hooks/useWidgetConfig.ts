@@ -5,6 +5,7 @@ import { logError, logWarn } from '../../../../lib/logger'
 import { validateConfig } from '../../../../lib/validateConfig'
 import { getVisitorId as helpersGetVisitorId } from '../helpers'
 import { fetchWithTimeout } from '../resilientFetch'
+import { t as translate } from '../../../../lib/i18n'
 
 function getRetryAfterSeconds(headerValue: string | null): number {
   if (!headerValue) return 0;
@@ -29,6 +30,8 @@ function parseRetryAfterMs(headerValue: string | null): number {
 
 interface UseWidgetConfigParams {
   clientId: string;
+  /** Visitor's locale — every message this hook surfaces is shown to them. */
+  activeLocale: string;
   initialParentOrigin?: string;
   embedHeaders: Record<string, string>;
   setWidgetConfig: (config: any) => void;
@@ -37,6 +40,7 @@ interface UseWidgetConfigParams {
 
 export function useWidgetConfig({
   clientId,
+  activeLocale,
   initialParentOrigin,
   embedHeaders,
   setWidgetConfig,
@@ -48,7 +52,7 @@ export function useWidgetConfig({
   const fetchWidgetConfig = useCallback(async (configId: string, token: string): Promise<{ variant_id?: string; variant_name?: string } | undefined> => {
     if (Date.now() < rateLimitUntilRef.current) {
       const waitSec = Math.max(1, Math.ceil((rateLimitUntilRef.current - Date.now()) / 1000));
-      setError(`Rate limited. Please wait ${waitSec}s and try again.`);
+      setError(translate(activeLocale, 'rateLimitWait', { count: waitSec }));
       return undefined;
     }
     try {
@@ -68,7 +72,12 @@ export function useWidgetConfig({
           const { config: validatedConfig, typeMismatch } = validateConfig(data.data, 'docs');
           data.data = validatedConfig;
           if (typeMismatch) {
-            setError('Configuration warning: this config is set to "chat" type but is running in the docs widget. Check your widget_type setting in the admin.');
+            // This is a misconfiguration the site owner has to fix in the
+            // dashboard; the visitor can do nothing about it and should not be
+            // shown a red banner naming an admin setting. validateConfig has
+            // already coerced the type, so the widget still works — log it for
+            // the owner instead of surfacing it.
+            logWarn('Widget config type mismatch: chat config rendered by the docs widget', { configId });
           }
         }
         setWidgetConfig(data);
@@ -83,8 +92,8 @@ export function useWidgetConfig({
         );
         const waitSec = getRetryAfterSeconds(response.headers.get('Retry-After'));
         const msg = waitSec > 0
-          ? `Rate limited. Please wait ${waitSec}s and try again.`
-          : 'Widget is temporarily rate limited. Please try again shortly.';
+          ? translate(activeLocale, 'rateLimitWait', { count: waitSec })
+          : translate(activeLocale, 'sessionRateLimitGeneric');
         setError(msg);
         logWarn('Widget config fetch rate-limited', { waitSec, configId });
       } else {

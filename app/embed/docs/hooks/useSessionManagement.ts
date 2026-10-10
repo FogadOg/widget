@@ -203,11 +203,13 @@ export function useSessionManagement({
         logWarn('Session creation rate-limited', { waitSec });
         setError(msg);
       } else {
-        // Server-provided `detail` (rate limits, config issues) is already meant
-        // to be user-facing; fall back to a localized generic when it's absent.
-        const errorMsg = data.detail || translate(activeLocale, 'failedToCreateSession');
-        logError('Session creation failed', { errorMsg });
-        setError(errorMsg);
+        // `detail` is NOT visitor-facing: the session endpoints answer with
+        // developer strings ("Access denied to agent", "Session not found",
+        // "goal_type is required"), which told a customer on the merchant's
+        // site nothing and leaked internals. Log it and show the localized
+        // generic instead.
+        logError('Session creation failed', { detail: data.detail });
+        setError(translate(activeLocale, 'failedToCreateSession'));
       }
     } catch (err) {
       // Network drop / timeout — show a friendly, localized message rather than

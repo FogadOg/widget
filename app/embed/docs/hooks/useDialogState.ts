@@ -15,9 +15,12 @@ import { parseHostMessageCommand } from '../../session/embed.utils'
 import { isTrustedParentMessage } from '../DocsClient.utils'
 import { DOCS_SEARCH_BAR_SIZE } from '../DocsClient.constants'
 import { MessageType } from '../DocsClient.types'
+import { t as translate } from '../../../../lib/i18n'
 
 interface UseDialogStateParams {
   open: boolean;
+  /** Visitor's locale — the auth failure below is shown to them. */
+  activeLocale: string;
   setOpen: (open: boolean) => void;
   /**
    * True while the collapsed bottom search bar is on screen. Drives the
@@ -65,6 +68,7 @@ interface UseDialogStateParams {
 
 export function useDialogState({
   open,
+  activeLocale,
   setOpen,
   searchBarVisible,
   searchBarSize,
@@ -219,7 +223,7 @@ export function useDialogState({
             createSession(token, variantInfo);
           }
         } else {
-          const message = authError || 'Failed to authenticate';
+          const message = authError || translate(activeLocale, 'sessionOrAuthError');
           if (authError) {
             logError('Auth error', { authError });
           } else {
@@ -229,7 +233,7 @@ export function useDialogState({
         }
       }).catch(err => {
         logError('Error getting auth token', { error: err });
-        setError('Failed to authenticate');
+        setError(translate(activeLocale, 'sessionOrAuthError'));
       });
     } else {
       logWarn('Missing clientId or agentId');

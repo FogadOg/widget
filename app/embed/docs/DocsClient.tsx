@@ -226,6 +226,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
 
   const { fetchWidgetConfig } = useWidgetConfig({
     clientId,
+    activeLocale,
     initialParentOrigin,
     embedHeaders,
     setWidgetConfig,
@@ -334,6 +335,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
 
   const { handleOpenChange } = useDialogState({
     open,
+    activeLocale,
     setOpen,
     searchBarVisible,
     searchBarSize,

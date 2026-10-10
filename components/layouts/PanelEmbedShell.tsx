@@ -16,15 +16,19 @@ import { EmptyStatePrompt } from '../components/EmptyStatePrompt';
 import { TeaserBubble } from '../components/TeaserBubble';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
 import { StatusBanners } from '../components/StatusBanners';
+import { useShellFocus } from '../components/useShellFocus';
 import { ConsentBanner } from '../components/ConsentBanner';
 import { JumpToLatest } from '../components/JumpToLatest';
 import { FocusTrap } from '../components/FocusTrap';
 import { PoweredByFooter } from '../components/PoweredByFooter';
+import { LanguageMenu } from '../components/LanguageMenu';
 
 export default function PanelEmbedShell(props: Props) {
   const {
     isCollapsed,
     toggleCollapsed,
+    availableLocales = [],
+    onLocaleChange,
     messages,
     isTyping,
     streamingMessage = null,
@@ -105,6 +109,7 @@ export default function PanelEmbedShell(props: Props) {
     readableOnPrimary,
     mutedTextColor,
     subtleBorderColor,
+    secondaryColor,
     agentBubbleBg,
     borderRadius,
     fontStyles,
@@ -163,12 +168,19 @@ export default function PanelEmbedShell(props: Props) {
   // with the bubble stacked above it (the controller grows the iframe to fit),
   // exactly as the classic layout does. Without this the iframe still grew for
   // the teaser but nothing rendered in it, leaving an invisible click-blocking box.
+  // Focus the composer on open and return focus to the launcher on close.
+  // Shared with the classic shell so the three layouts stay in step.
+  const launcherRef = React.useRef<HTMLButtonElement | null>(null);
+  useShellFocus({ isCollapsed, inputRef, launcherRef });
+
   if (isCollapsed && teaserConfigured && !previewPositioning) {
     const anchoredButton = (
       <button
         type="button"
+        ref={launcherRef}
         onClick={toggleCollapsed}
         aria-label={translate(locale, 'chatControl', { context: 'open' })}
+        aria-expanded={false}
         style={{
           position: 'relative',
           backgroundColor: primaryColor,
@@ -207,8 +219,10 @@ export default function PanelEmbedShell(props: Props) {
     return (
       <button
         type="button"
+        ref={launcherRef}
         onClick={toggleCollapsed}
         aria-label={translate(locale, 'chatControl', { context: 'open' })}
+        aria-expanded={false}
         style={{
           position: 'fixed',
           ...(previewPositioning
@@ -290,9 +304,32 @@ export default function PanelEmbedShell(props: Props) {
         </div>
 
         <div className="h-full flex flex-col">
-          <div className="px-3 py-2 border-b" style={{ borderColor: subtleBorderColor }}>
-            <h3 className="text-sm font-semibold" style={{ color: textColor }}>{getText(widgetConfig?.title) || title || translate(locale, 'chat')}</h3>
-            <p className="text-xs" style={{ color: mutedTextColor }}>{getText(widgetConfig?.subtitle)}</p>
+          <div className="px-3 py-2 border-b flex items-start justify-between gap-2" style={{ borderColor: subtleBorderColor }}>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold" style={{ color: textColor }}>{getText(widgetConfig?.title) || title || translate(locale, 'chat')}</h3>
+              <p className="text-xs" style={{ color: mutedTextColor }}>{getText(widgetConfig?.subtitle)}</p>
+            </div>
+            {/* The in-widget language switcher existed in the classic and
+                minimal shells but never in this one, so a `panel` widget had no
+                way to change language — the one feature the product leads on.
+                It goes in the content header, not the 44px icon rail, which is
+                too narrow for the flag + name trigger. */}
+            {onLocaleChange && availableLocales.length >= 2 ? (
+              <LanguageMenu
+                locale={locale}
+                locales={availableLocales}
+                onChange={onLocaleChange}
+                label={translate(locale, 'selectLanguage')}
+                headerTextColor={readableOnPrimary}
+                secondaryColor={secondaryColor}
+                primaryColor={primaryColor}
+                backgroundColor={backgroundColor}
+                textColor={textColor}
+                borderColor={subtleBorderColor}
+                fontStyles={fontStyles}
+                borderRadius={borderRadius}
+              />
+            ) : null}
           </div>
 
           <StatusBanners

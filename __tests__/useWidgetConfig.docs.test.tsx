@@ -39,6 +39,7 @@ function makeParams() {
     setError,
     params: {
       clientId: 'client-1',
+      activeLocale: 'en',
       initialParentOrigin: 'https://host.example',
       embedHeaders: { 'X-Embed-Origin': 'https://host.example' },
       setWidgetConfig,
@@ -65,16 +66,22 @@ describe('useWidgetConfig (docs)', () => {
     expect(variant).toEqual({ variant_id: 'v1', variant_name: 'V1' });
   });
 
-  it('warns about a type mismatch when a chat config loads in the docs runtime', async () => {
+  // A type mismatch is the site owner's to fix in the dashboard. The visitor
+  // can do nothing about it, so it is logged rather than shown in a banner
+  // telling them to check a `widget_type` setting they cannot see.
+  it('logs a type mismatch for the owner without showing the visitor an error', async () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     mockFetchWithTimeout.mockResolvedValue(res({
       ok: true,
       json: { status: 'success', data: { ...validDocsConfig, widget_type: 'chat' } },
     }));
-    const { params, setError } = makeParams();
+    const { params, setError, setWidgetConfig } = makeParams();
     const { result } = renderHook(() => useWidgetConfig(params));
     await act(async () => { await result.current.fetchWidgetConfig('cfg-1', 'tok'); });
-    expect(setError).toHaveBeenCalledWith(expect.stringContaining('Configuration warning'));
+    expect(setError).not.toHaveBeenCalled();
+    // The config is still coerced and applied, so the widget keeps working.
+    expect(setWidgetConfig).toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
   });
 
@@ -94,13 +101,13 @@ describe('useWidgetConfig (docs)', () => {
     const { params, setError } = makeParams();
     const { result } = renderHook(() => useWidgetConfig(params));
     await act(async () => { await result.current.fetchWidgetConfig('cfg-1', 'tok'); });
-    expect(setError).toHaveBeenCalledWith('Rate limited. Please wait 12s and try again.');
+    expect(setError).toHaveBeenCalledWith('Too many messages. Please wait 12 seconds before trying again.');
 
     // Second call during the cooldown never reaches the network.
     mockFetchWithTimeout.mockClear();
     await act(async () => { await result.current.fetchWidgetConfig('cfg-1', 'tok'); });
     expect(mockFetchWithTimeout).not.toHaveBeenCalled();
-    expect(setError).toHaveBeenLastCalledWith(expect.stringMatching(/^Rate limited\. Please wait \d+s/));
+    expect(setError).toHaveBeenLastCalledWith(expect.stringMatching(/^Too many messages\. Please wait \d+ seconds?/));
     warnSpy.mockRestore();
   });
 
@@ -111,7 +118,7 @@ describe('useWidgetConfig (docs)', () => {
     const { params, setError } = makeParams();
     const { result } = renderHook(() => useWidgetConfig(params));
     await act(async () => { await result.current.fetchWidgetConfig('cfg-1', 'tok'); });
-    expect(setError).toHaveBeenCalledWith(expect.stringMatching(/^Rate limited\. Please wait \d+s/));
+    expect(setError).toHaveBeenCalledWith(expect.stringMatching(/^Too many messages\. Please wait \d+ seconds?/));
     warnSpy.mockRestore();
   });
 
@@ -121,7 +128,7 @@ describe('useWidgetConfig (docs)', () => {
     const { params, setError } = makeParams();
     const { result } = renderHook(() => useWidgetConfig(params));
     await act(async () => { await result.current.fetchWidgetConfig('cfg-1', 'tok'); });
-    expect(setError).toHaveBeenCalledWith('Widget is temporarily rate limited. Please try again shortly.');
+    expect(setError).toHaveBeenCalledWith('The widget is temporarily unavailable. Please try again in a moment.');
     warnSpy.mockRestore();
   });
 

@@ -97,16 +97,20 @@ describe('docs useSessionManagement', () => {
       expect(setIsInitialLoad).toHaveBeenCalledWith(false);
     });
 
-    test('surfaces a server-provided detail message', async () => {
-      // Rate-limit and config messages are already meant to be user-facing.
-      mockFetch.mockResolvedValue(res(400, { detail: 'Agent is disabled' }) as never);
+    test('never shows the visitor the server-provided detail string', async () => {
+      // `detail` is developer-facing: the session endpoints answer with
+      // "Access denied to agent", "Session not found", "goal_type is required".
+      // A customer on the merchant's site can act on none of it, so it is
+      // logged and the localized generic is shown instead.
+      mockFetch.mockResolvedValue(res(400, { detail: 'Access denied to agent' }) as never);
       const { result } = setup();
 
       await act(async () => {
         await result.current.createSession('tok');
       });
 
-      expect(setError).toHaveBeenCalledWith('Agent is disabled');
+      expect(setError).toHaveBeenCalledWith('Failed to create session');
+      expect(setError).not.toHaveBeenCalledWith('Access denied to agent');
     });
 
     test('falls back to a localized message when the server sends none', async () => {

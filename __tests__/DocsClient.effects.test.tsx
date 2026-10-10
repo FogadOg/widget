@@ -540,7 +540,7 @@ describe('DocsClient missing effect/flow coverage', () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         '%c[Widget] Error: Session creation failed',
         expect.any(String),
-        expect.objectContaining({ errorMsg: 'Session create failed detail' })
+        expect.objectContaining({ detail: 'Session create failed detail' })
       )
     })
     global.fetch = jest.fn(async (url: any, opts?: any) => {

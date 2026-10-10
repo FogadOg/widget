@@ -19,6 +19,7 @@ import { Composer } from '../components/Composer';
 import { LanguageMenu } from '../components/LanguageMenu';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
 import { StatusBanners } from '../components/StatusBanners';
+import { useShellFocus } from '../components/useShellFocus';
 import { ConsentBanner } from '../components/ConsentBanner';
 import { JumpToLatest } from '../components/JumpToLatest';
 import { FocusTrap } from '../components/FocusTrap';
@@ -196,12 +197,19 @@ export default function MinimalEmbedShell(props: Props) {
   // with the bubble stacked above it (the controller grows the iframe to fit),
   // exactly as the classic layout does. Without this the iframe still grew for
   // the teaser but nothing rendered in it, leaving an invisible click-blocking box.
+  // Focus the composer on open and return focus to the launcher on close.
+  // Shared with the classic shell so the three layouts stay in step.
+  const launcherRef = React.useRef<HTMLButtonElement | null>(null);
+  useShellFocus({ isCollapsed, inputRef, launcherRef });
+
   if (isCollapsed && teaserConfigured && !previewPositioning) {
     const anchoredButton = (
       <button
         type="button"
+        ref={launcherRef}
         onClick={toggleCollapsed}
         aria-label={openLabel}
+        aria-expanded={false}
         style={{
           position: 'relative',
           backgroundColor: primaryColor,
@@ -248,8 +256,10 @@ export default function MinimalEmbedShell(props: Props) {
     return (
       <button
         type="button"
+        ref={launcherRef}
         onClick={toggleCollapsed}
         aria-label={openLabel}
+        aria-expanded={false}
         style={{
           position: 'fixed',
           ...(previewPositioning
