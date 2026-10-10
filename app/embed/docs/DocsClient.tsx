@@ -677,6 +677,18 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                   ask-first, reduced-chrome shell (parity with the chat minimal). */}
               {layout.showSearch && (
               <div className='pt-3 pb-1' style={{ paddingLeft: layout.padX, paddingRight: layout.padX }}>
+                {/* The panel carries two inputs — this one searches articles,
+                    the composer asks the agent — and nothing said so. The hint
+                    answers that on first open and retires once the visitor has
+                    asked something, so it costs no permanent chrome. */}
+                {!messages.some((m) => m.from === 'user') && (
+                  <p
+                    className='mb-1.5 text-[11px]'
+                    style={{ color: 'var(--muted-foreground)' }}
+                  >
+                    {translate(activeLocale, 'docsSearchVsAskHint')}
+                  </p>
+                )}
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <svg
                     aria-hidden

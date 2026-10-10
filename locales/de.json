@@ -247,5 +247,6 @@
   "messageTooLong": {
     "one": "Die Nachricht ist zu lang. Bitte kürzen Sie sie auf {count} Zeichen oder weniger.",
     "other": "Die Nachricht ist zu lang. Bitte kürzen Sie sie auf {count} Zeichen oder weniger."
-  }
+  },
+  "docsSearchVsAskHint": "Durchsuchen Sie die Dokumente oder fragen Sie den Agenten unten."
 }

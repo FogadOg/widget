@@ -247,5 +247,6 @@
   "messageTooLong": {
     "one": "Bericht is te lang. Verkort het tot {count} tekens of minder.",
     "other": "Bericht is te lang. Verkort het tot {count} tekens of minder."
-  }
+  },
+  "docsSearchVsAskHint": "Zoek in de documentatie of vraag het de agent hieronder."
 }

@@ -258,7 +258,7 @@ export function FloatingView({ vm }: { vm: ClassicShellVM }) {
   
                   <div
                     ref={scrollContainerRef}
-                    className={`flex-1 overflow-y-auto overscroll-contain p-3 space-y-3${messageAnimation !== 'none' ? ` widget-messages--${messageAnimation}` : ''}`}
+                    className={`flex-1 overflow-y-auto overscroll-contain flex flex-col [&>*:first-child]:mt-auto p-3 space-y-3${messageAnimation !== 'none' ? ` widget-messages--${messageAnimation}` : ''}`}
                     role="log"
                     aria-live="polite"
                     aria-relevant="additions text"

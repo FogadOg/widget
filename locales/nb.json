@@ -247,5 +247,6 @@
   "messageTooLong": {
     "one": "Meldingen er for lang. Vennligst forkort den til {count} tegn eller mindre.",
     "other": "Meldingen er for lang. Vennligst forkort den til {count} tegn eller færre."
-  }
+  },
+  "docsSearchVsAskHint": "Søk i dokumentene, eller spør agenten nedenfor."
 }

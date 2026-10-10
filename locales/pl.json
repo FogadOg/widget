@@ -247,5 +247,6 @@
   "messageTooLong": {
     "one": "Wiadomość jest za długa. Proszę skrócić ją do {count} znaków lub mniej.",
     "other": "Wiadomość jest zbyt długa. Proszę skrócić ją do {count} znaków lub mniej."
-  }
+  },
+  "docsSearchVsAskHint": "Przeszukaj dokumenty lub zapytaj agenta poniżej."
 }

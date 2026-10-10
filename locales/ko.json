@@ -247,5 +247,6 @@
   "messageTooLong": {
     "one": "메시지가 너무 깁니다. {count}자 이하로 줄여주세요.",
     "other": "메시지가 너무 깁니다. {count}자 이하로 줄여주세요."
-  }
+  },
+  "docsSearchVsAskHint": "문서를 검색하거나 아래의 상담원에게 문의하세요."
 }

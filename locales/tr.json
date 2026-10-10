@@ -247,5 +247,6 @@
   "messageTooLong": {
     "one": "Mesaj çok uzun. Lütfen onu {count} karakter veya daha azına kısaltın.",
     "other": "Mesaj çok uzun. Lütfen onu {count} karakter veya daha azına kısaltın."
-  }
+  },
+  "docsSearchVsAskHint": "Belgeleri arayın veya aşağıdaki ajana sorun."
 }

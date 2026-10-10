@@ -247,5 +247,6 @@
   "messageTooLong": {
     "one": "Pesan terlalu panjang. Silakan pendekkan menjadi {count} karakter atau kurang.",
     "other": "Pesan terlalu panjang. Silakan pendekkan menjadi {count} karakter atau kurang."
-  }
+  },
+  "docsSearchVsAskHint": "Cari dokumen, atau tanyakan kepada agen di bawah ini."
 }

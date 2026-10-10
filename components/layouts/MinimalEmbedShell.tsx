@@ -376,7 +376,7 @@ export default function MinimalEmbedShell(props: Props) {
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto overscroll-contain"
+          className="flex-1 overflow-y-auto overscroll-contain flex flex-col [&>*:first-child]:mt-auto"
           role="log"
           aria-live="polite"
           aria-relevant="additions text"

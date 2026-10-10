@@ -247,5 +247,6 @@
   "messageTooLong": {
     "one": "Meddelandet är för långt. Vänligen förkorta det till {count} tecken eller färre.",
     "other": "Meddelandet är för långt. Vänligen förkorta det till {count} tecken eller färre."
-  }
+  },
+  "docsSearchVsAskHint": "Sök i dokumentationen, eller fråga agenten nedan."
 }

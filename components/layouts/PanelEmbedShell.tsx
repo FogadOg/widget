@@ -359,7 +359,7 @@ export default function PanelEmbedShell(props: Props) {
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-2"
+            className="flex-1 overflow-y-auto overscroll-contain flex flex-col [&>*:first-child]:mt-auto p-3 space-y-2"
             role="log"
             aria-live="polite"
             aria-relevant="additions text"

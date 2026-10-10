@@ -1,4 +1,5 @@
 {
+  "docsSearchVsAskHint": "Search the docs, or ask the agent below.",
   "language": "Language",
   "selectLanguage": "Select language",
   "themeToggle": "Toggle light or dark theme",

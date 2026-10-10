@@ -247,5 +247,6 @@
   "messageTooLong": {
     "one": "A mensagem é muito longa. Por favor, encurte-a para {count} caracteres ou menos.",
     "other": "A mensagem é muito longa. Por favor, encurte-a para {count} caracteres ou menos."
-  }
+  },
+  "docsSearchVsAskHint": "Pesquise nos documentos ou pergunte ao agente abaixo."
 }
