@@ -235,7 +235,7 @@ export function FloatingView({ vm }: { vm: ClassicShellVM }) {
                       type="button"
                       onClick={toggleCollapsed}
                       style={{ backgroundColor: secondaryColor, ['--tw-ring-color' as string]: headerTextColor, ['--tw-ring-offset-color' as string]: primaryColor }}
-                      className={`w-7 h-7 rounded flex items-center justify-center transition-opacity hover:opacity-90 ${FOCUS_RING}`}
+                      className={`w-11 h-11 rounded flex items-center justify-center transition-opacity hover:opacity-90 ${FOCUS_RING}`}
                       title={typeof t.minimizeChat === 'string' ? t.minimizeChat : String(t.minimizeChat)}
                       aria-label={minimizeChatLabel}
                     >
@@ -296,6 +296,8 @@ export function FloatingView({ vm }: { vm: ClassicShellVM }) {
                               buttonBorderRadius={buttonBorderRadius}
                               fontStyles={fontStyles}
                               getLocalizedText={getText}
+                              backgroundColor={backgroundColor}
+                              textColor={textColor}
                             />
                           </div>
                         )}
@@ -327,6 +329,7 @@ export function FloatingView({ vm }: { vm: ClassicShellVM }) {
                                 showMessageAvatars={showMessageAvatars}
                                 textColor={textColor}
                                 agentBubbleBg={agentBubbleBg}
+                                backgroundColor={backgroundColor}
                                 fontStyles={fontStyles}
                                 messageBubbleRadius={messageBubbleRadius}
                                 onSubmitMessageFeedback={onSubmitMessageFeedback}
@@ -345,6 +348,8 @@ export function FloatingView({ vm }: { vm: ClassicShellVM }) {
                                   buttonBorderRadius={buttonBorderRadius}
                                   fontStyles={fontStyles}
                                   getLocalizedText={getText}
+                                  backgroundColor={backgroundColor}
+                                  textColor={textColor}
                                 />
                               </div>
                             )}
@@ -362,6 +367,7 @@ export function FloatingView({ vm }: { vm: ClassicShellVM }) {
                                 showMessageAvatars={showMessageAvatars}
                                 textColor={textColor}
                                 agentBubbleBg={agentBubbleBg}
+                                backgroundColor={backgroundColor}
                                 fontStyles={fontStyles}
                                 messageBubbleRadius={messageBubbleRadius}
                                 showTimestamps={false}
@@ -421,6 +427,7 @@ export function FloatingView({ vm }: { vm: ClassicShellVM }) {
                           showMessageAvatars={showMessageAvatars}
                           textColor={textColor}
                           agentBubbleBg={agentBubbleBg}
+                          backgroundColor={backgroundColor}
                           fontStyles={fontStyles}
                           messageBubbleRadius={messageBubbleRadius}
                           showTimestamps={false}

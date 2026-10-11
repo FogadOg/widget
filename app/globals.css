@@ -44,6 +44,12 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* Bare `rounded` (32 uses here, 46 in the dashboard) was the one step still
+     falling through to Tailwind's stock 0.25rem, putting a 4px corner next to
+     the 6/8/10/14/18 ramp. Pinned to `sm`, matching assistant's config. */
+  --shadow-flat: none;
+  --shadow-float: var(--elevation-float);
+  --radius-DEFAULT: calc(var(--radius) - 4px);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -54,6 +60,13 @@
 }
 
 :root {
+  /* Elevation — two levels, mirroring assistant/app/globals.css. Resting
+     surfaces are flat; only UI that overlaps other content floats. Black in
+     BOTH themes: keying a shadow off `--foreground` would make it a white
+     glow in dark mode. Dark just raises the opacity. */
+  --elevation-float:
+    0 8px 24px -4px rgb(0 0 0 / 0.12),
+    0 2px 6px -2px rgb(0 0 0 / 0.08);
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -66,21 +79,28 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* Mirrors assistant's `--muted-foreground` at 43% lightness: the old
+     value (#737373) was tuned against white and measured 4.35:1 on
+     `bg-muted`, where it is used just as often. */
+  --muted-foreground: oklch(0.525 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   /* Status tokens — same hues as assistant/app/globals.css. Meaning only,
      never decoration (see UI_PRIMITIVES_STANDARD.md at the repo root). */
-  --success: hsl(142 72% 29%);
+  --success: hsl(142 72% 27%);
   --success-foreground: hsl(0 0% 98%);
-  --warning: hsl(30 90% 36%);
+  --warning: hsl(30 90% 32%);
   --warning-foreground: hsl(0 0% 98%);
   --info: hsl(217 85% 42%);
   --info-foreground: hsl(0 0% 98%);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Focus ring — near-black, mirroring assistant/app/globals.css `--ring`.
+     The stock shadcn value (oklch(0.708 0 0)) composited to 1.54:1 against
+     white at the `/50` alpha the button variants use, failing WCAG 1.4.11's
+     3:1 bar for focus indicators. This lands at 3.69:1 at the same alpha. */
+  --ring: oklch(0.205 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -97,6 +117,9 @@
 }
 
 .dark {
+  --elevation-float:
+    0 10px 28px -4px rgb(0 0 0 / 0.55),
+    0 3px 8px -2px rgb(0 0 0 / 0.40);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -120,7 +143,8 @@
   --info-foreground: hsl(0 0% 98%);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  /* Mirrors assistant's dark `--ring` (0 0% 83.1%) — see the light-mode note. */
+  --ring: oklch(0.872 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);

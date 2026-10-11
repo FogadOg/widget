@@ -646,7 +646,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                     isDark={widgetStyles.isDarkTheme}
                     onToggle={handleToggleTheme}
                     label={translate(activeLocale, 'themeToggle')}
-                    className='flex h-8 w-8 items-center justify-center rounded-lg opacity-70 transition-opacity hover:opacity-100'
+                    className='flex h-11 w-11 items-center justify-center rounded-lg opacity-70 transition-opacity hover:opacity-100'
                     style={{ color: widgetStyles.textColor }}
                   />
                 {availableLocales.length >= 2 && (
@@ -707,9 +707,10 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
                       width: '100%',
                       paddingLeft: '32px',
                       paddingRight: searchQuery ? '32px' : '10px',
+                      minHeight: '44px',
                       paddingTop: '7px',
                       paddingBottom: '7px',
-                      fontSize: '13px',
+                      fontSize: '14px',
                       border: '1px solid var(--border)',
                       borderRadius: 'var(--radius)',
                       background: 'var(--background)',

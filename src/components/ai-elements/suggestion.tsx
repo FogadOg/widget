@@ -48,7 +48,10 @@ export const Suggestion = ({
 
   return (
     <Button
-      className={cn("cursor-pointer rounded-full px-4", className)}
+      // `size="sm"` renders 32px, which is under the 44px a touch surface
+      // wants; the docs widget is embedded on merchants' phones like any other.
+      // Keep the small horizontal rhythm, raise only the hit area.
+      className={cn("min-h-11 cursor-pointer rounded-full px-4", className)}
       onClick={handleClick}
       size={size}
       type="button"

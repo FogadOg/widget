@@ -375,7 +375,7 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
                         type="button"
                         onClick={onShowUnsureModal}
                         style={{ backgroundColor: secondaryColor, ['--tw-ring-color' as string]: headerTextColor, ['--tw-ring-offset-color' as string]: primaryColor }}
-                        className={`px-2 py-1 rounded text-sm flex items-center justify-center hover:opacity-90 relative ${FOCUS_RING}`}
+                        className={`w-11 h-11 rounded text-sm flex items-center justify-center hover:opacity-90 relative ${FOCUS_RING}`}
                         aria-label={translate(locale, 'viewUncertaintyLog')}
                         title={translate(locale, 'uncertaintyResponsesHint')}
                       >
@@ -394,7 +394,7 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
                       type="button"
                       onClick={toggleCollapsed}
                       style={{ backgroundColor: secondaryColor, ['--tw-ring-color' as string]: headerTextColor, ['--tw-ring-offset-color' as string]: primaryColor }}
-                      className={`px-2 py-1 rounded text-sm flex items-center justify-center hover:opacity-90 ${FOCUS_RING}`}
+                      className={`w-11 h-11 rounded text-sm flex items-center justify-center hover:opacity-90 ${FOCUS_RING}`}
                       aria-label={closeChatLabel}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -457,6 +457,8 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
                                 buttonBorderRadius={buttonBorderRadius}
                                 fontStyles={fontStyles}
                                 getLocalizedText={getText}
+                                backgroundColor={backgroundColor}
+                                textColor={textColor}
                               />
                             </div>
                           )}
@@ -488,6 +490,7 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
                                   showMessageAvatars={showMessageAvatars}
                                   textColor={textColor}
                                   agentBubbleBg={agentBubbleBg}
+                                  backgroundColor={backgroundColor}
                                   fontStyles={fontStyles}
                                   messageBubbleRadius={messageBubbleRadius}
                                   onSubmitMessageFeedback={onSubmitMessageFeedback}
@@ -506,6 +509,8 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
                                     buttonBorderRadius={buttonBorderRadius}
                                     fontStyles={fontStyles}
                                     getLocalizedText={getText}
+                                    backgroundColor={backgroundColor}
+                                    textColor={textColor}
                                   />
                                 </div>
                               )}
@@ -523,6 +528,7 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
                                   showMessageAvatars={showMessageAvatars}
                                   textColor={textColor}
                                   agentBubbleBg={agentBubbleBg}
+                                  backgroundColor={backgroundColor}
                                   fontStyles={fontStyles}
                                   messageBubbleRadius={messageBubbleRadius}
                                   showTimestamps={false}
@@ -582,6 +588,7 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
                             showMessageAvatars={showMessageAvatars}
                             textColor={textColor}
                             agentBubbleBg={agentBubbleBg}
+                            backgroundColor={backgroundColor}
                             fontStyles={fontStyles}
                             messageBubbleRadius={messageBubbleRadius}
                             showTimestamps={false}

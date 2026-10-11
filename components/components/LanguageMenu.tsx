@@ -316,7 +316,7 @@ export function LanguageMenu({
           fontWeight: 600,
           cursor: 'pointer',
         }}
-        className={`px-2 py-1 flex items-center gap-1.5 hover:opacity-90 ${FOCUS_RING}`}
+        className={`min-h-11 px-3 flex items-center gap-1.5 hover:opacity-90 ${FOCUS_RING}`}
       >
         <LanguageGlyph locale={locale} />
         {/* The endonym, not just a flag. The trigger used to render the flag

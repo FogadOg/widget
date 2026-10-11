@@ -968,7 +968,10 @@ export const PromptInputSubmit = ({
   return (
     <InputGroupButton
       aria-label={en.submitMessage}
-      className={cn(className)}
+      // `size="icon-sm"` is a 32px square. Send is the primary action of the
+      // whole panel and the most-tapped control in it, so it carries the 44px
+      // minimum regardless of the variant's own sizing.
+      className={cn("min-h-11 min-w-11", className)}
       size={size}
       type="submit"
       variant={variant}

@@ -103,7 +103,13 @@ export const STATUS_COLORS = {
 export const DEFAULTS = {
   BORDER_RADIUS: 8,
   FONT_FAMILY: 'Inter',
-  FONT_SIZE: 14,
+  // Message body. 14 gave the panel only TWO rendered sizes — 14 for everything
+  // `fontStyles` touched and 12 for the `text-xs` metadata — so the agent's
+  // answer, the header subtitle and the quick replies all carried identical
+  // weight. 16 restores a hierarchy (16 body / 14 controls / 12 meta) and
+  // matches what comparable chat widgets use for a message.
+  // Only affects widgets that never set `font_size`; an explicit value wins.
+  FONT_SIZE: 16,
   FONT_WEIGHT: 'normal',
   SHADOW_INTENSITY: 'md',
   WIDGET_WIDTH: 400,

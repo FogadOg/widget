@@ -1,7 +1,7 @@
 import { useMemo, useSyncExternalStore } from 'react';
 import { DEFAULTS, DEFAULT_COLORS, DARK_DEFAULTS, SHADOW_INTENSITY, SIZE_PRESETS } from '../lib/constants';
 import type { WidgetConfig } from '../types/widget';
-import { normalizeHexColor, getReadableTextColor, getRelativeLuminance, withAlpha } from '../lib/colors';
+import { normalizeHexColor, getReadableTextColor, getRelativeLuminance, withAlpha, mutedOn } from '../lib/colors';
 
 const SPACING_MAP = {
   compact:     { padding: '8px',  gap: '6px'  },
@@ -75,8 +75,12 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
   // hairlines, skeletons and the typing indicator adapt to any brand/dark theme
   // instead of using hardcoded gray shades. (Monochrome-first: color = meaning only.)
   const isLightBackground = getRelativeLuminance(backgroundColor) > 0.4;
-  const mutedTextColor = withAlpha(textColor, 0.6);
-  const subtleBorderColor = withAlpha(textColor, 0.12);
+  // Floored against the configured background: 4.5:1 for secondary text,
+  // 3:1 for hairlines that bound a control (WCAG 1.4.3 / 1.4.11). A flat alpha
+  // passes on the default theme and fails on branded ones — see `mutedOn`.
+  const mutedTextColor = mutedOn(textColor, backgroundColor, 0.6, 4.5);
+  const subtleBorderColor = mutedOn(textColor, backgroundColor, 0.12, 3);
+  // Decorative only — a loading shimmer carries no information, so no floor.
   const skeletonColor = withAlpha(textColor, 0.1);
   // Agent bubble surface: a faint wash off the page so it reads as a distinct
   // surface in both light and dark themes (previously computed inline in EmbedShell).

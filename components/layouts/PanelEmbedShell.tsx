@@ -280,7 +280,7 @@ export default function PanelEmbedShell(props: Props) {
           <button
             type="button"
             onClick={toggleCollapsed}
-            className={`w-8 h-8 rounded border flex items-center justify-center ${FOCUS_RING}`}
+            className={`w-11 h-11 rounded border flex items-center justify-center ${FOCUS_RING}`}
             style={{ borderColor: subtleBorderColor, color: textColor }}
             aria-label={translate(locale, 'chatControl', { context: 'minimize' })}
             title={translate(locale, 'chatControl', { context: 'minimize' })}
@@ -294,7 +294,7 @@ export default function PanelEmbedShell(props: Props) {
               isDark={isDarkTheme}
               onToggle={onToggleTheme}
               label={translate(locale, 'themeToggle')}
-              className={`w-8 h-8 rounded border flex items-center justify-center ${FOCUS_RING}`}
+              className={`w-11 h-11 rounded border flex items-center justify-center ${FOCUS_RING}`}
               style={{ borderColor: subtleBorderColor, color: textColor }}
             />
           )}
@@ -389,6 +389,8 @@ export default function PanelEmbedShell(props: Props) {
                       buttonBorderRadius={buttonBorderRadius}
                       fontStyles={fontStyles}
                       getLocalizedText={getText}
+                      backgroundColor={backgroundColor}
+                      textColor={textColor}
                     />
                   </div>
                 )}
@@ -415,6 +417,7 @@ export default function PanelEmbedShell(props: Props) {
                     showMessageAvatars={showMessageAvatars}
                     textColor={textColor}
                     agentBubbleBg={agentBubbleBg}
+                    backgroundColor={backgroundColor}
                     fontStyles={fontStyles}
                     messageBubbleRadius={messageBubbleRadius}
                     onSubmitMessageFeedback={onSubmitMessageFeedback}
@@ -433,6 +436,7 @@ export default function PanelEmbedShell(props: Props) {
                       showMessageAvatars={showMessageAvatars}
                       textColor={textColor}
                       agentBubbleBg={agentBubbleBg}
+                      backgroundColor={backgroundColor}
                       fontStyles={fontStyles}
                       messageBubbleRadius={messageBubbleRadius}
                       showTimestamps={false}
@@ -461,6 +465,7 @@ export default function PanelEmbedShell(props: Props) {
                 showMessageAvatars={showMessageAvatars}
                 textColor={textColor}
                 agentBubbleBg={agentBubbleBg}
+                backgroundColor={backgroundColor}
                 fontStyles={fontStyles}
                 messageBubbleRadius={messageBubbleRadius}
                 showTimestamps={false}

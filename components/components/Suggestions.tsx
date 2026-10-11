@@ -26,7 +26,7 @@ export function Suggestions({
           key={`${i}-${text}`}
           type="button"
           onClick={() => onSelect(text)}
-          className="px-3 py-1.5 text-sm border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="min-h-11 px-4 text-sm border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
           style={{
             borderRadius: `${buttonBorderRadius}px`,
             borderColor: withAlpha(primaryColor, 0.4),

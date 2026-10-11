@@ -10,7 +10,7 @@ type MDComponents = Record<string, React.ComponentType<any>>;
 import { t as translate } from '../lib/i18n';
 import { useWidgetTranslation } from '../hooks/useWidgetTranslation';
 import type { RichContent, WidgetConfig } from '../types/widget';
-import { normalizeHexColor, getReadableTextColor, withAlpha } from '../lib/colors';
+import { normalizeHexColor, getReadableTextColor, withAlpha, mutedOn } from '../lib/colors';
 import { STATUS_COLORS } from '../lib/constants';
 import RichBlocks from './blocks/RichBlocks';
 import type { BlockTheme, OnRichAction } from './blocks/types';
@@ -39,6 +39,9 @@ type Props = {
   showMessageAvatars?: boolean;
   textColor?: string;
   agentBubbleBg?: string;
+  /** The configured panel background. Needed to floor the derived neutrals
+   *  (muted text, hairlines) at a readable contrast — see `mutedOn`. */
+  backgroundColor?: string;
   fontStyles?: Record<string, unknown>;
   messageBubbleRadius?: number;
   onSubmitMessageFeedback?: (messageId: string, feedbackType?: string) => void;
@@ -66,13 +69,14 @@ function linkifyText(text: string): string {
   return text;
 }
 
-export default function MessageBubble({ message, widgetConfig, agentName, showMessageAvatars = true, textColor = '#111', agentBubbleBg = 'rgba(0,0,0,0.07)', fontStyles = {}, messageBubbleRadius = 8, onSubmitMessageFeedback, messageFeedbackSubmitted = new Set(), showTimestamps = true, onRichAction }: Props) {
+export default function MessageBubble({ message, widgetConfig, agentName, showMessageAvatars = true, textColor = '#111', agentBubbleBg = 'rgba(0,0,0,0.07)', backgroundColor = '#ffffff', fontStyles = {}, messageBubbleRadius = 8, onSubmitMessageFeedback, messageFeedbackSubmitted = new Set(), showTimestamps = true, onRichAction }: Props) {
   const { locale } = useWidgetTranslation();
   // Theme-aware neutrals derived from the configured text color so secondary
   // text, hairlines and code surfaces adapt to dark/branded themes instead of
   // hardcoded grays.
-  const mutedTextColor = withAlpha(textColor, 0.6);
-  const subtleBorderColor = withAlpha(textColor, 0.12);
+  const mutedTextColor = mutedOn(textColor, backgroundColor, 0.6, 4.5);
+  const subtleBorderColor = mutedOn(textColor, backgroundColor, 0.12, 3);
+  // Decorative surface, not a boundary or a label — no contrast floor needed.
   const codeBg = withAlpha(textColor, 0.08);
   const hasFeedback = messageFeedbackSubmitted.has(message.id);
   const safetyAction = message.metadata?.safety_policy_action || '';
@@ -96,8 +100,8 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
     }
     return {
       textColor,
-      mutedTextColor: withAlpha(textColor, 0.6),
-      borderColor: withAlpha(textColor, 0.12),
+      mutedTextColor: mutedOn(textColor, backgroundColor, 0.6, 4.5),
+      borderColor: mutedOn(textColor, backgroundColor, 0.12, 3),
       // Translucent rather than a fixed color so the card composites correctly
       // over whatever surface it lands on — light, dark, or a branded panel.
       surfaceColor: withAlpha(textColor, 0.04),
@@ -108,7 +112,7 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
       fontStyles: fontStyles as React.CSSProperties,
       reducedMotion,
     };
-  }, [widgetConfig?.primary_color, widgetConfig?.button_border_radius, widgetConfig?.respect_reduced_motion, textColor, messageBubbleRadius, fontStyles]);
+  }, [widgetConfig?.primary_color, widgetConfig?.button_border_radius, widgetConfig?.respect_reduced_motion, textColor, backgroundColor, messageBubbleRadius, fontStyles]);
   const showSafetyFallback = message.from === 'agent' && /fallback|forbidden_topic_block|escalation_handoff/.test(safetyAction);
 
   const [copied, setCopied] = useState(false);
@@ -371,12 +375,12 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
             </div>
           )}
           {!hasFeedback && onSubmitMessageFeedback && (
-            <div className="mt-1 flex gap-2" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>
-              <button type="button" onClick={() => onSubmitMessageFeedback(message.id, 'thumbs_up')} className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1 rounded p-0.5 focus:outline-none focus-visible:ring-2" style={{ color: textColor, ['--tw-ring-color' as string]: withAlpha(textColor, 0.4) }} title={translate(locale, 'feedbackThumbsUp')} aria-label={translate(locale, 'feedbackPositive')}>
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>
+            <div className="mt-1 flex items-center" style={{ marginInlineStart: (showMessageAvatars && widgetConfig?.bot_avatar) ? '40px' : '0' }}>
+              <button type="button" onClick={() => onSubmitMessageFeedback(message.id, 'thumbs_up')} className="min-w-11 min-h-11 text-xs opacity-70 hover:opacity-100 transition-opacity flex items-center justify-center rounded focus:outline-none focus-visible:ring-2" style={{ color: textColor, ['--tw-ring-color' as string]: withAlpha(textColor, 0.4) }} title={translate(locale, 'feedbackThumbsUp')} aria-label={translate(locale, 'feedbackPositive')}>
+                <svg className="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>
               </button>
-              <button type="button" onClick={() => onSubmitMessageFeedback(message.id, 'thumbs_down')} className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1 rounded p-0.5 focus:outline-none focus-visible:ring-2" style={{ color: textColor, ['--tw-ring-color' as string]: withAlpha(textColor, 0.4) }} title={translate(locale, 'feedbackThumbsDown')} aria-label={translate(locale, 'feedbackNegative')}>
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.737 3h4.017c.163 0 .326.02.485.06L17 4m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m6-10h-2" /></svg>
+              <button type="button" onClick={() => onSubmitMessageFeedback(message.id, 'thumbs_down')} className="min-w-11 min-h-11 text-xs opacity-70 hover:opacity-100 transition-opacity flex items-center justify-center rounded focus:outline-none focus-visible:ring-2" style={{ color: textColor, ['--tw-ring-color' as string]: withAlpha(textColor, 0.4) }} title={translate(locale, 'feedbackThumbsDown')} aria-label={translate(locale, 'feedbackNegative')}>
+                <svg className="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.737 3h4.017c.163 0 .326.02.485.06L17 4m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m6-10h-2" /></svg>
               </button>
             </div>
           )}

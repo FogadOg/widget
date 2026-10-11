@@ -434,7 +434,7 @@ export function useClassicShell(props: Props) {
       isDark={isDarkTheme}
       onToggle={onToggleTheme}
       label={translate(locale, 'themeToggle')}
-      className={`px-2 py-1 rounded text-sm flex items-center justify-center hover:opacity-90 ${FOCUS_RING}`}
+      className={`w-11 h-11 rounded text-sm flex items-center justify-center hover:opacity-90 ${FOCUS_RING}`}
       style={{ backgroundColor: secondaryColor, color: headerTextColor, ['--tw-ring-color' as string]: headerTextColor, ['--tw-ring-offset-color' as string]: primaryColor }}
     />
   ) : null;

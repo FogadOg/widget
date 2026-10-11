@@ -163,7 +163,7 @@ export function Composer({
               onClick={() => fileInputRef.current?.click()}
               aria-label={attachLabel}
               title={attachLabel}
-              className={`shrink-0 inline-flex items-center justify-center px-2.5 py-2 border hover:opacity-90 ${FOCUS_RING}`}
+              className={`shrink-0 inline-flex items-center justify-center min-w-11 min-h-11 border hover:opacity-90 ${FOCUS_RING}`}
               style={{
                 borderColor: subtleBorderColor,
                 borderRadius: `${buttonBorderRadius}px`,
@@ -212,7 +212,7 @@ export function Composer({
               ['--tw-ring-offset-color' as string]: backgroundColor,
               ...fontStyles,
             }}
-            className={`shrink-0 inline-flex items-center justify-center px-4 py-2 hover:opacity-90 ${FOCUS_RING}`}
+            className={`shrink-0 inline-flex items-center justify-center min-h-11 px-4 hover:opacity-90 ${FOCUS_RING}`}
             aria-label={stopLabel}
             title={stopLabel}
           >
@@ -230,7 +230,7 @@ export function Composer({
               ['--tw-ring-offset-color' as string]: backgroundColor,
               ...fontStyles,
             }}
-            className={`shrink-0 inline-flex items-center justify-center px-4 py-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed ${FOCUS_RING}`}
+            className={`shrink-0 inline-flex items-center justify-center min-h-11 px-4 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed ${FOCUS_RING}`}
             aria-busy={isTyping}
             aria-label={sendLabel}
             title={sendLabel}
