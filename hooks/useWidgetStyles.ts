@@ -1,7 +1,7 @@
 import { useMemo, useSyncExternalStore } from 'react';
 import { DEFAULTS, DEFAULT_COLORS, DARK_DEFAULTS, SHADOW_INTENSITY, SIZE_PRESETS } from '../lib/constants';
 import type { WidgetConfig } from '../types/widget';
-import { normalizeHexColor, getReadableTextColor, getRelativeLuminance, withAlpha, mutedOn } from '../lib/colors';
+import { normalizeHexColor, getReadableTextColor, getRelativeLuminance, withAlpha, mutedOn, mixHex } from '../lib/colors';
 
 const SPACING_MAP = {
   compact:     { padding: '8px',  gap: '6px'  },
@@ -74,12 +74,32 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
   // Theme-aware neutrals derived from the configured colors so secondary text,
   // hairlines, skeletons and the typing indicator adapt to any brand/dark theme
   // instead of using hardcoded gray shades. (Monochrome-first: color = meaning only.)
+  // Declared here, not further down: the contrast floors below depend on it.
+  const visualEffect = widgetConfig?.visual_effect ?? 'none';
   const isLightBackground = getRelativeLuminance(backgroundColor) > 0.4;
   // Floored against the configured background: 4.5:1 for secondary text,
   // 3:1 for hairlines that bound a control (WCAG 1.4.3 / 1.4.11). A flat alpha
   // passes on the default theme and fails on branded ones — see `mutedOn`.
-  const mutedTextColor = mutedOn(textColor, backgroundColor, 0.6, 4.5);
-  const subtleBorderColor = mutedOn(textColor, backgroundColor, 0.12, 3);
+  //
+  // A `visual_effect` of glassmorphism/frosted renders the panel at 75% / 45%
+  // opacity, so its real background is the MERCHANT'S PAGE showing through —
+  // something this widget cannot know. Flooring against `backgroundColor` as
+  // if it were opaque therefore overstates the contrast: measured on the docs
+  // panel (glassmorphism, 0.75) the subtitle and search hint came out at
+  // 3.47:1 against a light host page.
+  //
+  // Floor against the WORST case instead: composite the configured background
+  // toward whichever pole hurts most. Light text is worst over a light host,
+  // dark text worst over a dark one. An opaque panel composites to itself, so
+  // this is a no-op for every config that has no visual effect.
+  const panelOpacity =
+    visualEffect === 'glassmorphism' ? 0.75 : visualEffect === 'frosted' ? 0.45 : 1;
+  const worstCaseHost = getRelativeLuminance(textColor) > 0.5 ? '#ffffff' : '#000000';
+  const effectiveSurface =
+    panelOpacity >= 1 ? backgroundColor : mixHex(backgroundColor, worstCaseHost, 1 - panelOpacity);
+
+  const mutedTextColor = mutedOn(textColor, effectiveSurface, 0.6, 4.5);
+  const subtleBorderColor = mutedOn(textColor, effectiveSurface, 0.12, 3);
   // Decorative only — a loading shimmer carries no information, so no floor.
   const skeletonColor = withAlpha(textColor, 0.1);
   // Agent bubble surface: a faint wash off the page so it reads as a distinct
@@ -115,7 +135,6 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
   const messageAnimation = widgetConfig?.message_animation ?? 'fade';
   const respectReducedMotion = widgetConfig?.respect_reduced_motion ?? true;
 
-  const visualEffect = widgetConfig?.visual_effect ?? 'none';
   const visualEffectStyles = useMemo(() => {
     if (visualEffect === 'glassmorphism') {
       return {

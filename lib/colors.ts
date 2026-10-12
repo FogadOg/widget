@@ -133,3 +133,19 @@ export const mutedOn = (
   }
   return `rgba(${fg.join(', ')}, ${Number(a.toFixed(2))})`;
 };
+
+/**
+ * Linear blend of two hex colors in RGB. `t=0` → `a`, `t=1` → `b`.
+ * Mirrors `mixHex` in assistant/utils/color.ts.
+ *
+ * Used to turn a translucent wash into the concrete surface it produces, so a
+ * contrast floor can be computed against what the eye actually sees rather
+ * than against the page behind it.
+ */
+export const mixHex = (a: string, b: string, t: number): string => {
+  const [ar, ag, ab] = parseHex(a);
+  const [br, bg, bb] = parseHex(b);
+  const lerp = (x: number, y: number) => Math.round(x + (y - x) * t);
+  const h = (n: number) => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0');
+  return `#${h(lerp(ar, br))}${h(lerp(ag, bg))}${h(lerp(ab, bb))}`;
+};
