@@ -82,6 +82,15 @@ describe('CSP nonce proxy', () => {
     expect(scriptSrc).not.toContain("'unsafe-inline'");
   });
 
+  it('never lets an embed page load fonts from Google directly', () => {
+    // Fonts are proxied same-origin (lib/fontProxy.ts) so visitors' IPs never
+    // reach Google — re-allowing these hosts would reintroduce that leak.
+    const resp = proxy(makeRequest('/embed/session'));
+    const csp = getHeaderValue(resp, 'Content-Security-Policy') ?? '';
+    expect(csp).not.toContain('fonts.googleapis.com');
+    expect(csp).not.toContain('fonts.gstatic.com');
+  });
+
   it('forbids objects with object-src none', () => {
     const resp = proxy(makeRequest('/'));
     const csp = getHeaderValue(resp, 'Content-Security-Policy') ?? '';

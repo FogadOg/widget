@@ -1,5 +1,6 @@
 import { sanitizeCss } from '../../../lib/cssValidator';
 import { logError } from '../../../lib/errorHandling';
+import { fontStylesheetUrl, isValidFontFamily } from '../../../lib/fontProxy';
 
 // helpers exposed so tests can call them directly
 export function injectCustomAssets(css?: string) {
@@ -71,15 +72,17 @@ export function injectCustomAssetsFromConfig(config: { custom_css?: string | nul
 
 // Inject a Google Fonts stylesheet for the configured font family.
 // Called when font_source === 'google' so the font is available inside the iframe.
+// Served through the same-origin proxy so the visitor's browser never contacts
+// Google (lib/fontProxy.ts).
 export function injectGoogleFont(fontFamily: string) {
-  if (!fontFamily || typeof document === 'undefined') return;
+  if (!isValidFontFamily(fontFamily) || typeof document === 'undefined') return;
   try {
     const id = `gf-${fontFamily.replace(/\s+/g, '-').toLowerCase()}`;
     if (document.getElementById(id)) return; // already loaded
     const link = document.createElement('link');
     link.id = id;
     link.rel = 'stylesheet';
-    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@300;400;500;600;700&display=swap`;
+    link.href = fontStylesheetUrl(fontFamily);
     document.head.appendChild(link);
   } catch (err) {
     logError(err as Error, { action: 'injectGoogleFont', fontFamily });

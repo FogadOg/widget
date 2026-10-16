@@ -16,10 +16,17 @@ describe('injectGoogleFont', () => {
     expect(link?.rel).toBe('stylesheet');
   });
 
-  it('points to the Google Fonts CDN', () => {
+  it('loads the font through the same-origin proxy, never from Google', () => {
     injectGoogleFont('Inter');
     const link = document.head.querySelector('link');
-    expect(link?.href).toContain('fonts.googleapis.com');
+    expect(new URL(link!.href).origin).toBe(window.location.origin);
+    expect(new URL(link!.href).pathname).toBe('/fonts/css');
+    expect(link?.href).not.toContain('google');
+  });
+
+  it('ignores a family name that is not a plain font name', () => {
+    injectGoogleFont('Inter&family=x');
+    expect(document.head.querySelector('link')).toBeNull();
   });
 
   it('includes the font family name in the URL', () => {
@@ -56,14 +63,6 @@ describe('injectGoogleFont', () => {
     injectGoogleFont('Inter');
     injectGoogleFont('Roboto');
     expect(document.head.querySelectorAll('link').length).toBe(2);
-  });
-
-  it('requests multiple weights for flexibility', () => {
-    injectGoogleFont('Montserrat');
-    const href = document.head.querySelector('link')?.href ?? '';
-    // Should request at least regular (400) and a bold weight
-    expect(href).toContain('400');
-    expect(href).toContain('700');
   });
 
   it('does nothing when fontFamily is an empty string', () => {

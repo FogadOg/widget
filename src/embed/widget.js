@@ -455,6 +455,30 @@ import {
     // GA module
     let _gaGtag = null;
     let _gaMeasurementId = null;
+    // GA runs on the HOST page, so with data-consent-required it must wait for
+    // grantConsent() like the widget's own storage does: an id that arrives
+    // first is parked here and only initialised on grant. revokeConsent()
+    // stops event reporting (an already-loaded gtag.js can't be unloaded).
+    let _gaConsented = !consentRequired;
+    let _gaPendingId = null;
+
+    function requestGA(measurementId) {
+      if (!measurementId) return;
+      if (_gaConsented) {
+        initGA(measurementId);
+      } else {
+        _gaPendingId = measurementId;
+      }
+    }
+
+    function setGAConsent(granted) {
+      _gaConsented = granted;
+      if (granted && _gaPendingId) {
+        const id = _gaPendingId;
+        _gaPendingId = null;
+        initGA(id);
+      }
+    }
 
     function initGA(measurementId) {
       if (!measurementId) return;
@@ -463,6 +487,7 @@ import {
         console.warn('[Companin GA] Invalid measurement ID format, skipping GA init');
         return;
       }
+      if (_gaMeasurementId === measurementId) return;
       _gaMeasurementId = measurementId;
       if (typeof window.gtag === 'function') {
         _gaGtag = window.gtag;
@@ -477,13 +502,16 @@ import {
         window.dataLayer = window.dataLayer || [];
         window.gtag = function() { window.dataLayer.push(arguments); };
         window.gtag('js', new Date());
-        window.gtag('config', measurementId);
         _gaGtag = window.gtag;
       }
+      // The widget reports its own events only. A default config would also
+      // send a page_view, double-counting every page on hosts that already
+      // track page views themselves (gtag or GTM).
+      _gaGtag('config', measurementId, { send_page_view: false });
     }
 
     function _gaTrack(eventName, params) {
-      if (!_gaGtag || !_gaMeasurementId) return;
+      if (!_gaConsented || !_gaGtag || !_gaMeasurementId) return;
       try {
         _gaGtag('event', eventName, Object.assign({}, params, { send_to: _gaMeasurementId }));
       } catch (e) {
@@ -1094,7 +1122,9 @@ import {
           // Storage-consent API (LAUNCH-READINESS #16). The host page calls
           // grantConsent() once the visitor accepts the cookie banner;
           // revokeConsent() purges widget-prefixed localStorage entries.
+          // Both also gate the host-page Google Analytics module.
           grantConsent: () => {
+            setGAConsent(true);
             try {
               if (iframe.contentWindow) {
                 iframe.contentWindow.postMessage(
@@ -1107,6 +1137,7 @@ import {
             }
           },
           revokeConsent: () => {
+            setGAConsent(false);
             try {
               if (iframe.contentWindow) {
                 iframe.contentWindow.postMessage(
@@ -1244,6 +1275,7 @@ import {
               // Page-context hooks live on the host document, not the widget
               // container, so removing the container doesn't unbind them.
               stopPageContextReporting();
+              bindViewportListeners(false);
               Object.keys(debounceState).forEach((eventName) => {
                 const state = debounceState[eventName];
                 if (state && state.timer) clearTimeout(state.timer);
@@ -1669,6 +1701,142 @@ import {
         let _isReady = false;
         let _hasEmittedReady = false;
 
+        // The visible part of the page. On phones the on-screen keyboard (and
+        // pinch zoom) shrink only the visual viewport, so window.innerHeight
+        // alone overstates the room the open panel has. bottomInset is how much
+        // of the layout viewport's bottom edge is covered (the keyboard).
+        function getVisibleViewport(layoutHeight) {
+          const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+          if (!vv || !vv.height) return { height: layoutHeight, bottomInset: 0 };
+          return {
+            height: vv.height,
+            bottomInset: Math.max(0, Math.round(layoutHeight - vv.height - vv.offsetTop)),
+          };
+        }
+
+        // Size and anchor the container from the iframe's last WIDGET_RESIZE.
+        // Kept so a viewport change (rotation, window resize, keyboard) can
+        // re-run it; the iframe only reports when its own content changes.
+        let lastLayoutData = null;
+        function applyLayout(data) {
+          lastLayoutData = data;
+          const resizeWidth = parsePixelValue(data?.width);
+          const resizeHeight = parsePixelValue(data?.height);
+          const containerPadding = getContainerPadding(resizeWidth, resizeHeight);
+          container.style.padding = `${containerPadding}px`;
+
+          if (resizeHeight !== null) {
+            container.style.height = `${resizeHeight + (containerPadding * 2)}px`;
+          }
+          if (resizeWidth !== null) {
+            container.style.width = `${resizeWidth + (containerPadding * 2)}px`;
+          }
+
+          // Handle dynamic positioning if provided
+          if (data?.position) {
+            const baseOffset = parseOffsetValue(
+              typeof data.edge_offset !== 'undefined' ? data.edge_offset : data.edgeOffset,
+              20
+            );
+            const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
+            const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
+            const visible = getVisibleViewport(viewportHeight);
+            const isSmallScreen = viewportWidth > 0 && viewportWidth < 480;
+            const isLauncherButton = containerPadding > 0;
+            const isLeftPosition = data.position.includes('left');
+            const offset = isLeftPosition && baseOffset === 0
+              ? (isSmallScreen && isLauncherButton ? 4 : 16)
+              : isSmallScreen && isLauncherButton && isLeftPosition
+                ? Math.min(baseOffset, 4)
+                : isSmallScreen && isLauncherButton && !isLeftPosition
+                  ? baseOffset - 62
+                  : baseOffset;
+            const desiredWidth = resizeWidth !== null ? resizeWidth + (containerPadding * 2) : null;
+            const desiredHeight = resizeHeight !== null ? resizeHeight + (containerPadding * 2) : null;
+            // Reset all corner properties
+            container.style.bottom = '';
+            container.style.top = '';
+            container.style.right = '';
+            container.style.left = '';
+            container.style.maxWidth = '';
+            container.style.maxHeight = '';
+
+            const isMobile = containerPadding === 0 && viewportWidth > 0 && desiredWidth !== null && desiredWidth >= viewportWidth * 0.85;
+
+            if (isMobile) {
+              // Full-width on small screens: stretch edge to edge with safe-area margins
+              const mobileMargin = 8;
+              container.style.left = `max(${mobileMargin}px, env(safe-area-inset-left, 0px))`;
+              container.style.right = `max(${mobileMargin}px, env(safe-area-inset-right, 0px))`;
+              container.style.width = '';
+              container.style.maxWidth = '';
+              if (data.position.includes('bottom')) {
+                // Lift the panel above the on-screen keyboard: a fixed element
+                // stays anchored to the layout viewport, which the iOS keyboard
+                // doesn't shrink, so the composer would sit underneath it.
+                const safeBottom = `max(${offset}px, env(safe-area-inset-bottom, 0px))`;
+                container.style.bottom = visible.bottomInset > 0
+                  ? `calc(${safeBottom} + ${visible.bottomInset}px)`
+                  : safeBottom;
+              } else {
+                container.style.top = `max(${offset}px, env(safe-area-inset-top, 0px))`;
+              }
+              if (desiredHeight !== null) {
+                const maxHeight = Math.max(0, visible.height - offset - mobileMargin);
+                container.style.maxHeight = `${maxHeight}px`;
+              }
+            } else {
+              // Launcher button on small screens: use plain px offset so safe-area doesn't push it away from corner
+              if (data.position.includes('bottom')) {
+                container.style.bottom = `${offset}px`;
+              } else {
+                container.style.top = `${offset}px`;
+              }
+              if (data.position.includes('left')) {
+                container.style.left = `${offset}px`;
+              } else if (data.position.includes('right')) {
+                container.style.right = `${offset}px`;
+              }
+              // Clamp only via max-width/max-height, keeping edge anchor as reference
+              if (viewportWidth && desiredWidth !== null) {
+                const maxWidth = Math.max(0, viewportWidth - offset);
+                if (maxWidth > 0) container.style.maxWidth = `${maxWidth}px`;
+              }
+              if (viewportHeight && desiredHeight !== null) {
+                const maxHeight = Math.max(0, viewportHeight - offset);
+                if (maxHeight > 0) container.style.maxHeight = `${maxHeight}px`;
+              }
+            }
+          }
+        }
+
+        let relayoutFrame = 0;
+        function scheduleRelayout() {
+          if (relayoutFrame || !lastLayoutData) return;
+          const raf = window.requestAnimationFrame || ((fn) => setTimeout(fn, 16));
+          relayoutFrame = raf(() => {
+            relayoutFrame = 0;
+            if (!lastLayoutData || container.style.display === 'none') return;
+            try {
+              applyLayout(lastLayoutData);
+            } catch (err) {
+              logError('Failed to re-apply widget layout', { error: err && err.message });
+            }
+          });
+        }
+        function bindViewportListeners(bind) {
+          const method = bind ? 'addEventListener' : 'removeEventListener';
+          try {
+            window[method]('resize', scheduleRelayout);
+            window[method]('orientationchange', scheduleRelayout);
+            if (window.visualViewport) {
+              window.visualViewport[method]('resize', scheduleRelayout);
+              window.visualViewport[method]('scroll', scheduleRelayout);
+            }
+          } catch (e) {}
+        }
+        bindViewportListeners(true);
+
         function handleMessage(event) {
           try {
             let iframeWindow = null;
@@ -1740,87 +1908,7 @@ import {
                 if (allowDisplay) {
                   container.style.display = "block";
                 }
-                const resizeWidth = parsePixelValue(data?.width);
-                const resizeHeight = parsePixelValue(data?.height);
-                const containerPadding = getContainerPadding(resizeWidth, resizeHeight);
-                container.style.padding = `${containerPadding}px`;
-
-                if (resizeHeight !== null) {
-                  container.style.height = `${resizeHeight + (containerPadding * 2)}px`;
-                }
-                if (resizeWidth !== null) {
-                  container.style.width = `${resizeWidth + (containerPadding * 2)}px`;
-                }
-
-                // Handle dynamic positioning if provided
-                if (data?.position) {
-                  const baseOffset = parseOffsetValue(
-                    typeof data.edge_offset !== 'undefined' ? data.edge_offset : data.edgeOffset,
-                    20
-                  );
-                  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
-                  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
-                  const isSmallScreen = viewportWidth > 0 && viewportWidth < 480;
-                  const isLauncherButton = containerPadding > 0;
-                  const isLeftPosition = data.position.includes('left');
-                  const offset = isLeftPosition && baseOffset === 0
-                    ? (isSmallScreen && isLauncherButton ? 4 : 16)
-                    : isSmallScreen && isLauncherButton && isLeftPosition
-                      ? Math.min(baseOffset, 4)
-                      : isSmallScreen && isLauncherButton && !isLeftPosition
-                        ? baseOffset - 62
-                        : baseOffset;
-                  const desiredWidth = resizeWidth !== null ? resizeWidth + (containerPadding * 2) : null;
-                  const desiredHeight = resizeHeight !== null ? resizeHeight + (containerPadding * 2) : null;
-                  // Reset all corner properties
-                  container.style.bottom = '';
-                  container.style.top = '';
-                  container.style.right = '';
-                  container.style.left = '';
-                  container.style.maxWidth = '';
-                  container.style.maxHeight = '';
-
-                  const isMobile = containerPadding === 0 && viewportWidth > 0 && desiredWidth !== null && desiredWidth >= viewportWidth * 0.85;
-
-                  if (isMobile) {
-                    // Full-width on small screens: stretch edge to edge with safe-area margins
-                    const mobileMargin = 8;
-                    container.style.left = `max(${mobileMargin}px, env(safe-area-inset-left, 0px))`;
-                    container.style.right = `max(${mobileMargin}px, env(safe-area-inset-right, 0px))`;
-                    container.style.width = '';
-                    container.style.maxWidth = '';
-                    if (data.position.includes('bottom')) {
-                      container.style.bottom = `max(${offset}px, env(safe-area-inset-bottom, 0px))`;
-                    } else {
-                      container.style.top = `max(${offset}px, env(safe-area-inset-top, 0px))`;
-                    }
-                    if (desiredHeight !== null) {
-                      const maxHeight = Math.max(0, viewportHeight - offset - mobileMargin);
-                      container.style.maxHeight = `${maxHeight}px`;
-                    }
-                  } else {
-                    // Launcher button on small screens: use plain px offset so safe-area doesn't push it away from corner
-                    if (data.position.includes('bottom')) {
-                      container.style.bottom = `${offset}px`;
-                    } else {
-                      container.style.top = `${offset}px`;
-                    }
-                    if (data.position.includes('left')) {
-                      container.style.left = `${offset}px`;
-                    } else if (data.position.includes('right')) {
-                      container.style.right = `${offset}px`;
-                    }
-                    // Clamp only via max-width/max-height, keeping edge anchor as reference
-                    if (viewportWidth && desiredWidth !== null) {
-                      const maxWidth = Math.max(0, viewportWidth - offset);
-                      if (maxWidth > 0) container.style.maxWidth = `${maxWidth}px`;
-                    }
-                    if (viewportHeight && desiredHeight !== null) {
-                      const maxHeight = Math.max(0, viewportHeight - offset);
-                      if (maxHeight > 0) container.style.maxHeight = `${maxHeight}px`;
-                    }
-                  }
-                }
+                applyLayout(data);
                 break;
 
               case "WIDGET_HIDE":
@@ -2016,7 +2104,7 @@ import {
 
               case 'WIDGET_GA_INIT':
                 if (data && data.gaMeasurementId) {
-                  initGA(data.gaMeasurementId);
+                  requestGA(data.gaMeasurementId);
                 }
                 break;
 

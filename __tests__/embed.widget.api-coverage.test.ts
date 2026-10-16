@@ -260,6 +260,57 @@ describe('widget.js Google Analytics module', () => {
     expect(document.querySelector('script[src*="googletagmanager.com"]')).toBeNull();
   });
 
+  const gaScript = () => document.querySelector('script[src*="googletagmanager.com/gtag/js"]');
+  const dataLayerEntries = () =>
+    ((window as unknown as { dataLayer?: IArguments[] }).dataLayer ?? []).map((a) => Array.from(a));
+
+  test('configures GA without sending a page_view on the host page', () => {
+    initGa('G-ABC123');
+    expect(dataLayerEntries()).toContainEqual(['config', 'G-ABC123', { send_page_view: false }]);
+  });
+
+  test('configures an existing host gtag without a page_view', () => {
+    const gtag = jest.fn();
+    (window as Record<string, unknown>).gtag = gtag;
+
+    initGa('G-ABC123');
+
+    expect(gtag).toHaveBeenCalledWith('config', 'G-ABC123', { send_page_view: false });
+  });
+
+  describe('with data-consent-required', () => {
+    const initGaPendingConsent = (id: string) => {
+      const { api, iframe } = ready({ 'data-consent-required': 'true' });
+      fromIframe(iframe, { type: 'WIDGET_GA_INIT', data: { gaMeasurementId: id } });
+      return { api, iframe };
+    };
+
+    test('does not load GA before consent is granted', () => {
+      initGaPendingConsent('G-ABC123');
+      expect(gaScript()).toBeNull();
+      expect((window as Record<string, unknown>).gtag).toBeUndefined();
+    });
+
+    test('loads GA once the host grants consent', () => {
+      const { api } = initGaPendingConsent('G-ABC123');
+
+      api.grantConsent();
+
+      expect(gaScript()).toBeInTheDocument();
+    });
+
+    test('stops reporting events after consent is revoked', () => {
+      const { api, iframe } = initGaPendingConsent('G-ABC123');
+      api.grantConsent();
+      api.revokeConsent();
+      const before = dataLayerEntries().length;
+
+      fromIframe(iframe, { type: 'WIDGET_SHOW', data: { source: 'widget' } });
+
+      expect(dataLayerEntries().length).toBe(before);
+    });
+  });
+
   test('reports widget events to GA once configured', () => {
     const iframe = initGa('G-ABC123');
     const dataLayer = (window as unknown as { dataLayer: unknown[] }).dataLayer ?? [];
@@ -270,5 +321,86 @@ describe('widget.js Google Analytics module', () => {
     expect(
       ((window as unknown as { dataLayer?: unknown[] }).dataLayer ?? []).length,
     ).toBeGreaterThanOrEqual(before);
+  });
+});
+
+describe('widget.js viewport re-layout', () => {
+  const setViewport = (width: number, height: number) => {
+    Object.defineProperty(window, 'innerWidth', { value: width, configurable: true, writable: true });
+    Object.defineProperty(window, 'innerHeight', { value: height, configurable: true, writable: true });
+  };
+  const setVisualViewport = (vv: { height: number; offsetTop: number } | undefined) => {
+    const target = vv ? Object.assign(new EventTarget(), vv) : undefined;
+    Object.defineProperty(window, 'visualViewport', { value: target, configurable: true, writable: true });
+    return target;
+  };
+  /** Flush the requestAnimationFrame the loader batches re-layouts into. */
+  const flushFrame = () => new Promise((r) => setTimeout(r, 20));
+
+  const openOnPhone = () => {
+    const { api, iframe } = ready();
+    const container = iframe.parentElement as HTMLElement;
+    fromIframe(iframe, { type: 'WIDGET_SHOW', data: {} });
+    fromIframe(iframe, {
+      type: 'WIDGET_RESIZE',
+      data: { width: 375, height: 640, position: 'bottom-right', edge_offset: 20 },
+    });
+    return { api, iframe, container };
+  };
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    document.head.innerHTML = '';
+    delete (window as Record<string, unknown>).CompaninWidget;
+    delete (window as Record<string, unknown>).CompaninWidgets;
+    setViewport(375, 700);
+    setVisualViewport(undefined);
+  });
+
+  test('clamps the open phone panel to the viewport height', () => {
+    const { container } = openOnPhone();
+    expect(container.style.maxHeight).toBe(`${700 - 20 - 8}px`);
+  });
+
+  test('re-clamps when the viewport changes after the last resize message', async () => {
+    const { container } = openOnPhone();
+
+    setViewport(700, 375); // rotated to landscape: no longer full-width
+    window.dispatchEvent(new Event('resize'));
+    await flushFrame();
+
+    expect(container.style.maxHeight).toBe(`${375 - 20}px`);
+  });
+
+  test('lifts the panel above the on-screen keyboard and fits it in what is visible', async () => {
+    const vv = setVisualViewport({ height: 700, offsetTop: 0 })!;
+    const { container } = openOnPhone();
+    // jsdom's CSS parser drops env()/max() values, so record what is assigned.
+    let bottom = '';
+    Object.defineProperty(container.style, 'bottom', {
+      configurable: true,
+      get: () => bottom,
+      set: (v: string) => { bottom = v; },
+    });
+
+    // Keyboard opens: the layout viewport stays 700, the visible part shrinks to 400.
+    Object.assign(vv, { height: 400 });
+    vv.dispatchEvent(new Event('resize'));
+    await flushFrame();
+
+    expect(container.style.maxHeight).toBe(`${400 - 20 - 8}px`);
+    expect(bottom).toBe('calc(max(20px, env(safe-area-inset-bottom, 0px)) + 300px)');
+  });
+
+  test('stops listening after destroy()', async () => {
+    const { api, container } = openOnPhone();
+    api.destroy();
+    const before = container.style.maxHeight;
+
+    setViewport(700, 300);
+    window.dispatchEvent(new Event('resize'));
+    await flushFrame();
+
+    expect(container.style.maxHeight).toBe(before);
   });
 });

@@ -121,12 +121,11 @@ const nextConfig = {
           "default-src 'self'",
           // Next inline bootstrap + 'wasm-unsafe-eval' for shiki's WASM highlighter.
           "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
-          // fonts.googleapis.com: stylesheet for customer-selected Google Fonts (injectGoogleFont).
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          // Google Fonts are proxied same-origin (lib/fontProxy.ts); no Google hosts.
+          "style-src 'self' 'unsafe-inline'",
           // Customer logos/avatars are arbitrary https URLs; data:/blob: for inline assets.
           "img-src 'self' data: blob: https:",
-          // fonts.gstatic.com: the .woff2 files referenced by the Google Fonts stylesheet above.
-          "font-src 'self' data: https://fonts.gstatic.com",
+          "font-src 'self' data:",
           // API base, telemetry, Sentry, GA all live on https; block http exfil.
           "connect-src 'self' https: wss:",
           "object-src 'none'",

@@ -77,6 +77,7 @@ import { useInstantSearch } from './hooks/useInstantSearch'
 import { DocSearchResults } from './components/DocSearchResults'
 import type { SearchHit } from './hooks/useInstantSearch'
 import { injectCustomAssetsFromConfig } from '../session/EmbedClient.utils'
+import { fontStylesheetUrl, isValidFontFamily } from '../../../lib/fontProxy'
 
 export { getLocalizedText, resolveLocalizedSuggestions }
 
@@ -453,13 +454,13 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
   const fontSource = widgetConfig?.data?.font_source;
   const fontFamily = widgetConfig?.data?.font_family;
   useEffect(() => {
-    if (fontSource !== 'google' || !fontFamily || typeof document === 'undefined') return;
+    if (fontSource !== 'google' || !isValidFontFamily(fontFamily) || typeof document === 'undefined') return;
     const id = `gf-${String(fontFamily).replace(/\s+/g, '-').toLowerCase()}`;
     if (document.getElementById(id)) return;
     const link = document.createElement('link');
     link.id = id;
     link.rel = 'stylesheet';
-    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@300;400;500;600;700&display=swap`;
+    link.href = fontStylesheetUrl(fontFamily);
     document.head.appendChild(link);
   }, [fontSource, fontFamily]);
 
