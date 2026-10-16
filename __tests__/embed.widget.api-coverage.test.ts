@@ -404,3 +404,34 @@ describe('widget.js viewport re-layout', () => {
     expect(container.style.maxHeight).toBe(before);
   });
 });
+
+describe('widget.js unsupported auto-open attributes', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    document.head.innerHTML = '';
+    delete (window as Record<string, unknown>).CompaninWidget;
+    delete (window as Record<string, unknown>).CompaninWidgets;
+  });
+
+  test.each(['data-auto-open-delay', 'data-auto-open-scroll-depth'])(
+    '%s warns and is no longer forwarded to the iframe',
+    (attr) => {
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const { iframe } = ready({ [attr]: '3000' });
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('data-auto-open-delay and data-auto-open-scroll-depth are not supported and have no effect'));
+      expect(iframe.src).not.toMatch(/autoOpen/);
+      // No pointer to a page-rule "open" action: it's reserved, not built.
+      expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('page rule'));
+      warn.mockRestore();
+    },
+  );
+
+  test('stays quiet when neither attribute is set', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    ready();
+    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('data-auto-open'));
+    warn.mockRestore();
+  });
+});

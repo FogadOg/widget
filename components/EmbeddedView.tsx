@@ -107,6 +107,7 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
     skeletonColor,
     agentBubbleBg,
     borderRadius,
+    panelShadow,
     fontStyles,
     widgetWidth,
     widgetHeight,
@@ -339,7 +340,7 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
                       }
                     : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '100%', height: '100%', maxWidth: `${widgetWidth}px`, maxHeight: `${widgetHeight}px` }),
                   zIndex: 999999,
-                  boxShadow: 'rgba(0, 0, 0, 0.2) 0px 10px 40px',
+                  boxShadow: panelShadow,
                   borderRadius: `${borderRadius}px`,
                   overflow: 'hidden',
                   backgroundColor: 'transparent',

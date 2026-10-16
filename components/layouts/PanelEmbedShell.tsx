@@ -112,6 +112,7 @@ export default function PanelEmbedShell(props: Props) {
     secondaryColor,
     agentBubbleBg,
     borderRadius,
+    panelShadow,
     fontStyles,
     widgetWidth,
     widgetHeight,
@@ -265,7 +266,7 @@ export default function PanelEmbedShell(props: Props) {
         zIndex: 999999,
         borderRadius: `${borderRadius}px`,
         overflow: 'hidden',
-        boxShadow: 'rgba(0, 0, 0, 0.2) 0px 10px 40px',
+        boxShadow: panelShadow,
         backgroundColor,
       }}
     >

@@ -85,7 +85,6 @@ import { useAttachments } from './hooks/useAttachments';
 import { useStreamingMessage } from './hooks/useStreamingMessage';
 import { useUnreadTracking } from './hooks/useUnreadTracking';
 import { useWidgetResize } from './hooks/useWidgetResize';
-import { useAutoOpen } from './hooks/useAutoOpen';
 import { useTeaserBubble } from './hooks/useTeaserBubble';
 import { useSessionManagement } from './hooks/useSessionManagement';
 import { useHeartbeat } from '../useHeartbeat';
@@ -1020,9 +1019,6 @@ export function useEmbedController(props: EmbedClientProps) {
   }, [initialPreviewConfig]);
 
   // handleStopStreaming is provided by useStreamingMessage hook above
-
-  // Auto-open is handled by useAutoOpen hook
-  useAutoOpen({ widgetConfig, setIsCollapsed });
 
   // Apply widget behavior settings when config is loaded
   useEffect(() => {

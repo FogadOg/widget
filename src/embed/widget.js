@@ -209,9 +209,14 @@ import {
     // dashboard config is used). Can also be changed at runtime via setTheme().
     var rawTheme = (script.getAttribute("data-theme") || srcParam('theme') || "").trim().toLowerCase();
     var theme = (rawTheme === 'light' || rawTheme === 'dark' || rawTheme === 'system') ? rawTheme : null;
-    // Proactive open triggers
-    const autoOpenDelay = parseInt(script.getAttribute("data-auto-open-delay") || '0', 10) || 0;
-    const autoOpenScrollDepth = parseFloat(script.getAttribute("data-auto-open-scroll-depth") || '0') || 0;
+    // data-auto-open-delay / data-auto-open-scroll-depth were parsed and
+    // forwarded here but never read by the widget, so they never did anything.
+    // Say so rather than fail silently. There is no replacement yet: page
+    // rules reserve an "open" action but only ever show a bubble.
+    if (script.hasAttribute("data-auto-open-delay") || script.hasAttribute("data-auto-open-scroll-depth")) {
+      console.warn(COMPANY_NAME + ' Widget: data-auto-open-delay and data-auto-open-scroll-depth are not ' +
+        'supported and have no effect.');
+    }
     // Strict origin mode: refuse to postMessage to '*' — only send to the known parent origin
     const strictOrigin = script.getAttribute("data-strict-origin") === "true";
     // Consent-required mode (LAUNCH-READINESS #16): when set, the widget will
@@ -542,9 +547,6 @@ import {
           console.warn(COMPANY_NAME + ' Widget: data-custom-css is deprecated; ' +
             'set custom_css on your widget configuration in the dashboard instead.');
         }
-        // Proactive trigger params
-        if (autoOpenDelay > 0) params.set('autoOpenDelay', String(autoOpenDelay));
-        if (autoOpenScrollDepth > 0) params.set('autoOpenScrollDepth', String(autoOpenScrollDepth));
         if (strictOrigin) params.set('strictOrigin', 'true');
         if (consentRequired) params.set('consentRequired', 'true');
         if (theme) params.set('theme', theme);

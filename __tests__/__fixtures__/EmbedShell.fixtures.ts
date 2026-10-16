@@ -19,7 +19,7 @@ export const defaultStyles = {
   textColor: '#000',
   borderRadius: 0,
   fontStyles: {},
-  getShadowStyle: () => '',
+  panelShadow: 'none',
   getButtonSizeClasses: () => ({ width: 'w-8', height: 'h-8', icon: 'w-4 h-4' }),
   widgetWidth: 300,
   widgetHeight: 500,

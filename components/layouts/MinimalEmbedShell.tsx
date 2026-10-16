@@ -118,6 +118,7 @@ export default function MinimalEmbedShell(props: Props) {
     borderRadius,
     fontStyles,
     getButtonSizeClasses,
+    panelShadow,
     widgetWidth,
     widgetHeight,
     messageBubbleRadius,
@@ -310,7 +311,7 @@ export default function MinimalEmbedShell(props: Props) {
         zIndex: 999999,
         borderRadius: `${borderRadius}px`,
         overflow: 'hidden',
-        boxShadow: 'rgba(0, 0, 0, 0.2) 0px 10px 40px',
+        boxShadow: panelShadow,
         backgroundColor,
       }}
     >

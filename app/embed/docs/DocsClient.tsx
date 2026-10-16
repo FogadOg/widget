@@ -428,6 +428,7 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     background: theme.panelBackground,
     backdropFilter: theme.backdropFilter,
     WebkitBackdropFilter: theme.backdropFilter,
+    boxShadow: theme.panelShadow,
     ...(isDocsPanel
       ? { width: layout.panelWidthPx, maxWidth: '100%', height: '100%' }
       : {

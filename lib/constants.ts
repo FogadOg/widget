@@ -61,12 +61,18 @@ export const BUTTON_SIZES = {
 } as const;
 
 // Shadow intensity map
+// Drop-shadow levels for the floating panel, tinted with `shadow_color`.
+// `md` is the default and matches the shadow every shell hard-coded until the
+// setting was wired up (rgba(0,0,0,0.2) 0 10px 40px), so `md` widgets look the
+// same. Widgets saved with sm/lg/xl/none — including those built from the
+// templates and presets that use them — rendered as `md` while the setting was
+// dead, and change to their chosen level from 0.1.7 onwards.
 export const SHADOW_INTENSITY = {
-  none: 'none',
-  sm: '0 1px 2px 0',
-  md: '0 4px 6px -1px',
-  lg: '0 10px 15px -3px',
-  xl: '0 20px 25px -5px',
+  none: null,
+  sm: { y: 4, blur: 16, alpha: 0.12 },
+  md: { y: 10, blur: 40, alpha: 0.2 },
+  lg: { y: 16, blur: 56, alpha: 0.26 },
+  xl: { y: 24, blur: 72, alpha: 0.32 },
 } as const;
 
 // Default colors

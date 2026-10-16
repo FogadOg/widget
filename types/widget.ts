@@ -228,11 +228,6 @@ export type WidgetConfig = {
   show_typing_indicator?: boolean;
   show_message_avatars?: boolean;
   show_unread_badge?: boolean;
-  // Proactive open triggers
-  /** Delay in milliseconds before automatically opening the widget (0 = disabled) */
-  auto_open_delay?: number;
-  /** Scroll depth percentage (0–100) that triggers auto-open (0 = disabled) */
-  auto_open_scroll_depth?: number;
   // Proactive teaser bubble
   /** Nudge message shown beside the launcher before the user opens the widget (locale → text) */
   teaser_message?: Record<string, string>;

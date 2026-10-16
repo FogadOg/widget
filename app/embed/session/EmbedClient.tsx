@@ -78,7 +78,6 @@ import { WidgetNotAuthorized } from '../../../components/WidgetNotAuthorized';
 import { useStreamingMessage } from './hooks/useStreamingMessage';
 import { useUnreadTracking } from './hooks/useUnreadTracking';
 import { useWidgetResize } from './hooks/useWidgetResize';
-import { useAutoOpen } from './hooks/useAutoOpen';
 import { useTeaserBubble } from './hooks/useTeaserBubble';
 import { useSessionManagement } from './hooks/useSessionManagement';
 import { useHeartbeat } from '../useHeartbeat';
@@ -87,6 +86,7 @@ import { useFeedbackManagement } from './hooks/useFeedbackManagement';
 import { useBootstrap } from './hooks/useBootstrap';
 
 import { useEmbedController } from './EmbedClient.controller';
+import { useWidgetStyles } from '../../../hooks/useWidgetStyles';
 
 export default function EmbedClient(props: EmbedClientProps) {
   const ctrl = useEmbedController(props);
@@ -168,6 +168,23 @@ export default function EmbedClient(props: EmbedClientProps) {
     showFeedbackDialogOverride,
     initialPreviewConfig,
   } = ctrl;
+  // Use a safe default config when widgetConfig hasn't loaded so tests and
+  // embedded consumers can still render a minimal shell during initialization.
+  // An embed-level themeOverride (data-theme / setTheme() / update({theme}))
+  // wins over the dashboard WidgetConfig.theme — see useWidgetStyles for how the
+  // resolved theme drives light/dark colors.
+  const baseWidgetConfig: WidgetConfig = widgetConfig || ({} as WidgetConfig);
+  // Precedence: the visitor's in-widget toggle wins, then the embed's data-theme
+  // / setTheme() override, then the dashboard config's own theme.
+  const effectiveTheme = visitorTheme ?? themeOverride ?? null;
+  const safeWidgetConfig: WidgetConfig = effectiveTheme
+    ? { ...baseWidgetConfig, theme: effectiveTheme }
+    : baseWidgetConfig;
+
+  // The feedback / handoff dialogs below share the shell's resolved styles, so
+  // they follow the same defaults, dark palette and 0-radius handling.
+  const dialogStyles = useWidgetStyles(safeWidgetConfig);
+
   if (fatalError) {
     // Origin violations show a visible error even in production — a blank widget
     // on an unauthorized domain is indistinguishable from a load failure for site
@@ -215,19 +232,6 @@ export default function EmbedClient(props: EmbedClientProps) {
       </>
     );
   }
-
-  // Use a safe default config when widgetConfig hasn't loaded so tests and
-  // embedded consumers can still render a minimal shell during initialization.
-  // An embed-level themeOverride (data-theme / setTheme() / update({theme}))
-  // wins over the dashboard WidgetConfig.theme — see useWidgetStyles for how the
-  // resolved theme drives light/dark colors.
-  const baseWidgetConfig: WidgetConfig = widgetConfig || ({} as WidgetConfig);
-  // Precedence: the visitor's in-widget toggle wins, then the embed's data-theme
-  // / setTheme() override, then the dashboard config's own theme.
-  const effectiveTheme = visitorTheme ?? themeOverride ?? null;
-  const safeWidgetConfig: WidgetConfig = effectiveTheme
-    ? { ...baseWidgetConfig, theme: effectiveTheme }
-    : baseWidgetConfig;
 
   if (!shouldRender || isBootstrapping) {
     // Still surface the overlay while bootstrapping so the handshake/auth
@@ -290,10 +294,10 @@ export default function EmbedClient(props: EmbedClientProps) {
             <FeedbackDialog
               sessionId={sessionId}
               authToken={authToken}
-              primaryColor={widgetConfig?.primary_color || '#111827'}
-              backgroundColor={widgetConfig?.background_color || '#ffffff'}
-              textColor={widgetConfig?.text_color || '#1f2937'}
-              borderRadius={widgetConfig?.border_radius || 8}
+              primaryColor={dialogStyles.primaryColor}
+              backgroundColor={dialogStyles.backgroundColor}
+              textColor={dialogStyles.textColor}
+              borderRadius={dialogStyles.borderRadius}
               onSubmit={handleFeedbackSubmit}
               onSkip={handleFeedbackSkip}
             />
@@ -304,10 +308,10 @@ export default function EmbedClient(props: EmbedClientProps) {
             <UnsureMessagesModal
               messages={unsureMessages}
               onClose={() => setShowUnsureModal(false)}
-              primaryColor={widgetConfig?.primary_color || '#111827'}
-              backgroundColor={widgetConfig?.background_color || '#ffffff'}
-              textColor={widgetConfig?.text_color || '#1f2937'}
-              borderRadius={widgetConfig?.border_radius || 8}
+              primaryColor={dialogStyles.primaryColor}
+              backgroundColor={dialogStyles.backgroundColor}
+              textColor={dialogStyles.textColor}
+              borderRadius={dialogStyles.borderRadius}
             />
           ) : undefined
         }
@@ -332,10 +336,10 @@ export default function EmbedClient(props: EmbedClientProps) {
               reason={captureOffer.reason}
               onSubmit={handleCaptureSubmit}
               onDismiss={handleCaptureDismiss}
-              primaryColor={widgetConfig?.primary_color || '#111827'}
-              backgroundColor={widgetConfig?.background_color || '#ffffff'}
-              textColor={widgetConfig?.text_color || '#1f2937'}
-              borderRadius={widgetConfig?.border_radius || 8}
+              primaryColor={dialogStyles.primaryColor}
+              backgroundColor={dialogStyles.backgroundColor}
+              textColor={dialogStyles.textColor}
+              borderRadius={dialogStyles.borderRadius}
             />
           ) : undefined
         }
@@ -364,10 +368,10 @@ export default function EmbedClient(props: EmbedClientProps) {
               handoffError: String(t.handoffError),
               dismiss: String(t.dismiss),
             }}
-            primaryColor={widgetConfig?.primary_color || '#111827'}
-            backgroundColor={widgetConfig?.background_color || '#ffffff'}
-            textColor={widgetConfig?.text_color || '#1f2937'}
-            borderRadius={widgetConfig?.border_radius || 8}
+            primaryColor={dialogStyles.primaryColor}
+            backgroundColor={dialogStyles.backgroundColor}
+            textColor={dialogStyles.textColor}
+            borderRadius={dialogStyles.borderRadius}
             onSubmit={async (name, email, handoffMessage) => {
               if (!supportTicketsEnabled) return;
               await createSupportTicket(authToken ?? '', {

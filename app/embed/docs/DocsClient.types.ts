@@ -29,6 +29,8 @@ export type DocsTheme = {
   panelBackground: string;
   /** backdrop-filter for glassmorphism/frosted effects (undefined when 'none'). */
   backdropFilter?: string;
+  /** Panel drop shadow from `shadow_intensity` / `shadow_color` ('none' when off). */
+  panelShadow: string;
   /** Heading text color. */
   title: string;
   /** Muted/secondary text color. */

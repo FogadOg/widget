@@ -1,12 +1,12 @@
 {
   "docs-widget": {
-    "version": "0.1.6",
-    "file": "/docs-widget-0.1.6.js",
-    "integrity": "sha384-vtzog/qSa8Q0xvYKQrEra42JQ9hNcvYJPo/bLmVd8EhT4i1reMgkiVlRAANF8zPE"
+    "version": "0.1.7",
+    "file": "/docs-widget-0.1.7.js",
+    "integrity": "sha384-A73ZY9o2+4slZVJaWjy3sY3joOa3z7XFwXWbGg0mVXOVe8FANQED5m8cHY9H5ery"
   },
   "widget": {
-    "version": "0.1.6",
-    "file": "/widget-0.1.6.js",
-    "integrity": "sha384-AtomLZHd6NGYuEQXwB9Ur2iL60dNKbB8JZzBV83sgCj4AuyDpQPlivFkmbwpdEJI"
+    "version": "0.1.7",
+    "file": "/widget-0.1.7.js",
+    "integrity": "sha384-Jm2WS1zi8UcPlkxt//5oOyYvtPGQ6BDbFXD/sQvJgSXqe6VRUnl4POaRh5kqwoEl"
   }
 }

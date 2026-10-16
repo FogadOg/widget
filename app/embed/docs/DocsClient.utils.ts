@@ -113,6 +113,7 @@ type DocsStyleInput = {
   agentBubbleBg: string;
   borderRadius: number;
   fontStyles: { fontFamily: string; fontSize: string; fontWeight: string };
+  panelShadow: string;
   visualEffectStyles: { backdropFilter?: string; WebkitBackdropFilter?: string; backgroundOpacityOverride?: number };
 };
 
@@ -161,6 +162,7 @@ export function buildDocsTheme(s: DocsStyleInput): DocsTheme {
     vars,
     panelBackground,
     backdropFilter: s.visualEffectStyles.backdropFilter,
+    panelShadow: s.panelShadow,
     title: s.textColor,
     subtitle: s.mutedTextColor,
     border: s.subtleBorderColor,

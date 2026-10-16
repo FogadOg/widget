@@ -292,6 +292,7 @@ jest.mock('../components/EmbedShell', () => {
 });
 jest.mock('../components/FeedbackDialog', () => {
   return function MockFeedbackDialog(props: any) {
+    (global as any).__lastFeedbackDialogProps = props;
     // Render feedback dialog when props are provided (EmbedClient passes it as a node)
     return (
       <div data-testid="feedback-dialog">
@@ -2439,6 +2440,42 @@ describe('EmbedClient Component', () => {
     });
   });
   describe('Feedback Handlers', () => {
+    test('styles the feedback dialog from the shared widget styles', async () => {
+      // Previously the dialogs read the raw light-mode config with their own
+      // fallbacks, so a 0 radius became 8 and dark mode was ignored.
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/widget-config/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              status: 'success',
+              data: {
+                id: 'cfg-dialog', widget_type: 'chat', theme: 'dark', border_radius: 0,
+                primary_color: '#ff0000', background_color: '#ffffff', text_color: '#111111',
+              },
+            }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ status: 'success', data: { name: 'Test', session_id: 's-dialog', messages: [] } }),
+          text: async () => '',
+        });
+      });
+      (global as any).__lastFeedbackDialogProps = undefined;
+
+      render(<EmbedClient {...defaultProps} startOpen={true} showFeedbackDialogOverride={true} />);
+
+      await waitFor(() => {
+        expect((global as any).__lastFeedbackDialogProps?.borderRadius).toBe(0);
+      });
+      const props = (global as any).__lastFeedbackDialogProps;
+      expect(props.primaryColor).toBe('#ff0000');
+      // Dark theme with a light configured background derives the dark surface.
+      expect(props.backgroundColor).toBe('#0f172a');
+    });
+
     test('handleFeedbackSubmit sets state and stores flag in localStorage', async () => {
       const { container } = render(
         <EmbedClient {...defaultProps} startOpen={true} showFeedbackDialogOverride={true} />

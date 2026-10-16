@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { useWidgetStyles } from '../../hooks/useWidgetStyles';
 import type { WidgetConfig } from '../../types/widget';
+import { FALLBACK_FONT_STACK } from '../../lib/fontStack';
 
 const minimalConfig = {
   primary_color: '#112233',
@@ -29,7 +30,7 @@ describe('useWidgetStyles', () => {
     const { result } = renderHook(() => useWidgetStyles(minimalConfig as unknown as WidgetConfig));
     expect(result.current.primaryColor).toBe('#112233');
     expect(result.current.showTimestamps).toBe(false);
-    expect(result.current.fontStyles.fontFamily).toBe('Arial');
+    expect(result.current.fontStyles.fontFamily).toBe(`"Arial", ${FALLBACK_FONT_STACK}`);
     expect(result.current.getButtonSizeClasses.width).toBe('w-16');
   });
 
@@ -157,5 +158,51 @@ describe('useWidgetStyles — visual effect styles', () => {
     const glassBlur = parseInt(glass.backdropFilter!.replace(/[^\d]/g, ''), 10);
     const frostedBlur = parseInt(frosted.backdropFilter!.replace(/[^\d]/g, ''), 10);
     expect(frostedBlur).toBeGreaterThan(glassBlur);
+  });
+
+  describe('font family', () => {
+    it('gives the default font a fallback so it never renders as the browser serif', () => {
+      const { result } = renderHook(() => useWidgetStyles(undefined));
+      expect(result.current.fontStyles.fontFamily).toBe(`"Inter", ${FALLBACK_FONT_STACK}`);
+    });
+  });
+
+  describe('zero values', () => {
+    it('keeps a 0 corner radius instead of falling back to the default', () => {
+      const { result } = renderHook(() =>
+        useWidgetStyles({ border_radius: 0, message_bubble_radius: 0, button_border_radius: 0 } as unknown as WidgetConfig),
+      );
+      expect(result.current.borderRadius).toBe(0);
+      expect(result.current.messageBubbleRadius).toBe(0);
+      expect(result.current.buttonBorderRadius).toBe(0);
+    });
+
+    it('lets the part radii inherit the panel radius when unset', () => {
+      const { result } = renderHook(() => useWidgetStyles({ border_radius: 14 } as unknown as WidgetConfig));
+      expect(result.current.messageBubbleRadius).toBe(14);
+      expect(result.current.buttonBorderRadius).toBe(14);
+    });
+  });
+
+  describe('panel shadow', () => {
+    const shadowFor = (config: Record<string, unknown>) =>
+      renderHook(() => useWidgetStyles(config as unknown as WidgetConfig)).result.current.panelShadow;
+
+    it('defaults to the shadow the shells used to hard-code', () => {
+      expect(shadowFor({})).toBe('0 10px 40px rgba(0, 0, 0, 0.2)');
+    });
+
+    it('is off for intensity none', () => {
+      expect(shadowFor({ shadow_intensity: 'none' })).toBe('none');
+    });
+
+    it('grows with intensity and is tinted with the shadow colour', () => {
+      expect(shadowFor({ shadow_intensity: 'sm', shadow_color: '#112233' })).toBe('0 4px 16px rgba(17, 34, 51, 0.12)');
+      expect(shadowFor({ shadow_intensity: 'xl', shadow_color: '#112233' })).toBe('0 24px 72px rgba(17, 34, 51, 0.32)');
+    });
+
+    it('treats an unknown intensity as the default', () => {
+      expect(shadowFor({ shadow_intensity: 'huge' })).toBe('0 10px 40px rgba(0, 0, 0, 0.2)');
+    });
   });
 });

@@ -2,6 +2,7 @@ import { useMemo, useSyncExternalStore } from 'react';
 import { DEFAULTS, DEFAULT_COLORS, DARK_DEFAULTS, SHADOW_INTENSITY, SIZE_PRESETS } from '../lib/constants';
 import type { WidgetConfig } from '../types/widget';
 import { normalizeHexColor, getReadableTextColor, getRelativeLuminance, withAlpha, mutedOn, mixHex } from '../lib/colors';
+import { buildFontStack } from '../lib/fontStack';
 
 const SPACING_MAP = {
   compact:     { padding: '8px',  gap: '6px'  },
@@ -106,8 +107,10 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
   // surface in both light and dark themes (previously computed inline in EmbedShell).
   const agentBubbleBg = isLightBackground ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)';
 
-  const borderRadius = widgetConfig?.border_radius || DEFAULTS.BORDER_RADIUS;
-  const fontFamily = widgetConfig?.font_family || DEFAULTS.FONT_FAMILY;
+  // `??`, not `||`: 0 is a real choice here (square corners), and the
+  // dashboard sliders all go down to it.
+  const borderRadius = widgetConfig?.border_radius ?? DEFAULTS.BORDER_RADIUS;
+  const fontFamily = buildFontStack(widgetConfig?.font_family || DEFAULTS.FONT_FAMILY);
   const fontSize = widgetConfig?.font_size || DEFAULTS.FONT_SIZE;
   const fontWeight = widgetConfig?.font_weight || DEFAULTS.FONT_WEIGHT;
   const shadowIntensity = widgetConfig?.shadow_intensity || DEFAULTS.SHADOW_INTENSITY;
@@ -118,8 +121,8 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
   const widgetWidth = preset ? preset.w : DEFAULTS.WIDGET_WIDTH;
   const widgetHeight = preset ? preset.h : DEFAULTS.WIDGET_HEIGHT;
   const buttonSize = widgetConfig?.button_size || DEFAULTS.BUTTON_SIZE;
-  const messageBubbleRadius = widgetConfig?.message_bubble_radius || borderRadius;
-  const buttonBorderRadius = widgetConfig?.button_border_radius || borderRadius;
+  const messageBubbleRadius = widgetConfig?.message_bubble_radius ?? borderRadius;
+  const buttonBorderRadius = widgetConfig?.button_border_radius ?? borderRadius;
   const backgroundOpacity = widgetConfig?.opacity || DEFAULTS.OPACITY;
   const showTimestamps = widgetConfig?.show_timestamps ?? true;
   const showTypingIndicator = widgetConfig?.show_typing_indicator ?? true;
@@ -153,9 +156,15 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
     return { backdropFilter: undefined, WebkitBackdropFilter: undefined, backgroundOpacityOverride: undefined };
   }, [visualEffect]);
 
-  const getShadowStyle = useMemo(() => {
-    const shadowValue = SHADOW_INTENSITY[shadowIntensity as keyof typeof SHADOW_INTENSITY] || SHADOW_INTENSITY.md;
-    return shadowValue !== 'none' ? `${shadowValue} ${shadowColor}40` : 'none';
+  // The open panel's drop shadow (every layout applies it). `md` — the model
+  // default — reproduces the shadow the shells used to hard-code.
+  const panelShadow = useMemo(() => {
+    // `in`, not `??`: 'none' maps to null, which must not fall back to md.
+    const level = Object.prototype.hasOwnProperty.call(SHADOW_INTENSITY, shadowIntensity)
+      ? SHADOW_INTENSITY[shadowIntensity as keyof typeof SHADOW_INTENSITY]
+      : SHADOW_INTENSITY.md;
+    if (!level) return 'none';
+    return `0 ${level.y}px ${level.blur}px ${withAlpha(shadowColor, level.alpha)}`;
   }, [shadowIntensity, shadowColor]);
 
   const getButtonSizeClasses = useMemo(() => {
@@ -191,7 +200,7 @@ export function useWidgetStyles(widgetConfig?: WidgetConfig) {
     isDarkTheme,
     borderRadius,
     fontStyles,
-    getShadowStyle,
+    panelShadow,
     getButtonSizeClasses,
     widgetWidth,
     widgetHeight,

@@ -129,7 +129,7 @@ export function PreviewModeWidget({
     {/* Sized, floating panel — reflects the size preset + panel side so the
         "Widget layout styles" presets visibly change the preview (parity with
         the chat widget preview). The /preview page's gradient shows around it. */}
-    <div className={layout.openAnimationClass || undefined} style={{ ...theme.vars, width: layout.showRail ? `${layout.panelWidthPx}px` : `${layout.widthVw}vw`, height: layout.showRail ? '100%' : `${layout.heightVh}vh`, maxWidth: '100%', maxHeight: '100%', display: 'flex', flexDirection: layout.showRail ? 'row' : 'column', background: theme.panelBackground, backdropFilter: theme.backdropFilter, WebkitBackdropFilter: theme.backdropFilter, overflow: 'hidden', borderRadius: layout.showRail ? 0 : 'var(--radius)', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+    <div className={layout.openAnimationClass || undefined} style={{ ...theme.vars, width: layout.showRail ? `${layout.panelWidthPx}px` : `${layout.widthVw}vw`, height: layout.showRail ? '100%' : `${layout.heightVh}vh`, maxWidth: '100%', maxHeight: '100%', display: 'flex', flexDirection: layout.showRail ? 'row' : 'column', background: theme.panelBackground, backdropFilter: theme.backdropFilter, WebkitBackdropFilter: theme.backdropFilter, overflow: 'hidden', borderRadius: layout.showRail ? 0 : 'var(--radius)', boxShadow: theme.panelShadow }}>
       <div
         aria-live="polite" aria-atomic="true"
         style={{ position: 'absolute', left: '-9999px', height: '1px', width: '1px', overflow: 'hidden' }}
