@@ -49,10 +49,21 @@ function buildCsp(nonce: string, pathname: string): string {
   const directives: Record<string, string> = {
     'default-src': "'self'",
     'script-src': `'self' 'nonce-${nonce}'${unsafeEval}`,
-    'style-src': "'self' 'unsafe-inline'",
+    // fonts.googleapis.com: the stylesheet for a customer-selected Google Font,
+    // injected at runtime by injectGoogleFont (app/embed/session/
+    // EmbedClient.utils.ts and app/embed/docs/DocsClient.tsx). Without it the
+    // <link> is refused and the widget silently falls back to the default face
+    // — the feature was dead in PRODUCTION, since nothing here is dev-gated.
+    // next.config.js already allowed both origins, but THIS is the policy that
+    // actually ships (it carries the nonce and report-uri), so the two have to
+    // agree. Verified live: the CSP violation this fixes was observable on the
+    // dashboard's widget preview.
+    'style-src': "'self' 'unsafe-inline' https://fonts.googleapis.com",
     'connect-src': `'self'${extraApiOrigin}`,
     'img-src': `'self' data: https:${extraImgSrc}`,
-    'font-src': "'self' data:",
+    // fonts.gstatic.com: the .woff2 files the stylesheet above references.
+    // Allowing only style-src would still leave the font blocked at fetch time.
+    'font-src': "'self' data: https://fonts.gstatic.com",
     'object-src': "'none'",
     'base-uri': "'self'",
     'form-action': "'self'",
