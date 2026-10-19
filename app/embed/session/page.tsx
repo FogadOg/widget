@@ -3,10 +3,13 @@ import ErrorBoundary from '../../../components/ErrorBoundary';
 import { getTranslations } from '../../../lib/i18n';
 import {
   getEmbedTokenSecretsFromEnv,
+  decodeJwtPayloadUnsafe,
   isJwtLikeClientId,
+  parseClientIdFromClaims,
   shouldEnforceEmbedTokenValidation,
   verifyEmbedToken,
 } from '../../../lib/embedToken';
+import { parseThemeOverride } from '../../../lib/embedPageParams';
 import { renderSessionEmbedErrorCard } from './renderEmbedErrorCard';
 import { resolveInstallKeyServer } from '../../../lib/resolveInstallKey';
 
@@ -27,41 +30,6 @@ type Props = {
     theme?: string;
   }>;
 };
-
-const THEME_VALUES = ['light', 'dark', 'system'] as const;
-type ThemeOverride = (typeof THEME_VALUES)[number];
-
-function parseThemeOverride(raw: string | undefined): ThemeOverride | undefined {
-  return raw && (THEME_VALUES as readonly string[]).includes(raw)
-    ? (raw as ThemeOverride)
-    : undefined;
-}
-
-function fromBase64Url(input: string): Buffer {
-  const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
-  const padding = normalized.length % 4;
-  const padded = padding === 0 ? normalized : normalized + '='.repeat(4 - padding);
-  return Buffer.from(padded, 'base64');
-}
-
-function parseClientIdFromClaims(claims: Record<string, unknown> | null | undefined): string | null {
-  if (!claims) return null;
-  const candidates = [claims.sub, claims.client_id, claims.clientId];
-  for (const value of candidates) {
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return null;
-}
-
-function decodeJwtPayloadUnsafe(token: string): Record<string, unknown> | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3 || !parts[1]) return null;
-    return JSON.parse(fromBase64Url(parts[1]).toString('utf8')) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
 
 export default async function EmbedPage({ searchParams }: Props) {
   const params = await searchParams;

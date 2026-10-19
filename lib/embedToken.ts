@@ -146,3 +146,19 @@ export function isJwtLikeClientId(clientId: string): boolean {
   const parts = clientId.split('.');
   return parts.length === 3 && parts.every((part) => part.length > 0);
 }
+
+/** Decodes a JWT payload WITHOUT verifying its signature — only for reading claims after verification is skipped or has failed. */
+export function decodeJwtPayloadUnsafe(token: string): Record<string, unknown> | null {
+  const parts = token.split('.');
+  if (parts.length !== 3 || !parts[1]) return null;
+  return parseJson<Record<string, unknown>>(fromBase64Url(parts[1]));
+}
+
+export function parseClientIdFromClaims(claims: Record<string, unknown> | null | undefined): string | null {
+  if (!claims) return null;
+  const candidates = [claims.sub, claims.client_id, claims.clientId];
+  for (const value of candidates) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return null;
+}

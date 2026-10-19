@@ -40,7 +40,10 @@ export function PoweredByFooter({
 
   return (
     <div
-      className="p-2 text-center text-xs flex items-center justify-center gap-2 flex-wrap"
+      // No "·" between the two items: as its own flex item it was stranded at
+      // the end of the first line whenever the row wrapped (it does at ~350px).
+      // The gap separates them on one line and stacks them cleanly when not.
+      className="p-2 text-center text-xs flex items-center justify-center gap-x-3 gap-y-1 flex-wrap"
       style={{ color: mutedTextColor }}
     >
       <span className="inline-flex items-center gap-1.5" title={gdprLabel}>
@@ -76,7 +79,6 @@ export function PoweredByFooter({
         </span>
         <span>{gdprLabel}</span>
       </span>
-      <span aria-hidden>·</span>
       <span>
         {/* The separating space is rendered here, not carried as trailing
             whitespace in the string. Only `en` had it ("Powered by "), so every

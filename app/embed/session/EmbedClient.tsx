@@ -164,6 +164,7 @@ export default function EmbedClient(props: EmbedClientProps) {
     handleRichAction,
     toggleCollapsed,
     isDebug,
+    canHideErrorsFromVisitors,
     isPersistent,
     showFeedbackDialogOverride,
     initialPreviewConfig,
@@ -186,10 +187,14 @@ export default function EmbedClient(props: EmbedClientProps) {
   const dialogStyles = useWidgetStyles(safeWidgetConfig);
 
   if (fatalError) {
-    // Origin violations show a visible error even in production — a blank widget
-    // on an unauthorized domain is indistinguishable from a load failure for site
-    // owners. All other fatal errors stay silent (parent got AUTH_FAILURE).
-    if (authErrorCode === WidgetErrorCode.ORIGIN_NOT_ALLOWED) {
+    // Origin violations are admin-facing: the owner learns of them from the
+    // console, the loader's 'error' event and the dashboard's install status,
+    // so visitors see nothing. Loaders older than HIDDEN_ERROR_LOADER_VERSION
+    // can't keep their container hidden, though: they still show it, and an
+    // empty iframe there is an invisible box that swallows clicks on the host
+    // page. Those keep the visible card, as does debug mode (folded into
+    // canHideErrorsFromVisitors).
+    if (authErrorCode === WidgetErrorCode.ORIGIN_NOT_ALLOWED && !canHideErrorsFromVisitors) {
       return <WidgetNotAuthorized />;
     }
     // In production integrations, silently render nothing — a broken widget

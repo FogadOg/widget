@@ -84,6 +84,7 @@ jest.mock('../components/EmbedShell', () => {
           onChange={(e) => props.setInput(e.target.value)}
         />
         <div data-testid="messages">{props.messages.length} messages</div>
+        <div data-testid="error">{props.error ?? ''}</div>
         <div data-testid="unread-count">{props.unreadCount}</div>
         <div data-testid="collapsed-state">{props.isCollapsed ? 'collapsed' : 'expanded'}</div>
         <div data-testid="typing-state">{props.isTyping ? 'typing' : 'idle'}</div>
@@ -239,6 +240,19 @@ jest.mock('../components/EmbedShell', () => {
           })}
         >
           Interaction AI Prompt
+        </button>
+        {/* A hidden prompt and no label: the bubble falls back to the authored text. */}
+        <button
+          data-testid="interaction-ai-prompt-nolabel-btn"
+          onClick={() => props.onInteractionButtonClick && props.onInteractionButtonClick({
+            action: 'text',
+            answer_mode: 'ai',
+            ai_prompt: 'Explain shipping times and costs in detail',
+            response: { text: { en: 'Shipping info' } },
+            label: { en: '' }
+          })}
+        >
+          Interaction AI Prompt No Label
         </button>
         {/* Manual button pointing at a flow that is itself in AI mode. */}
         <button
@@ -1107,6 +1121,42 @@ describe('EmbedClient Component', () => {
         ([msg]) => msg && msg.type === 'WIDGET_ERROR' && msg.data && msg.data.code === 'origin_not_allowed',
       );
       expect(widgetErrorCall).toBeTruthy();
+    });
+    describe('origin_not_allowed and the loader version', () => {
+      const setUp = () => {
+        const useWidgetAuth = require('../hooks/useWidgetAuth').useWidgetAuth;
+        useWidgetAuth.mockReturnValue({
+          getAuthToken: jest.fn().mockResolvedValue(null),
+          authToken: null,
+          authError: 'This website origin is not allowed for this widget.',
+          authErrorCode: 1004,
+        });
+        mockFetch.mockImplementation(() => Promise.reject(new Error('No fetch')));
+        const postMessageSpy = jest.fn();
+        Object.defineProperty(window, 'parent', { value: { postMessage: postMessageSpy }, writable: true });
+        return postMessageSpy;
+      };
+      const originError = (spy: jest.Mock) => spy.mock.calls.find(
+        ([msg]) => msg && msg.type === 'WIDGET_ERROR' && msg.data && msg.data.code === 'origin_not_allowed',
+      )?.[0];
+
+      test('a loader that can hide it gets hidden:true and visitors see no card', async () => {
+        const spy = setUp();
+        const { container } = render(<EmbedClient {...defaultProps} strictOrigin={true} loaderVersion="0.1.8" />);
+        await act(async () => { await new Promise(resolve => setTimeout(resolve, 100)); });
+        expect(originError(spy).data).toEqual(expect.objectContaining({ hidden: true }));
+        expect(originError(spy).data.source).toBeUndefined();
+        expect(container.querySelector('svg rect')).toBeNull(); // the card's lock icon
+      });
+
+      test.each([['0.1.7'], [undefined]])('loader %p keeps the visible card, since it cannot hide its container', async (loaderVersion) => {
+        const spy = setUp();
+        const { container } = render(<EmbedClient {...defaultProps} strictOrigin={true} loaderVersion={loaderVersion} />);
+        await act(async () => { await new Promise(resolve => setTimeout(resolve, 100)); });
+        expect(originError(spy).data).toEqual(expect.objectContaining({ source: 'embed-error' }));
+        expect(originError(spy).data.hidden).toBeUndefined();
+        expect(container.querySelector('svg rect')).not.toBeNull();
+      });
     });
     test('renders EmbedShell when config loaded and shouldRender true', async () => {
       const { getByTestId } = render(<EmbedClient {...defaultProps} />);
@@ -4734,8 +4784,44 @@ describe('EmbedClient Component', () => {
         const bodies = sentMessageBodies();
         expect(bodies).toHaveLength(1);
         expect(bodies[0].content).toBe('Explain shipping times and costs in detail');
+        // The transcript shows what the visitor clicked, not the hidden prompt.
+        expect(bodies[0].metadata).toEqual({ display_text: 'Shipping' });
         // Authored text left over from before the switch to AI must not render.
         expect(screen.queryByTestId('flow-responses')).not.toBeInTheDocument();
+      });
+
+      test('with no label, display_text is the text the bubble actually showed', async () => {
+        // Sending the empty label left display_text unset, so a restored
+        // transcript showed the hidden ai_prompt instead of the bubble's text.
+        mockFetch.mockImplementation(aiConfigFetch());
+        await renderAndSettle();
+        await clickAndSettle('interaction-ai-prompt-nolabel-btn');
+
+        const bodies = sentMessageBodies();
+        expect(bodies).toHaveLength(1);
+        expect(bodies[0].content).toBe('Explain shipping times and costs in detail');
+        expect(bodies[0].metadata).toEqual({ display_text: 'Shipping info' });
+      });
+
+      test('a failed AI send shows an error instead of failing silently', async () => {
+        const base = aiConfigFetch();
+        mockFetch.mockImplementation((url: string, init?: any) => {
+          if (url.includes('/messages') && init?.method === 'POST') {
+            // 429 is not retried, so the failure surfaces without backoff waits.
+            return Promise.resolve({
+              ok: false,
+              status: 429,
+              headers: { get: () => null },
+              json: async () => ({ status: 'error', detail: 'slow down' }),
+            });
+          }
+          return base(url);
+        });
+        await renderAndSettle();
+        await clickAndSettle('interaction-ai-btn');
+
+        expect(sentMessageBodies()).toHaveLength(1);
+        expect(screen.getByTestId('error').textContent).not.toBe('');
       });
 
       test('a manual button pointing at an AI flow asks the agent, not the flow', async () => {

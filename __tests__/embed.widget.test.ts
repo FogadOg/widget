@@ -628,3 +628,63 @@ describe('transient WIDGET_ERROR retry', () => {
     api.destroy();
   });
 });
+// ---------------------------------------------------------------------------
+// 9. hidden WIDGET_ERROR — an error the iframe keeps away from visitors
+// ---------------------------------------------------------------------------
+describe('hidden WIDGET_ERROR', () => {
+  const HIDDEN = { type: 'WIDGET_ERROR', data: { code: 'origin_not_allowed', hidden: true } };
+  let consoleErrorSpy: jest.SpyInstance;
+  beforeEach(() => {
+    jest.useFakeTimers();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+    jest.useRealTimers();
+  });
+
+  it('keeps the container hidden, even after the load fallback would fire', () => {
+    const { api, iframe } = loadWidget(VALID);
+    mockCW(iframe!);
+    const cont = iframe!.parentElement as HTMLElement;
+    iframe!.onload!(new Event('load')); // arms the 1.2s visibility fallback
+    fromIframe(iframe!, HIDDEN);
+    jest.advanceTimersByTime(2000);
+    // Without cancelling the fallback, an empty iframe showed here: an
+    // invisible box over the host page that swallowed its clicks.
+    expect(cont.style.display).toBe('none');
+    api.destroy();
+  });
+
+  it('still emits error and authFailure for the site owner', () => {
+    const { api, iframe } = loadWidget(VALID);
+    mockCW(iframe!);
+    const onError = jest.fn();
+    api.on('error', onError);
+    fromIframe(iframe!, { type: 'WIDGET_ERROR', data: { code: 'auth_origin_not_allowed', hidden: true } });
+    jest.advanceTimersByTime(0);
+    expect(onError).toHaveBeenCalledTimes(1);
+    api.destroy();
+  });
+
+  it('a WIDGET_RESIZE hide also cancels the load fallback', () => {
+    const { api, iframe } = loadWidget(VALID);
+    mockCW(iframe!);
+    const cont = iframe!.parentElement as HTMLElement;
+    iframe!.onload!(new Event('load'));
+    fromIframe(iframe!, { type: 'WIDGET_RESIZE', data: { hide: true } });
+    jest.advanceTimersByTime(2000);
+    expect(cont.style.display).toBe('none');
+    api.destroy();
+  });
+
+  it('regression: without hidden, the load fallback still surfaces a silent iframe', () => {
+    const { api, iframe } = loadWidget(VALID);
+    mockCW(iframe!);
+    const cont = iframe!.parentElement as HTMLElement;
+    iframe!.onload!(new Event('load'));
+    jest.advanceTimersByTime(2000);
+    expect(cont.style.display).toBe('block');
+    api.destroy();
+  });
+});

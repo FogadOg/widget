@@ -1903,6 +1903,12 @@ import {
                 // recovered, so error-card suppression no longer applies.
                 transientRetryPending = false;
                 if (data?.hide) {
+                  // A deliberate hide is an answer; don't let the load fallback
+                  // re-show the container as if no signal had arrived.
+                  if (visibilityFallbackTimeout) {
+                    clearTimeout(visibilityFallbackTimeout);
+                    visibilityFallbackTimeout = null;
+                  }
                   allowDisplay = false;
                   container.style.display = "none";
                   break;
@@ -2046,7 +2052,19 @@ import {
                 }
                 transientRetryPending = false;
                 logError("Widget reported an error", data);
-                if ((data && data.source === 'embed-error') || isCompactContainer()) {
+                if (data && data.hidden === true) {
+                  // The iframe chose not to show this error to visitors (e.g. an
+                  // origin that isn't allowed). Keep the container hidden, and
+                  // cancel the load fallback too: it would otherwise show an
+                  // empty iframe 1.2s later, an invisible box over the host page
+                  // that swallows its clicks. The event below still fires.
+                  if (visibilityFallbackTimeout) {
+                    clearTimeout(visibilityFallbackTimeout);
+                    visibilityFallbackTimeout = null;
+                  }
+                  allowDisplay = false;
+                  container.style.display = 'none';
+                } else if ((data && data.source === 'embed-error') || isCompactContainer()) {
                   applyErrorContainerLayout(data);
                 }
                 emitEvent('error', data, { rawType: type });

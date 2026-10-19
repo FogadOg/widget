@@ -428,7 +428,9 @@ export default function DocsClient({ clientId, agentId, configId, locale: initia
     background: theme.panelBackground,
     backdropFilter: theme.backdropFilter,
     WebkitBackdropFilter: theme.backdropFilter,
-    boxShadow: theme.panelShadow,
+    // The docked panel fills its frame, whose edge clips any shadow, so
+    // "Extra large" rendered the same as "None". Only the modal can show one.
+    boxShadow: isDocsPanel ? undefined : theme.panelShadow,
     ...(isDocsPanel
       ? { width: layout.panelWidthPx, maxWidth: '100%', height: '100%' }
       : {

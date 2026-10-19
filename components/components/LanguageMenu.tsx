@@ -20,6 +20,14 @@ type LanguageMenuProps = {
    *  - 'subtle': bordered/transparent, for a light panel (the docs widget).
    */
   variant?: 'solid' | 'subtle';
+  /**
+   * Show the language code ("EN") instead of flag + endonym. For headers that
+   * share a narrow row with a title: flag + name + chevron took ~110px of a
+   * 390px header and wrapped the title onto two lines. The code still names the
+   * language (a flag names a country); the menu and the accessible label keep
+   * the full name.
+   */
+  compact?: boolean;
   // Config-driven colors so the control matches the customer's branding
   // (both widgets style from config, not a shared token stylesheet).
   headerTextColor: string;
@@ -139,6 +147,7 @@ export function LanguageMenu({
   onChange,
   label,
   variant = 'solid',
+  compact = false,
   headerTextColor,
   secondaryColor,
   primaryColor,
@@ -318,7 +327,7 @@ export function LanguageMenu({
         }}
         className={`min-h-11 px-3 flex items-center gap-1.5 hover:opacity-90 ${FOCUS_RING}`}
       >
-        <LanguageGlyph locale={locale} />
+        {!compact && <LanguageGlyph locale={locale} />}
         {/* The endonym, not just a flag. The trigger used to render the flag
             alone with alt="" and aria-hidden, so a screen-reader user got
             nothing from it and anyone whose language had no flag asset saw a
@@ -332,7 +341,7 @@ export function LanguageMenu({
             textOverflow: 'ellipsis',
           }}
         >
-          {nativeName(locale)}
+          {compact ? locale.split('-')[0].toUpperCase() : nativeName(locale)}
         </span>
         <svg
           width="12"

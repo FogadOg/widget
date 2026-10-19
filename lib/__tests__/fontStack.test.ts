@@ -28,3 +28,24 @@ describe('buildFontStack', () => {
     expect(buildFontStack(value as string | null | undefined)).toBe(FALLBACK_FONT_STACK);
   });
 });
+
+describe('buildFontStack with values a plain comma split broke', () => {
+  test('keeps a quoted name that contains a comma in one piece', () => {
+    expect(buildFontStack('"Acme, Inc Sans", sans-serif')).toBe(
+      `"Acme, Inc Sans", sans-serif, ${FALLBACK_FONT_STACK}`,
+    );
+  });
+
+  test('leaves var() and other functions unquoted, commas inside included', () => {
+    expect(buildFontStack('var(--brand-font, Inter), sans-serif')).toBe(
+      `var(--brand-font, Inter), sans-serif, ${FALLBACK_FONT_STACK}`,
+    );
+  });
+
+  test.each(['inherit', 'initial', 'unset', 'revert', 'revert-layer', 'INHERIT'])(
+    'returns the CSS-wide keyword %p alone, since it is only valid as the whole value',
+    (keyword) => {
+      expect(buildFontStack(keyword)).toBe(keyword);
+    },
+  );
+});

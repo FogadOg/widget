@@ -76,6 +76,7 @@ export {
 } from './embed.utils';
 import type { EmbedClientProps } from './EmbedClient.types';
 import { UnsureMessagesModal } from './components/UnsureMessagesModal';
+import { HIDDEN_ERROR_LOADER_VERSION, loaderAtLeast } from '../../../lib/loaderVersion';
 import { WidgetNotAuthorized } from '../../../components/WidgetNotAuthorized';
 import { useCaptureFlow } from './hooks/useCaptureFlow';
 import { useTeaserTelemetry } from './hooks/useTeaserTelemetry';
@@ -121,6 +122,11 @@ export function useEmbedController(props: EmbedClientProps) {
     () => embedOriginHeader(initialParentOrigin, loaderVersion),
     [initialParentOrigin, loaderVersion],
   );
+  const isDebug = useDebugMode();
+  // Whether to keep an admin-facing error away from visitors: needs a loader
+  // that can keep its container hidden (see lib/loaderVersion.ts). Debug mode
+  // always shows it, so a developer sees the card that explains the failure.
+  const canHideErrorsFromVisitors = !isDebug && loaderAtLeast(loaderVersion, HIDDEN_ERROR_LOADER_VERSION);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [flowResponses, setFlowResponses] = useState<FlowResponse[]>([]);
@@ -780,8 +786,11 @@ export function useEmbedController(props: EmbedClientProps) {
     }
   }, [isCollapsed]);
 
-  // When auth fails before any config loads, mark it as a fatal error so
-  // the widget exits cleanly (null in prod, DevOverlay+error in debug).
+  // When auth fails before any config loads, mark it as a fatal error.
+  // EmbedClient renders nothing in prod (DevOverlay+error in debug). The one
+  // exception is origin_not_allowed under a loader too old to keep its
+  // container hidden: those still get the visible WidgetNotAuthorized card,
+  // because rendering nothing there leaves an invisible, click-blocking box.
   useEffect(() => {
     if (authError && !widgetConfig) {
       const id = window.setTimeout(() => {
@@ -793,14 +802,17 @@ export function useEmbedController(props: EmbedClientProps) {
               window.parent.postMessage({ type: EMBED_EVENTS.AUTH_FAILURE, data: { message: authError } }, parentSensitiveOrigin);
               // A denied origin is the most common silent first-install failure.
               // Relay it as a WIDGET_ERROR carrying a machine-readable code so the
-              // loader emits an 'error' event (discoverable without ?widget_debug=1);
-              // the diagnostic signal that drives the dashboard travels via backend
-              // telemetry, not a visitor-facing card on the page.
+              // loader emits an 'error' event (discoverable without ?widget_debug=1).
               if (authErrorCode === WidgetErrorCode.ORIGIN_NOT_ALLOWED) {
-                // Use source:'embed-error' so widget.js calls applyErrorContainerLayout
-                // and makes the container visible (the iframe renders WidgetNotAuthorized).
                 window.parent.postMessage(
-                  { type: EMBED_EVENTS.ERROR, data: { code: 'origin_not_allowed', source: 'embed-error', width: 320, height: 140, message: authError } },
+                  canHideErrorsFromVisitors
+                    // hidden:true: the loader keeps its container hidden and
+                    // only emits the event — a visitor never sees an
+                    // admin-facing "not authorized" card on the site.
+                    ? { type: EMBED_EVENTS.ERROR, data: { code: 'origin_not_allowed', hidden: true, message: authError } }
+                    // Older loaders: source:'embed-error' makes them size and
+                    // show the container for the WidgetNotAuthorized card.
+                    : { type: EMBED_EVENTS.ERROR, data: { code: 'origin_not_allowed', source: 'embed-error', width: 320, height: 140, message: authError } },
                   parentSensitiveOrigin,
                 );
               }
@@ -811,7 +823,7 @@ export function useEmbedController(props: EmbedClientProps) {
         }
       return () => window.clearTimeout(id);
     }
-  }, [authError, authErrorCode, widgetConfig, initialParentOrigin, parentSensitiveOrigin]);
+  }, [authError, authErrorCode, widgetConfig, initialParentOrigin, parentSensitiveOrigin, canHideErrorsFromVisitors]);
 
   // Localized "session expired" banner state (LAUNCH-READINESS #22). Surfaces
   // when the API returns 410 / 401 / 404 for the active session so the user
@@ -1449,6 +1461,9 @@ export function useEmbedController(props: EmbedClientProps) {
           const controller = new AbortController();
           streamAbortControllerRef.current = controller;
           streamAccumulatedRef.current = '';
+          // Each attempt starts clean: a partial from an earlier attempt that was
+          // then retried successfully must not resurface on a later failure.
+          streamPartialDroppedRef.current = false;
           const timeoutId = setTimeout(() => controller.abort(), 30000);
 
           try {
@@ -1868,8 +1883,11 @@ export function useEmbedController(props: EmbedClientProps) {
           setInput(message);
         }
       } else if (skipAddingUserMessage) {
-        // Button-triggered submit failed — flow response is already shown locally, so
-        // just log and do nothing (no error banner, no input restore, no message removal).
+        // Button-triggered submit failed. Every caller of this path is asking
+        // the agent to answer (AI-mode buttons, buttons with no authored reply),
+        // so nothing else will appear: show the error. The visitor's bubble stays
+        // and the input is left alone — they didn't type anything.
+        setError(e.userMessage || String(t.failedToSendMessage));
         logError(e, { message, sessionId, action: 'handleSubmit:button' });
       } else {
         // Only our localized userMessage / generic fallback — never raw e.message. (#13)
@@ -1979,7 +1997,10 @@ export function useEmbedController(props: EmbedClientProps) {
     setMessages(prev => [...prev, userMsg]);
 
     if (aiPrompt) {
-      await sendAiAnswer(aiPrompt, labelText);
+      // Label the turn with exactly what the bubble shows. Passing the raw
+      // label left display_text empty when the bubble fell back to other text,
+      // and a restored transcript then showed the hidden ai_prompt.
+      await sendAiAnswer(aiPrompt, userMsg.text);
       return;
     }
 
@@ -2161,7 +2182,10 @@ export function useEmbedController(props: EmbedClientProps) {
     trackEvent('button_clicked', initialAgentId, { label: labelText }, initialClientId, undefined, embedHeaders).catch(() => {});
 
     if (aiPrompt) {
-      await sendAiAnswer(aiPrompt, labelText);
+      // Label the turn with exactly what the bubble shows. Passing the raw
+      // label left display_text empty when the bubble fell back to other text,
+      // and a restored transcript then showed the hidden ai_prompt.
+      await sendAiAnswer(aiPrompt, userMsg.text);
       return;
     }
 
@@ -2548,7 +2572,6 @@ export function useEmbedController(props: EmbedClientProps) {
   // Developer overlay: active whenever debug mode is on — including production
   // embeds, so integrators can debug a live widget (?widget_debug=1,
   // localStorage, data-dev, or chat.enableDebug() / CompaninWidget.enableDebug()).
-  const isDebug = useDebugMode();
 
   // Feed the live state snapshot to the DevOverlay "State" tab. No-op cost when
   // not debugging — the overlay isn't mounted so there are no listeners.
@@ -2747,6 +2770,7 @@ export function useEmbedController(props: EmbedClientProps) {
     initialConsentRequired,
     isPersistent,
     loaderVersion,
+    canHideErrorsFromVisitors,
     showFeedbackDialogOverride,
     initialPreviewConfig,
     initialThemeOverride,

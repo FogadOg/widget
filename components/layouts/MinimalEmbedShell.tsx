@@ -172,6 +172,10 @@ export default function MinimalEmbedShell(props: Props) {
       locales={availableLocales}
       onChange={onLocaleChange}
       label={translate(locale, 'selectLanguage')}
+      // This header sits on the panel background beside bordered controls,
+      // not on a brand-colored bar: a solid pill was its loudest element.
+      variant="subtle"
+      compact
       headerTextColor={readableOnPrimary}
       secondaryColor={secondaryColor}
       primaryColor={primaryColor}

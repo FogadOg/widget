@@ -21,17 +21,50 @@ const KEYWORDS = new Set([
   '-apple-system', 'blinkmacsystemfont',
 ]);
 
+// Valid only as the whole value: `inherit, sans-serif` is an invalid declaration.
+const CSS_WIDE_KEYWORDS = new Set(['inherit', 'initial', 'unset', 'revert', 'revert-layer']);
+
+/**
+ * Split a font-family list on its top-level commas only. A plain `split(',')`
+ * cut `"Acme, Inc Sans", sans-serif` into `"Acme` / ` Inc Sans"` and broke
+ * `var(--brand, Inter)` apart.
+ */
+function splitFamilies(value: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  let quote: string | null = null;
+  let depth = 0;
+  for (const ch of value) {
+    if (quote) {
+      if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === '(') {
+      depth += 1;
+    } else if (ch === ')') {
+      depth = Math.max(0, depth - 1);
+    } else if (ch === ',' && depth === 0) {
+      parts.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  parts.push(current);
+  return parts.map((part) => part.trim()).filter(Boolean);
+}
+
 function formatFamily(name: string): string {
   if (/^(['"]).*\1$/.test(name)) return name;
   if (KEYWORDS.has(name.toLowerCase())) return name;
+  // `var(--brand-font)` and other functions are values, not names.
+  if (/^[a-z-]+\(.*\)$/i.test(name)) return name;
   return `"${name.replace(/["\\]/g, '')}"`;
 }
 
 export function buildFontStack(fontFamily?: string | null): string {
-  const families = (fontFamily ?? '')
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map(formatFamily);
+  const value = (fontFamily ?? '').trim();
+  if (CSS_WIDE_KEYWORDS.has(value.toLowerCase())) return value;
+  const families = splitFamilies(value).map(formatFamily);
   return [...families, FALLBACK_FONT_STACK].join(', ');
 }
