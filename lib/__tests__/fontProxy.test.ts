@@ -1,4 +1,7 @@
+import fs from 'fs';
+import path from 'path';
 import {
+  GOOGLE_FONT_FAMILIES,
   buildUpstreamCssUrl,
   clearFontCaches,
   fontStylesheetUrl,
@@ -39,6 +42,13 @@ describe('fontProxy', () => {
       (f) => expect(isValidFontFamily(f as string)).toBe(false),
     );
 
+    // Well-formed names that aren't one of the curated families: a real Google
+    // font the picker doesn't offer, a miscased one, and a junk name. None of
+    // them may cost a Google request or a cached miss.
+    test.each(['Comic Neue', 'inter', 'Open  Sans', 'Totally Made Up'])('refuses uncurated %p', (f) => {
+      expect(isValidFontFamily(f)).toBe(false);
+    });
+
     test('accepts only the versioned woff2 path shape Google emits', () => {
       expect(isValidFontFilePath('s/inter/v20/UcCO3Fwr_K-3.woff2')).toBe(true);
       expect(isValidFontFilePath('s/inter/v20/../../x.woff2')).toBe(false);
@@ -71,12 +81,25 @@ describe('fontProxy', () => {
       const fetchFn = mockFetch(() => ({ ok: true, status: 200, text: async () => GOOGLE_CSS }));
 
       const first = await loadFontCss('Inter');
-      const second = await loadFontCss('inter');
+      const second = await loadFontCss(' Inter ');
 
       expect(first.status).toBe(200);
       expect(first.css).toContain('/fonts/file/');
       expect(second).toEqual(first);
       expect(fetchFn).toHaveBeenCalledTimes(1);
+    });
+
+    test("a miss for another spelling can't poison the real family", async () => {
+      // Google rejects `inter`; that 404 must not be served for `Inter`.
+      const fetchFn = mockFetch((url) =>
+        url.includes('family=Inter:')
+          ? { ok: true, status: 200, text: async () => GOOGLE_CSS }
+          : { ok: false, status: 400 },
+      );
+
+      expect((await loadFontCss('inter')).status).toBe(404);
+      expect((await loadFontCss('Inter')).status).toBe(200);
+      expect(fetchFn).toHaveBeenCalledTimes(2);
     });
 
     test('maps an unknown family to 404 and caches the miss', async () => {
@@ -112,5 +135,19 @@ describe('fontProxy', () => {
       mockFetch(() => ({ ok: false, status: 404 }));
       expect(await loadFontFile('s/inter/v20/gone.woff2')).toEqual({ status: 404, body: null });
     });
+  });
+});
+
+// The dashboard offers exactly these families; a font added there but not here
+// would be picked, saved as Google, and then refused by the proxy. Only
+// checkable where the dashboard is checked out next to the widget.
+const DASHBOARD_FONTS = path.resolve(__dirname, '../../../assistant/components/models/widgetFonts.ts');
+(fs.existsSync(DASHBOARD_FONTS) ? describe : describe.skip)('GOOGLE_FONT_FAMILIES', () => {
+  test("matches the dashboard's GOOGLE_FONTS", () => {
+    const source = fs.readFileSync(DASHBOARD_FONTS, 'utf8');
+    const block = source.match(/export const GOOGLE_FONTS[^=]*=\s*\[([\s\S]*?)\];/);
+    expect(block).not.toBeNull();
+    const dashboard = [...block![1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    expect([...GOOGLE_FONT_FAMILIES].sort()).toEqual(dashboard.sort());
   });
 });

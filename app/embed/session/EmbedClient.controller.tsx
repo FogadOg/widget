@@ -54,7 +54,7 @@ import {
   injectCustomAssets,
   injectGoogleFont,
 } from './EmbedClient.utils';
-import { PERSISTED_AGENT_SENDER, PREVIEW_COLLAPSED_KEY } from './EmbedClient.constants';
+import { PREVIEW_COLLAPSED_KEY } from './EmbedClient.constants';
 import {
   parseHostMessageCommand,
   resolveParentTargetOrigin,
@@ -92,6 +92,35 @@ import { useHeartbeat } from '../useHeartbeat';
 import { useQueuedMessageManagement } from './hooks/useQueuedMessageManagement';
 import { useFeedbackManagement } from './hooks/useFeedbackManagement';
 import { useBootstrap } from './hooks/useBootstrap';
+
+/**
+ * Persist a clicked button's turn so the transcript shows what the visitor saw.
+ * The label goes in as their turn, naming the button; the server looks up the
+ * button's reply and writes the agent turn itself, so this client never authors
+ * an agent message. Best-effort: never throws, never blocks the UI.
+ */
+export async function persistButtonTurn({ url, headers, locale, label, buttonId }: {
+  url: string;
+  headers: Record<string, string>;
+  locale: string;
+  label: string;
+  buttonId: string;
+}): Promise<void> {
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        content: label,
+        locale,
+        skip_ai_response: true,
+        metadata: { button_reply: { button_id: buttonId } },
+      }),
+    });
+  } catch {
+    // ignore — history persistence is best-effort
+  }
+}
 
 
 export function useEmbedController(props: EmbedClientProps) {
@@ -1966,6 +1995,20 @@ export function useEmbedController(props: EmbedClientProps) {
     await handleSubmit({ preventDefault: () => {} } as React.FormEvent, prompt, true, displayText);
   };
 
+  // A clicked button with an authored reply, persisted for the transcript.
+  const persistButtonClick = (buttonId: string, label: string) => {
+    const sid = sessionIdRef.current;
+    const tok = authTokenRef.current;
+    if (!sid || !tok || !buttonId) return;
+    void persistButtonTurn({
+      url: API.sessionMessages(sid),
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}`, ...embedHeaders },
+      locale: activeLocale,
+      label,
+      buttonId,
+    });
+  };
+
   const handleFollowUpButtonClick = async (button: ButtonLike) => {
     const b = button as FlowButton;
 
@@ -2031,33 +2074,7 @@ export function useEmbedController(props: EmbedClientProps) {
     // local-only: the user bubble + agent response are already rendered; skip
     // the backend submit.
     if (hasLocalResponse) {
-      const sid = sessionIdRef.current;
-      const tok = authTokenRef.current;
-      const responseText = maybeText || '';
-      if (sid && tok && responseText) {
-        const persistFlow = async () => {
-          try {
-            const headers = {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${tok}`,
-              ...embedHeaders,
-            };
-            await fetch(API.sessionMessages(sid), {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ content: labelText, locale: activeLocale, skip_ai_response: true }),
-            });
-            await fetch(API.sessionMessages(sid), {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ content: responseText, locale: activeLocale, sender: PERSISTED_AGENT_SENDER, skip_ai_response: true }),
-            });
-          } catch {
-            // ignore — history persistence is best-effort
-          }
-        };
-        void persistFlow();
-      }
+      if (maybeText) persistButtonClick(b.id, labelText);
       return;
     }
 
@@ -2226,33 +2243,7 @@ export function useEmbedController(props: EmbedClientProps) {
 
       // Persist the button click and its local response to the backend so they
       // appear in conversation history (fire-and-forget, never block the UI).
-      const sid = sessionIdRef.current;
-      const tok = authTokenRef.current;
-      const responseText = maybeText;
-      if (sid && tok && responseText) {
-        const persistFlow = async () => {
-          try {
-            const headers = {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${tok}`,
-              ...embedHeaders,
-            };
-            await fetch(API.sessionMessages(sid), {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ content: labelText, locale: activeLocale, skip_ai_response: true }),
-            });
-            await fetch(API.sessionMessages(sid), {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ content: responseText, locale: activeLocale, sender: PERSISTED_AGENT_SENDER, skip_ai_response: true }),
-            });
-          } catch {
-            // ignore — history persistence is best-effort
-          }
-        };
-        void persistFlow();
-      }
+      if (maybeText) persistButtonClick(b.id, labelText);
     }
 
     // notify parent about the user message (always — the user bubble is added

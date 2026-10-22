@@ -8,9 +8,9 @@
  * origin: `/fonts/css` fetches Google's stylesheet server-side and rewrites its
  * font URLs to `/fonts/file/…`, which streams the .woff2 through.
  *
- * Both routes are pinned to the two Google hosts and validate their input
- * against the exact shapes Google produces, so this can't be used to fetch
- * anything else.
+ * Both routes are pinned to the two Google hosts, serve only the curated
+ * families below, and validate file paths against the exact shape Google
+ * produces, so this can't be used to fetch anything else.
  */
 
 const CSS_UPSTREAM = 'https://fonts.googleapis.com/css2';
@@ -23,7 +23,29 @@ const UPSTREAM_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 const UPSTREAM_TIMEOUT_MS = 5000;
 
-const FAMILY_RE = /^[A-Za-z0-9 ]{1,50}$/;
+/**
+ * The Google families a widget can use: the dashboard's picker offers exactly
+ * these, and the backend stores any other family under the system source. So
+ * nothing else can legitimately reach the proxy, and refusing it up front means
+ * a random name never costs a Google request or a cached miss.
+ *
+ * Mirrors GOOGLE_FONTS in assistant/components/models/widgetFonts.ts and
+ * GOOGLE_FONT_FAMILIES in assistantApp/organization/fonts.py.
+ */
+export const GOOGLE_FONT_FAMILIES: ReadonlySet<string> = new Set([
+  // Sans-serif
+  'DM Sans', 'Inter', 'Lato', 'Lexend', 'Manrope', 'Montserrat',
+  'Nunito', 'Open Sans', 'Outfit', 'Plus Jakarta Sans', 'Poppins',
+  'Raleway', 'Roboto', 'Sora', 'Source Sans 3', 'Ubuntu', 'Work Sans',
+  // Serif
+  'Crimson Pro', 'EB Garamond', 'Libre Baskerville', 'Lora',
+  'Merriweather', 'Playfair Display',
+  // Display / Geometric
+  'Barlow', 'Bebas Neue', 'Bricolage Grotesque', 'Josefin Sans',
+  'Oswald', 'Space Grotesk',
+  // Monospace
+  'Fira Code', 'IBM Plex Mono', 'JetBrains Mono', 'Space Mono',
+]);
 // Every file URL in a css2 response is `s/<family>/v<N>/<hash>.woff2`.
 const FILE_PATH_RE = /^s\/[a-z0-9]+\/v\d+\/[A-Za-z0-9_-]+\.woff2$/;
 
@@ -31,7 +53,7 @@ export const CSS_TTL_SECONDS = 60 * 60 * 24;
 const NEGATIVE_TTL_SECONDS = 60 * 60;
 
 export function isValidFontFamily(family: string | null | undefined): family is string {
-  return typeof family === 'string' && FAMILY_RE.test(family.trim());
+  return typeof family === 'string' && GOOGLE_FONT_FAMILIES.has(family.trim());
 }
 
 export function isValidFontFilePath(path: string): boolean {
@@ -135,25 +157,28 @@ async function fetchUpstream(url: string): Promise<Response> {
 
 /** `{ status, css }`: 200 with the rewritten stylesheet, 404 unknown family, 502 upstream failure. */
 export async function loadFontCss(family: string): Promise<{ status: number; css: string }> {
-  const key = family.trim().toLowerCase();
-  const cached = cssCache.get(key);
+  // Keyed on the upstream request itself. Case-folding the key let a request
+  // for `inter` (which Google rejects) cache a 404 under the key that `Inter`
+  // reads, breaking the font for every widget on this server.
+  const url = buildUpstreamCssUrl(family);
+  const cached = cssCache.get(url);
   if (cached) return { status: cached.status, css: cached.body as string };
 
   let res: Response;
   try {
-    res = await fetchUpstream(buildUpstreamCssUrl(family));
+    res = await fetchUpstream(url);
   } catch {
     return { status: 502, css: '' };
   }
   if (res.status === 400 || res.status === 404) {
-    cssCache.set(key, '', 404, NEGATIVE_TTL_SECONDS);
+    cssCache.set(url, '', 404, NEGATIVE_TTL_SECONDS);
     return { status: 404, css: '' };
   }
   if (!res.ok) return { status: 502, css: '' };
 
   const css = rewriteFontCss(await res.text());
   if (css === null) return { status: 502, css: '' };
-  cssCache.set(key, css, 200, CSS_TTL_SECONDS);
+  cssCache.set(url, css, 200, CSS_TTL_SECONDS);
   return { status: 200, css };
 }
 
