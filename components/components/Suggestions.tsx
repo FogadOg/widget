@@ -20,7 +20,7 @@ export function Suggestions({
   indent: string;
 }) {
   return (
-    <div className="flex flex-wrap gap-2" style={{ marginInlineStart: indent }}>
+    <div data-part="suggestions" className="flex flex-wrap gap-2" style={{ marginInlineStart: indent }}>
       {suggestions.map((text, i) => (
         <button
           key={`${i}-${text}`}

@@ -105,6 +105,7 @@ export function Composer({
   };
   return (
     <form
+      data-part="composer"
       onSubmit={(e) => {
         e.preventDefault();
         if (canSend) onSubmit(e);
@@ -178,6 +179,7 @@ export function Composer({
           </>
         )}
         <textarea
+          data-part="composer-input"
           ref={inputRef}
           rows={1}
           value={input}
@@ -233,6 +235,7 @@ export function Composer({
             className={`shrink-0 inline-flex items-center justify-center min-h-11 px-4 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed ${FOCUS_RING}`}
             aria-busy={isTyping}
             aria-label={sendLabel}
+            data-part="send-button"
             title={sendLabel}
           >
             {isTyping ? (

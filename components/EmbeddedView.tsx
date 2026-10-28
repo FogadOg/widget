@@ -235,6 +235,7 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
                     type="button"
                     onClick={toggleCollapsed}
                     aria-label={openChatLabel}
+                    data-part="launcher"
                     aria-expanded={!isCollapsed}
                     aria-haspopup="dialog"
                     style={{
@@ -270,6 +271,7 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
                   type="button"
                   onClick={toggleCollapsed}
                   aria-label={openChatLabel}
+                  data-part="launcher"
                   aria-expanded={!isCollapsed}
                   aria-haspopup="dialog"
                   style={{
@@ -305,6 +307,7 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
             ) : (
               <div
                 data-ignore-reduced-motion={!respectReducedMotion ? 'true' : undefined}
+                data-part="panel"
                 style={{
                   position: 'fixed',
                   ...(previewPositioning
@@ -336,13 +339,13 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
                     ...fontStyles
                   }}
                 >
-                <div className="p-3 flex items-center justify-between" style={{ backgroundColor: primaryColor, color: headerTextColor, padding: spacingValues.padding }}>
+                <div data-part="header" className="p-3 flex items-center justify-between" style={{ backgroundColor: primaryColor, color: headerTextColor, padding: spacingValues.padding }}>
                   <div className="flex items-center gap-3">
                     {widgetConfig?.logo && (
                       <img src={widgetConfig.logo} alt={(getText(widgetConfig?.title) || title || 'logo') + ' logo'} className="w-10 h-10 object-contain rounded" />
                     )}
                     <div className="flex flex-col">
-                      <h3 className="font-semibold">{getText(widgetConfig?.title) || title || translate(locale, 'chat')}</h3>
+                      <h3 data-part="title" className="font-semibold">{getText(widgetConfig?.title) || title || translate(locale, 'chat')}</h3>
                       <p className="text-sm opacity-80">{getText(widgetConfig?.subtitle)}</p>
                     </div>
                   </div>
@@ -375,6 +378,7 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
                       style={{ backgroundColor: secondaryColor, ['--tw-ring-color' as string]: headerTextColor, ['--tw-ring-offset-color' as string]: primaryColor }}
                       className={`w-11 h-11 rounded text-sm flex items-center justify-center hover:opacity-90 ${FOCUS_RING}`}
                       aria-label={closeChatLabel}
+                      data-part="close-button"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="6,9 12,15 18,9" />
@@ -398,6 +402,7 @@ export function EmbeddedView({ vm }: { vm: ClassicShellVM }) {
                   onScroll={handleScroll}
                   className={`flex-1 overflow-y-auto overscroll-contain flex flex-col [&>*:first-child]:mt-auto p-3 space-y-3${messageAnimation !== 'none' ? ` widget-messages--${messageAnimation}` : ''}`}
                   role="log"
+                  data-part="messages"
                   aria-live="polite"
                   aria-relevant="additions text"
                   aria-atomic="false"

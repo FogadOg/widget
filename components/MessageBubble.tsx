@@ -247,13 +247,13 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
 
   if (message.from === 'agent') {
     return (
-      <div className={`flex w-full justify-start`}>
+      <div data-part="message" data-from="agent" className={`flex w-full justify-start`}>
         <div className="flex flex-col items-start w-full">
           <div className="flex items-start gap-2">
               {showMessageAvatars && widgetConfig?.bot_avatar && (
               <img src={widgetConfig.bot_avatar} alt={(agentName || widgetConfig?.title?.en || 'agent') + ' avatar'} className="w-8 h-8 rounded-full object-cover shrink-0" />
             )}
-            <div className={`max-w-[80%] px-3.5 py-2.5 border group relative`} style={{ backgroundColor: agentBubbleBg, borderColor: subtleBorderColor, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
+            <div data-part="message-bubble" className={`max-w-[80%] px-3.5 py-2.5 border group relative`} style={{ backgroundColor: agentBubbleBg, borderColor: subtleBorderColor, color: textColor, borderRadius: `${messageBubbleRadius}px`, ...fontStyles }}>
               {/* Copy button — appears on hover */}
               <button
                 type="button"
@@ -436,9 +436,9 @@ export default function MessageBubble({ message, widgetConfig, agentName, showMe
       };
 
   return (
-    <div className={`flex w-full justify-end`}>
+    <div data-part="message" data-from="user" className={`flex w-full justify-end`}>
       <div className="flex flex-col items-end w-full" aria-live={isPending ? 'polite' : undefined}>
-        <div className={`max-w-[80%] px-3.5 py-2.5`} style={bubbleStyle} data-pending={isPending ? 'true' : 'false'}>
+        <div data-part="message-bubble" className={`max-w-[80%] px-3.5 py-2.5`} style={bubbleStyle} data-pending={isPending ? 'true' : 'false'}>
           <div style={{ opacity: isPending ? 0.9 : 1 }}>{message.text}</div>
           {message.attachments && message.attachments.length > 0 && (
             <div className="mt-1.5 flex flex-col gap-1">

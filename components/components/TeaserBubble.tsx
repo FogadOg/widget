@@ -56,7 +56,7 @@ export function TeaserBubble({
   if (!teaserMessage || !(teaserExpanded || showTeaser)) return null;
 
   return (
-    <div
+    <div data-part="teaser"
       ref={ref}
       role="status"
       aria-live="polite"

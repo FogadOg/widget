@@ -39,7 +39,7 @@ export function PoweredByFooter({
   const gdprLabel = translate(locale, 'euHostedGdpr');
 
   return (
-    <div
+    <div data-part="powered-by"
       // No "·" between the two items: as its own flex item it was stranded at
       // the end of the first line whenever the row wrapped (it does at ~350px).
       // The gap separates them on one line and stacks them cleanly when not.

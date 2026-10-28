@@ -24,7 +24,7 @@ export function TypingIndicator({
   label: string;
 }) {
   return (
-    <div className="flex justify-start" role="status" aria-live="polite">
+    <div data-part="typing-indicator" className="flex justify-start" role="status" aria-live="polite">
       <div className="flex items-start gap-2">
         {showAvatar && avatarSrc && (
           <img src={avatarSrc} alt={avatarAlt} className="w-8 h-8 rounded-full object-cover shrink-0" />
