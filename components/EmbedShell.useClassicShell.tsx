@@ -15,6 +15,7 @@ import type {
   FlowResponse,
 } from '../types/widget';
 import { useClickedButtons, ButtonLike } from '../hooks/useClickedButtons';
+import { isServerGreetingMessage } from '../lib/greeting';
 import { useWidgetStyles } from '../hooks/useWidgetStyles';
 import { hexToRgb, getReadableTextColor, withAlpha } from '../lib/colors';
 import { COMPANY_NAME } from '../lib/constants';
@@ -348,9 +349,6 @@ export function useClassicShell(props: Props) {
   // and buttons), so we filter that server copy out of the message stream below
   // (see mergedContent) — otherwise it renders twice, and sending a message makes
   // the static block vanish. Keeping it static means it never disappears.
-  const isServerGreetingMessage = (m: { id: string; metadata?: Message['metadata'] }) =>
-    m.id.startsWith('greeting-') ||
-    (m.metadata as Record<string, unknown> | undefined)?.is_greeting === true;
   const showGreeting = !!widgetConfig?.greeting_message;
   const greetingText = showGreeting ? getText(widgetConfig.greeting_message.text) : '';
   const displayGreetingText = identifiedUserName && greetingText

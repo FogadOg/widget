@@ -4,7 +4,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 
 /**
  * Chrome behavior every layout shell needs: auto-scroll to the newest message,
- * the "jump to latest" affordance, Escape-to-close, and focus handling.
+ * the "jump to latest" affordance and Escape-to-close. Focus on open/close is
+ * `useShellFocus`'s job — the shells call both.
  *
  * Extracted from the classic shell so `minimal` and `panel` can't drift from it
  * again. They previously shipped without any of this: the agent's reply landed
@@ -41,8 +42,6 @@ export function useShellChrome<TInput extends HTMLElement = HTMLTextAreaElement>
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<TInput>(null);
-  const launcherRef = useRef<HTMLButtonElement>(null);
-  const wasOpenRef = useRef(false);
   const [showJumpButton, setShowJumpButton] = useState(false);
 
   // Escape closes the topmost open modal first, then collapses the widget.
@@ -107,6 +106,18 @@ export function useShellChrome<TInput extends HTMLElement = HTMLTextAreaElement>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, scrollDeps);
 
+  // Opening the panel mounts the log at scrollTop 0. History restored while the
+  // widget was collapsed changed `scrollDeps` before the container existed, so
+  // the check above returned early then — land on the newest message now.
+  useLayoutEffect(() => {
+    if (isCollapsed) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowJumpButton(false);
+  }, [isCollapsed]);
+
   const handleScroll = useCallback(() => {
     setShowJumpButton(!shouldAutoScroll());
   }, [shouldAutoScroll]);
@@ -117,26 +128,9 @@ export function useShellChrome<TInput extends HTMLElement = HTMLTextAreaElement>
     setShowJumpButton(false);
   }, []);
 
-  // Focus the composer when the panel opens; return focus to the launcher when
-  // it closes, so a keyboard visitor isn't dropped at the top of the host page.
-  // Skipped on the initial mount so we never steal focus on page load.
-  useEffect(() => {
-    if (!isCollapsed) {
-      wasOpenRef.current = true;
-      const id = window.setTimeout(() => inputRef.current?.focus(), 60);
-      return () => window.clearTimeout(id);
-    }
-    if (wasOpenRef.current) {
-      wasOpenRef.current = false;
-      const id = window.setTimeout(() => launcherRef.current?.focus(), 0);
-      return () => window.clearTimeout(id);
-    }
-  }, [isCollapsed]);
-
   return {
     scrollContainerRef,
     inputRef,
-    launcherRef,
     showJumpButton,
     handleScroll,
     scrollToBottom,

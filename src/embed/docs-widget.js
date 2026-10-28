@@ -1507,7 +1507,29 @@ import {
     });
   }
 
-  // Helper function to show error in a styled widget
+  // Build a "Powered by Companin" footer node. createElement / textContent
+  // throughout, as in widget.js: POWERED_BY_TEXT comes from a page global.
+  function buildPoweredByFooter() {
+    const footer = document.createElement('div');
+    footer.style.cssText = 'margin-top:8px; font-size:12px; color:#6b7280;';
+    footer.appendChild(document.createTextNode(POWERED_BY_TEXT + ' '));
+    const link = document.createElement('a');
+    link.href = 'https://' + COMPANY_NAME.toLowerCase() + '.tech';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.style.cssText = 'color:#2563eb; text-decoration:none; margin-left:6px;';
+    link.textContent = COMPANY_NAME;
+    footer.appendChild(link);
+    return footer;
+  }
+
+  // Helper function to show error in a styled widget.
+  //
+  // Built with createElement / textContent rather than an innerHTML template:
+  // the title and message render as text (the "Missing widget ID" message
+  // names a `<script>` tag, which innerHTML parsed as markup and dropped), and
+  // the close button is a real listener instead of an inline onclick, which a
+  // host page's CSP blocks.
   function showErrorWidget(title, message) {
     try {
       const errorContainer = document.createElement("div");
@@ -1526,23 +1548,39 @@ import {
         z-index: 999999;
       `;
 
-      errorContainer.innerHTML = `
-        <div style="display: flex; align-items: start; gap: 12px;">
-          <div style="flex-shrink: 0; width: 20px; height: 20px; color: #dc2626;">
-            <svg viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-            </svg>
-          </div>
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #dc2626;">${title}</h4>
-            <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.5;">${message}</p>
-          </div>
-          <button onclick="this.parentElement.parentElement.remove()" style="flex-shrink: 0; background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 20px; line-height: 1; padding: 0;">×</button>
-        </div>
-        <div style="margin-top:8px; font-size:12px; color:#6b7280;">
-          ${POWERED_BY_TEXT} <a href="https://${COMPANY_NAME.toLowerCase()}.tech" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:none; margin-left:6px;">${COMPANY_NAME}</a>
-        </div>
-      `;
+      const row = document.createElement('div');
+      row.style.cssText = 'display: flex; align-items: start; gap: 12px;';
+
+      const iconWrap = document.createElement('div');
+      iconWrap.style.cssText = 'flex-shrink: 0; width: 20px; height: 20px; color: #dc2626;';
+      // Static literal — nothing interpolated, so innerHTML is safe here.
+      iconWrap.innerHTML = '<svg viewBox="0 0 20 20" fill="currentColor">'
+        + '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>'
+        + '</svg>';
+
+      const body = document.createElement('div');
+      body.style.cssText = 'flex: 1;';
+      const h4 = document.createElement('h4');
+      h4.style.cssText = 'margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #dc2626;';
+      h4.textContent = String(title || '');
+      const para = document.createElement('p');
+      para.style.cssText = 'margin: 0; font-size: 13px; color: #6b7280; line-height: 1.5;';
+      para.textContent = String(message || '');
+      body.appendChild(h4);
+      body.appendChild(para);
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.setAttribute('aria-label', 'Close');
+      closeBtn.style.cssText = 'flex-shrink: 0; background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 20px; line-height: 1; padding: 0;';
+      closeBtn.textContent = '\u00d7';
+      closeBtn.addEventListener('click', () => errorContainer.remove());
+
+      row.appendChild(iconWrap);
+      row.appendChild(body);
+      row.appendChild(closeBtn);
+      errorContainer.appendChild(row);
+      errorContainer.appendChild(buildPoweredByFooter());
 
       if (document.body) {
         document.body.appendChild(errorContainer);
@@ -1556,34 +1594,27 @@ import {
     }
   }
 
-  // Helper to show error in existing container
+  // Helper to show error in existing container. Same construction as above.
   function showErrorInContainer(container, message) {
     try {
-      container.innerHTML = `
-        <div style="
-          background: #fef2f2;
-          border: 1px solid #dc2626;
-          border-radius: 8px;
-          padding: 16px;
-          font-family: system-ui, -apple-system, sans-serif;
-          max-width: 320px;
-        ">
-          <p style="margin: 0; font-size: 14px; color: #dc2626;">${message}</p>
-          <button onclick="window.location.reload()" style="
-            margin-top: 12px;
-            background: #dc2626;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 13px;
-            cursor: pointer;
-          ">Reload Page</button>
-          <div style="margin-top:8px; font-size:12px; color:#6b7280;">
-            ${POWERED_BY_TEXT} <a href="https://companin.tech" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:none; margin-left:6px;">${COMPANY_NAME}</a>
-          </div>
-        </div>
-      `;
+      const card = document.createElement('div');
+      card.style.cssText = 'background: #fef2f2; border: 1px solid #dc2626; border-radius: 8px; padding: 16px; font-family: system-ui, -apple-system, sans-serif; max-width: 320px;';
+
+      const para = document.createElement('p');
+      para.style.cssText = 'margin: 0; font-size: 14px; color: #dc2626;';
+      para.textContent = String(message || '');
+
+      const reloadBtn = document.createElement('button');
+      reloadBtn.type = 'button';
+      reloadBtn.style.cssText = 'margin-top: 12px; background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer;';
+      reloadBtn.textContent = 'Reload Page';
+      reloadBtn.addEventListener('click', () => window.location.reload());
+
+      card.appendChild(para);
+      card.appendChild(reloadBtn);
+      card.appendChild(buildPoweredByFooter());
+      container.textContent = '';
+      container.appendChild(card);
     } catch (err) {
       console.error("Failed to show error in container:", err);
     }

@@ -56,7 +56,6 @@ describe('useShellChrome', () => {
     const { result } = setup();
     expect(result.current.scrollContainerRef).toBeDefined();
     expect(result.current.inputRef).toBeDefined();
-    expect(result.current.launcherRef).toBeDefined();
     expect(typeof result.current.handleScroll).toBe('function');
     expect(typeof result.current.scrollToBottom).toBe('function');
   });
@@ -209,51 +208,21 @@ describe('useShellChrome', () => {
     });
   });
 
-  describe('focus handling', () => {
-    test('focuses the composer when the panel opens', () => {
+  describe('opening the panel', () => {
+    test('lands on the newest message', () => {
+      // History restored while collapsed changed scrollDeps before the log
+      // existed; opening must not leave the visitor at the oldest message.
       const { result, rerender } = setup({ isCollapsed: true });
-      const input = document.createElement('textarea');
-      document.body.appendChild(input);
-      (result.current.inputRef as { current: HTMLElement | null }).current = input;
+      const el = attachScroller(result.current.scrollContainerRef, {
+        scrollHeight: 1000,
+        clientHeight: 400,
+        scrollTop: 0,
+      });
 
       rerender({ isCollapsed: false });
-      act(() => {
-        jest.advanceTimersByTime(100);
-      });
 
-      expect(document.activeElement).toBe(input);
-    });
-
-    test('returns focus to the launcher when the panel closes', () => {
-      // A keyboard visitor must not be dropped at the top of the host page.
-      const { result, rerender } = setup({ isCollapsed: true });
-      const launcher = document.createElement('button');
-      document.body.appendChild(launcher);
-      (result.current.launcherRef as { current: HTMLElement | null }).current = launcher;
-
-      rerender({ isCollapsed: false });
-      act(() => {
-        jest.advanceTimersByTime(100);
-      });
-      rerender({ isCollapsed: true });
-      act(() => {
-        jest.advanceTimersByTime(10);
-      });
-
-      expect(document.activeElement).toBe(launcher);
-    });
-
-    test('never steals focus on the initial collapsed mount', () => {
-      const outside = document.createElement('input');
-      document.body.appendChild(outside);
-      outside.focus();
-
-      setup({ isCollapsed: true });
-      act(() => {
-        jest.advanceTimersByTime(100);
-      });
-
-      expect(document.activeElement).toBe(outside);
+      expect(el.scrollTop).toBe(1000);
+      expect(result.current.showJumpButton).toBe(false);
     });
   });
 });

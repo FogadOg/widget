@@ -4,7 +4,7 @@ import React, { useLayoutEffect, useRef } from 'react';
 import { t as translate } from '../../lib/i18n';
 import { FOCUS_RING } from '../EmbedShell.constants';
 
-type Props = {
+export type TeaserBubbleProps = {
   /** Bubble is mounted (hidden) while the iframe is being sized for it. */
   teaserExpanded: boolean;
   /** Revealed once the parent's resize transition has settled. */
@@ -42,7 +42,7 @@ export function TeaserBubble({
   mutedTextColor,
   subtleBorderColor,
   fontStyles,
-}: Props) {
+}: TeaserBubbleProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   // Measure as soon as it renders (hidden at first) so the iframe is sized to
@@ -115,6 +115,22 @@ export function TeaserBubble({
           boxShadow: '2px 2px 4px rgba(0,0,0,0.1)',
         }}
       />
+    </div>
+  );
+}
+
+/**
+ * The collapsed launcher with a configured teaser: bubble stacked above the
+ * launcher, anchored to the iframe's bottom-right (the controller grows the
+ * iframe to fit). Without it the iframe still grows for the teaser but nothing
+ * renders in it — an invisible click-blocking box. The minimal and panel
+ * layouts each pass their own launcher button as `children`.
+ */
+export function TeaserAnchor({ children, ...bubble }: TeaserBubbleProps & { children: React.ReactNode }) {
+  return (
+    <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 999999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+      <TeaserBubble {...bubble} />
+      {children}
     </div>
   );
 }

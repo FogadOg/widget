@@ -6,12 +6,23 @@ const sRGBtoLinear = (c: number): number => {
   return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
 };
 
+// Parses #rgb and #rrggbb (with or without '#'), or returns null. Every helper
+// below goes through this: `normalizeHexColor` accepts the 3-digit form, and a
+// parser that only knew 6 digits read `#fff` as black.
+const readHex = (hex: string): [number, number, number] | null => {
+  if (typeof hex !== 'string') return null;
+  let h = hex.trim().replace(/^#/, '');
+  if (/^[a-f\d]{3}$/i.test(h)) h = h.replace(/(.)/g, '$1$1');
+  if (!/^[a-f\d]{6}$/i.test(h)) return null;
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+};
+
 export const getRelativeLuminance = (hex: string): number => {
-  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  if (!m) return 0;
-  return 0.2126 * sRGBtoLinear(parseInt(m[1], 16))
-       + 0.7152 * sRGBtoLinear(parseInt(m[2], 16))
-       + 0.0722 * sRGBtoLinear(parseInt(m[3], 16));
+  const rgb = readHex(hex);
+  if (!rgb) return 0;
+  return 0.2126 * sRGBtoLinear(rgb[0])
+       + 0.7152 * sRGBtoLinear(rgb[1])
+       + 0.0722 * sRGBtoLinear(rgb[2]);
 };
 
 // Returns '#000000' or '#ffffff', whichever achieves the higher contrast ratio
@@ -34,15 +45,10 @@ export const normalizeHexColor = (color: string | undefined, fallback: string): 
   return fallback;
 };
 
-// Convert a 6‑digit hex code to "r, g, b" string. Returns white on failure.
+// Convert a 3- or 6-digit hex code to "r, g, b" string. Returns white on failure.
 export const hexToRgb = (hex: string): string => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(
-        result[3],
-        16
-      )}`
-    : '255, 255, 255';
+  const rgb = readHex(hex);
+  return rgb ? rgb.join(', ') : '255, 255, 255';
 };
 
 // Returns an rgba() string for the given hex color at the requested alpha.
@@ -68,12 +74,7 @@ export const withAlpha = (hex: string, alpha: number): string => {
 // the design asks for — but walks it up until the composited result clears the
 // floor, so no theme can produce an unreadable widget.
 
-const parseHex = (hex: string): [number, number, number] => {
-  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return m
-    ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)]
-    : [0, 0, 0];
-};
+const parseHex = (hex: string): [number, number, number] => readHex(hex) ?? [0, 0, 0];
 
 const luminanceOf = (rgb: [number, number, number]): number =>
   0.2126 * sRGBtoLinear(rgb[0]) + 0.7152 * sRGBtoLinear(rgb[1]) + 0.0722 * sRGBtoLinear(rgb[2]);

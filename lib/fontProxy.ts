@@ -65,9 +65,27 @@ export function fontStylesheetUrl(family: string): string {
   return `/fonts/css?family=${encodeURIComponent(family.trim())}`;
 }
 
+const DEFAULT_WEIGHTS = '300;400;500;600;700';
+// css2 answers 400 for the whole request when any listed weight is one the
+// family doesn't ship, and the proxy then caches that as a 404 — so a family
+// whose range doesn't cover 300-700 must ask only for what it has.
+const FAMILY_WEIGHTS: Readonly<Record<string, string>> = {
+  'Bebas Neue': '400',
+  'EB Garamond': '400;500;600;700',
+  'Lato': '300;400;700',
+  'Libre Baskerville': '400;700',
+  'Lora': '400;500;600;700',
+  'Merriweather': '300;400;700',
+  'Playfair Display': '400;500;600;700',
+  'Space Mono': '400;700',
+  'Ubuntu': '300;400;500;700',
+};
+
 export function buildUpstreamCssUrl(family: string): string {
-  const name = family.trim().replace(/ +/g, '+');
-  return `${CSS_UPSTREAM}?family=${name}:wght@300;400;500;600;700&display=swap`;
+  const trimmed = family.trim();
+  const name = trimmed.replace(/ +/g, '+');
+  const weights = FAMILY_WEIGHTS[trimmed] ?? DEFAULT_WEIGHTS;
+  return `${CSS_UPSTREAM}?family=${name}:wght@${weights}&display=swap`;
 }
 
 /**

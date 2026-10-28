@@ -71,6 +71,19 @@ describe('public/docs-widget.js loader', () => {
     inject({});
     expect(getFirstContainer()).toBeNull();
   });
+  it('renders the error card as text, with a working close button', () => {
+    // The message names a `<script>` tag; as innerHTML it was parsed as markup
+    // and vanished, and the inline onclick close button died under a host CSP.
+    document.querySelectorAll(`#${DOCS_WIDGET_SCRIPT_ID}-error`).forEach((node) => node.remove());
+    inject({});
+    const card = document.getElementById(`${DOCS_WIDGET_SCRIPT_ID}-error`);
+    expect(card).toBeTruthy();
+    expect(card!.textContent).toContain('<script> tag');
+    expect(card!.querySelector('script')).toBeNull();
+    expect(card!.querySelector('[onclick]')).toBeNull();
+    (card!.querySelector('button') as HTMLButtonElement).click();
+    expect(card!.isConnected).toBe(false);
+  });
   it('exports API methods', () => {
     inject({
       'data-client-id': 'c',

@@ -47,12 +47,17 @@ export function useWidgetConfig({
   setError,
 }: UseWidgetConfigParams) {
   const rateLimitUntilRef = useRef<number>(0);
+  // Read through a ref: the callback is memoized on the ids, so closing over
+  // `activeLocale` would localize errors in whatever language was active when
+  // it was created, not the one the visitor has since switched to.
+  const localeRef = useRef(activeLocale);
+  localeRef.current = activeLocale;
 
   // Fetch widget config
   const fetchWidgetConfig = useCallback(async (configId: string, token: string): Promise<{ variant_id?: string; variant_name?: string } | undefined> => {
     if (Date.now() < rateLimitUntilRef.current) {
       const waitSec = Math.max(1, Math.ceil((rateLimitUntilRef.current - Date.now()) / 1000));
-      setError(translate(activeLocale, 'rateLimitWait', { count: waitSec }));
+      setError(translate(localeRef.current, 'rateLimitWait', { count: waitSec }));
       return undefined;
     }
     try {
@@ -92,8 +97,8 @@ export function useWidgetConfig({
         );
         const waitSec = getRetryAfterSeconds(response.headers.get('Retry-After'));
         const msg = waitSec > 0
-          ? translate(activeLocale, 'rateLimitWait', { count: waitSec })
-          : translate(activeLocale, 'sessionRateLimitGeneric');
+          ? translate(localeRef.current, 'rateLimitWait', { count: waitSec })
+          : translate(localeRef.current, 'sessionRateLimitGeneric');
         setError(msg);
         logWarn('Widget config fetch rate-limited', { waitSec, configId });
       } else {

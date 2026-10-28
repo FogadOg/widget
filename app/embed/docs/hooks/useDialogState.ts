@@ -94,6 +94,10 @@ export function useDialogState({
   error,
   hostActions,
 }: UseDialogStateParams) {
+  // The session-init effect below runs once per open and deliberately doesn't
+  // re-run on a language switch, so read the locale through a ref.
+  const localeRef = useRef(activeLocale);
+  localeRef.current = activeLocale;
   // Callbacks come from the client's render scope; reading them through a ref
   // keeps the message listener from re-subscribing on every render.
   const hostActionsRef = useRef(hostActions);
@@ -223,7 +227,7 @@ export function useDialogState({
             createSession(token, variantInfo);
           }
         } else {
-          const message = authError || translate(activeLocale, 'sessionOrAuthError');
+          const message = authError || translate(localeRef.current, 'sessionOrAuthError');
           if (authError) {
             logError('Auth error', { authError });
           } else {
@@ -233,7 +237,7 @@ export function useDialogState({
         }
       }).catch(err => {
         logError('Error getting auth token', { error: err });
-        setError(translate(activeLocale, 'sessionOrAuthError'));
+        setError(translate(localeRef.current, 'sessionOrAuthError'));
       });
     } else {
       logWarn('Missing clientId or agentId');

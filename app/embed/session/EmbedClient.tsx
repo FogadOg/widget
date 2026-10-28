@@ -159,6 +159,7 @@ export default function EmbedClient(props: EmbedClientProps) {
     handleRemoveAttachment,
     handleSubmit,
     retryLastSend,
+    canRetrySend,
     handleFollowUpButtonClick,
     handleInteractionButtonClick,
     handleRichAction,
@@ -271,7 +272,7 @@ export default function EmbedClient(props: EmbedClientProps) {
         onPickFiles={handlePickFiles}
         onRemoveAttachment={handleRemoveAttachment}
         error={error}
-        onRetrySend={retryLastSend}
+        onRetrySend={canRetrySend ? retryLastSend : undefined}
         locale={activeLocale}
         availableLocales={availableLocales}
         onLocaleChange={handleLocaleChange}

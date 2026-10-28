@@ -23,6 +23,15 @@ describe('scripts/build-embed.js', () => {
     const widgetContent = fs.readFileSync(widgetSrc, 'utf8');
     fs.writeFileSync(path.join(tmp, 'src', 'embed', 'docs-widget.js'), docsContent, 'utf8');
     fs.writeFileSync(path.join(tmp, 'src', 'embed', 'widget.js'), widgetContent, 'utf8');
+    // The entries import shared helpers, and the build bundles them — so the
+    // rest of src/embed has to be there too, and the temp copy of the script
+    // needs to resolve esbuild (a junction needs no admin rights on Windows).
+    for (const name of fs.readdirSync(path.join(ROOT, 'src', 'embed'))) {
+      if (name === 'docs-widget.js' || name === 'widget.js') continue;
+      const from = path.join(ROOT, 'src', 'embed', name);
+      if (fs.statSync(from).isFile()) fs.copyFileSync(from, path.join(tmp, 'src', 'embed', name));
+    }
+    fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(tmp, 'node_modules'), 'junction');
     // ensure output dir exists (script does not create it)
     fs.mkdirSync(path.join(tmp, 'public'), { recursive: true });
     // the idempotency run requires the temp copy of build-embed.js which resolves

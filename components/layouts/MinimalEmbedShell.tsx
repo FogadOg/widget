@@ -10,13 +10,14 @@ import type { Props } from '../EmbedShell.types';
 import { UnreadBadge } from '../UnreadBadge';
 import { FOCUS_RING } from '../EmbedShell.constants';
 import MessageBubble from '../MessageBubble';
-import InteractionButtons from '../InteractionButtons';
 import { Suggestions } from '../components/Suggestions';
 import { EmptyStatePrompt } from '../components/EmptyStatePrompt';
-import { TeaserBubble } from '../components/TeaserBubble';
+import { TeaserAnchor } from '../components/TeaserBubble';
 import { TypingIndicator } from '../components/TypingIndicator';
 import { Composer } from '../components/Composer';
 import { LanguageMenu } from '../components/LanguageMenu';
+import { ShellGreeting } from '../components/ShellGreeting';
+import { isServerGreetingMessage } from '../../lib/greeting';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
 import { StatusBanners } from '../components/StatusBanners';
 import { useShellFocus } from '../components/useShellFocus';
@@ -148,9 +149,6 @@ export default function MinimalEmbedShell(props: Props) {
   // Always pin the greeting when configured. The backend also persists it as an
   // is_greeting chat message once a conversation exists; that copy is filtered out
   // of mergedContent below so the greeting never doubles or vanishes on send.
-  const isServerGreetingMessage = (m: { id: string; metadata?: unknown }) =>
-    m.id.startsWith('greeting-') ||
-    (m.metadata as Record<string, unknown> | undefined)?.is_greeting === true;
   const showGreeting = !!widgetConfig?.greeting_message;
   const greetingText = showGreeting ? getText(widgetConfig?.greeting_message?.text) : '';
 
@@ -198,10 +196,6 @@ export default function MinimalEmbedShell(props: Props) {
     void Promise.resolve(handleSubmit(e, messageText)).catch(() => {});
   };
 
-  // A configured teaser needs the launcher anchored to the iframe's bottom-right
-  // with the bubble stacked above it (the controller grows the iframe to fit),
-  // exactly as the classic layout does. Without this the iframe still grew for
-  // the teaser but nothing rendered in it, leaving an invisible click-blocking box.
   // Focus the composer on open and return focus to the launcher on close.
   // Shared with the classic shell so the three layouts stay in step.
   const launcherRef = React.useRef<HTMLButtonElement | null>(null);
@@ -237,23 +231,22 @@ export default function MinimalEmbedShell(props: Props) {
       </button>
     );
     return (
-      <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 999999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-        <TeaserBubble
-          teaserExpanded={teaserExpanded}
-          showTeaser={showTeaser}
-          teaserMessage={teaserMessage}
-          onTeaserMeasure={onTeaserMeasure}
-          onDismissTeaser={onDismissTeaser}
-          onOpen={toggleCollapsed}
-          locale={locale}
-          backgroundColor={backgroundColor}
-          textColor={textColor}
-          mutedTextColor={mutedTextColor}
-          subtleBorderColor={subtleBorderColor}
-          fontStyles={fontStyles}
-        />
+      <TeaserAnchor
+        teaserExpanded={teaserExpanded}
+        showTeaser={showTeaser}
+        teaserMessage={teaserMessage}
+        onTeaserMeasure={onTeaserMeasure}
+        onDismissTeaser={onDismissTeaser}
+        onOpen={toggleCollapsed}
+        locale={locale}
+        backgroundColor={backgroundColor}
+        textColor={textColor}
+        mutedTextColor={mutedTextColor}
+        subtleBorderColor={subtleBorderColor}
+        fontStyles={fontStyles}
+      >
         {anchoredButton}
-      </div>
+      </TeaserAnchor>
     );
   }
 
@@ -398,26 +391,20 @@ export default function MinimalEmbedShell(props: Props) {
             />
           )}
           {showGreeting && greetingText && (
-            <div className="mb-3">
-              <div className="max-w-[85%] px-3 py-2 border" style={{ borderColor: subtleBorderColor, borderRadius: `${messageBubbleRadius}px`, backgroundColor: agentBubbleBg, color: textColor }}>
-                {greetingText}
-              </div>
-              {interactionButtons.length > 0 && (
-                <div className="mt-2">
-                  <InteractionButtons
-                    buttons={interactionButtons}
-                    clickedButtons={new Set<string>()}
-                    onButtonClick={(button) => { if (onInteractionButtonClick) void onInteractionButtonClick(button); }}
-                    primaryColor={primaryColor}
-                    buttonBorderRadius={buttonBorderRadius}
-                    fontStyles={fontStyles}
-                    getLocalizedText={getText}
-                    backgroundColor={backgroundColor}
-                    textColor={textColor}
-                  />
-                </div>
-              )}
-            </div>
+            <ShellGreeting
+              text={greetingText}
+              buttons={interactionButtons}
+              onButtonClick={onInteractionButtonClick}
+              borderColor={subtleBorderColor}
+              bubbleBackground={agentBubbleBg}
+              bubbleRadius={messageBubbleRadius}
+              primaryColor={primaryColor}
+              buttonBorderRadius={buttonBorderRadius}
+              fontStyles={fontStyles}
+              getLocalizedText={getText}
+              backgroundColor={backgroundColor}
+              textColor={textColor}
+            />
           )}
 
           {showSuggestions && (

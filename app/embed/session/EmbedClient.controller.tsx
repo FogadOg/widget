@@ -395,6 +395,12 @@ export function useEmbedController(props: EmbedClientProps) {
   }, [messages, sessionId]);
   const authTokenRef = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // What the error banner's Retry re-sends. Null when the current error isn't
+  // a failed send (an upload error, a too-long message) — the banner then has
+  // no Retry, since re-sending the composer would send the wrong thing.
+  const [retryableSend, setRetryableSend] = useState<
+    null | { kind: 'typed' } | { kind: 'ai'; prompt: string; displayText?: string }
+  >(null);
   const [isOffline, setIsOffline] = useState(() =>
     typeof navigator !== 'undefined' ? !navigator.onLine : false
   );
@@ -1319,6 +1325,7 @@ export function useEmbedController(props: EmbedClientProps) {
     e.preventDefault();
     const rawMessage = messageText || input;
     if (!rawMessage.trim()) return;
+    setRetryableSend(null);
     // Attachments ride along with a typed message (backend requires non-empty
     // content). Button/flow sends (skipAddingUserMessage) never carry attachments.
     const attachmentsToSend = skipAddingUserMessage ? [] : pendingAttachmentsRef.current;
@@ -1354,8 +1361,10 @@ export function useEmbedController(props: EmbedClientProps) {
         from: 'user',
         timestamp: Date.now(),
       };
-      if (!skipAddingUserMessage) setMessages(prev => [...prev, previewUserMsg]);
-      setInput('');
+      if (!skipAddingUserMessage) {
+        setMessages(prev => [...prev, previewUserMsg]);
+        setInput('');
+      }
       setError(null);
       isSubmittingRef.current = false;
       return;
@@ -1480,7 +1489,9 @@ export function useEmbedController(props: EmbedClientProps) {
       // ignore
     }
 
-    setInput('');
+    // A button send didn't come from the composer, so it must not wipe the
+    // visitor's unsent draft.
+    if (!skipAddingUserMessage) setInput('');
     setIsTyping(true);
     setError(null);
 
@@ -1910,6 +1921,7 @@ export function useEmbedController(props: EmbedClientProps) {
           // Restore input and remove temp message
           setMessages(prev => prev.filter(m => m.id !== userMessage.id));
           setInput(message);
+          setRetryableSend({ kind: 'typed' });
         }
       } else if (skipAddingUserMessage) {
         // Button-triggered submit failed. Every caller of this path is asking
@@ -1917,6 +1929,7 @@ export function useEmbedController(props: EmbedClientProps) {
         // so nothing else will appear: show the error. The visitor's bubble stays
         // and the input is left alone — they didn't type anything.
         setError(e.userMessage || String(t.failedToSendMessage));
+        setRetryableSend({ kind: 'ai', prompt: rawMessage, displayText });
         logError(e, { message, sessionId, action: 'handleSubmit:button' });
       } else {
         // Only our localized userMessage / generic fallback — never raw e.message. (#13)
@@ -1927,6 +1940,7 @@ export function useEmbedController(props: EmbedClientProps) {
         // Remove temp message and restore input
         setMessages(prev => prev.filter(m => m.id !== userMessage.id));
         setInput(message);
+        setRetryableSend({ kind: 'typed' });
 
         // Check if session expired
         if (e.code === WidgetErrorCode.SESSION_EXPIRED) {
@@ -2148,17 +2162,21 @@ export function useEmbedController(props: EmbedClientProps) {
     }
   }, [initialAgentId, initialClientId, embedHeaders, handleSubmit, parentSensitiveOrigin]);
 
-  // Retry the send that just failed. The failure path already restores the
-  // visitor's text into the composer, so re-submitting the current input is the
-  // same message — this just saves them hunting for the send button after an
-  // error, which was previously their only recourse.
-  const retryLastSend = useCallback(() => {
-    if (!input.trim()) return;
+  // Retry the send that just failed. A typed send's failure path restores the
+  // visitor's text into the composer, so that one re-submits the composer; a
+  // failed AI button send re-asks with its prompt (the composer never held it).
+  // Not a useCallback: `sendAiAnswer` is a fresh closure every render.
+  const retryLastSend = () => {
+    const pending = retryableSend;
+    if (!pending) return;
+    if (pending.kind === 'typed' && !input.trim()) return;
     setError(null);
-    void Promise.resolve(
-      handleSubmit({ preventDefault: () => {} } as React.FormEvent)
-    ).catch(() => {});
-  }, [input, handleSubmit]);
+    setRetryableSend(null);
+    const send = pending.kind === 'ai'
+      ? sendAiAnswer(pending.prompt, pending.displayText)
+      : handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+    void Promise.resolve(send).catch(() => {});
+  };
 
   const handleInteractionButtonClick = async (button: ButtonLike) => {
     const b = button as FlowButton;
@@ -2745,6 +2763,7 @@ export function useEmbedController(props: EmbedClientProps) {
     handleRemoveAttachment,
     handleSubmit,
     retryLastSend,
+    canRetrySend: retryableSend !== null,
     handleFollowUpButtonClick,
     handleInteractionButtonClick,
     handleRichAction,

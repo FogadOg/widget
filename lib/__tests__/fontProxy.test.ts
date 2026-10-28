@@ -64,6 +64,12 @@ describe('fontProxy', () => {
     );
   });
 
+  test('asks only for weights a narrower family ships', () => {
+    // A weight the family lacks makes css2 reject the whole request.
+    expect(buildUpstreamCssUrl('Lato')).toContain(':wght@300;400;700&');
+    expect(buildUpstreamCssUrl('Bebas Neue')).toContain(':wght@400&');
+  });
+
   describe('rewriteFontCss', () => {
     test('points every font URL at the proxy', () => {
       const out = rewriteFontCss(GOOGLE_CSS)!;

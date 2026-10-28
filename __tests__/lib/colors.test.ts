@@ -26,3 +26,25 @@ describe('colors utilities', () => {
     expect(hexToRgb('foo')).toBe('255, 255, 255');
   });
 });
+
+describe('3-digit hex', () => {
+  // normalizeHexColor accepts #rgb, so every consumer must read it as the
+  // same colour as #rrggbb — a parser that didn't read `#fff` as black and
+  // rendered muted text white on a white panel.
+  const { mutedOn, contrastRatioHex, getReadableTextColor } = require('../../lib/colors');
+
+  test('hexToRgb expands #rgb', () => {
+    expect(hexToRgb('#fff')).toBe('255, 255, 255');
+    expect(hexToRgb('0a0')).toBe('0, 170, 0');
+  });
+
+  test('contrast and readable text treat #fff as white', () => {
+    expect(contrastRatioHex('#fff', '#ffffff')).toBeCloseTo(1);
+    expect(getReadableTextColor('#fff')).toBe('#000000');
+  });
+
+  test('mutedOn on a #fff panel stays dark and readable', () => {
+    const muted = mutedOn('#1f2937', '#fff', 0.6, 4.5);
+    expect(muted).toMatch(/^rgba\(31, 41, 55, /);
+  });
+});
